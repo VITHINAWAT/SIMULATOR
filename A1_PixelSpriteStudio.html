@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PIXEL_SPRITE_STUDIO // A1 [VITHINAWAT v2.2]</title>
+    
+    <!-- Import Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <!-- Import gifshot library for stable GIF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #1A1C1B;
+            --terminal-green: #95FF77;     /* Primary Accent */
+            --neon-pink: #FF0055;          /* Art/Active Accent */
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            --track-grey: #2A2C2B;
+            --inactive-grey: #444444;
+            
+            --font-header: 'Press Start 2P', cursive;
+            --font-ui: 'Share Tech Mono', monospace;
+            
+            --grid-size: 16;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--void-black);
+            background-image: 
+                linear-gradient(rgba(149, 255, 119, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(149, 255, 119, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: var(--terminal-green);
+            font-family: var(--font-ui);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 1. TOP DASHBOARD --- */
+        #dashboard {
+            height: 60px;
+            background-color: var(--graphite-grey);
+            border-bottom: 2px solid var(--terminal-green);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 10;
+        }
+
+        .app-title {
+            font-family: var(--font-header);
+            font-size: 1rem;
+            color: var(--terminal-green);
+            text-shadow: 0 0 5px rgba(149, 255, 119, 0.5);
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+        .app-subtitle {
+            font-family: var(--font-ui);
+            font-size: 0.7rem;
+            color: var(--neon-pink);
+            letter-spacing: 2px;
+        }
+
+        .top-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        /* --- 2. MAIN WORKSPACE --- */
+        #workspace {
+            flex: 1;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+            padding: 10px;
+            gap: 10px;
+        }
+
+        /* Left: Palette */
+        #palette-panel {
+            width: 80px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--terminal-green);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 5px;
+            overflow-y: auto;
+        }
+        
+        .color-swatch {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 1px solid #444;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .color-swatch:hover { transform: scale(1.1); z-index: 1; border-color: #fff; }
+        .color-swatch.active {
+            border: 3px solid var(--terminal-green);
+            box-shadow: 0 0 10px var(--terminal-green);
+            transform: scale(0.9);
+        }
+
+        /* Center: Main Canvas */
+        #canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(26, 28, 27, 0.5);
+            border: 1px solid var(--inactive-grey);
+            position: relative;
+        }
+
+        canvas#mainGrid {
+            image-rendering: pixelated; /* Crisp pixels */
+            
+            /* UPDATED: Lighter Checkerboard Background */
+            background-color: #666; /* Lighter Grey base */
+            background-image:
+                linear-gradient(45deg, #888 25%, transparent 25%),
+                linear-gradient(-45deg, #888 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #888 75%),
+                linear-gradient(-45deg, transparent 75%, #888 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            
+            border: 2px solid var(--terminal-green);
+            box-shadow: 0 0 20px rgba(149, 255, 119, 0.1);
+            cursor: crosshair;
+        }
+
+        /* Onion Skin Overlay */
+        .onion-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+            color: #ccc;
+            background: rgba(0,0,0,0.7);
+            padding: 5px;
+            border-radius: 4px;
+            z-index: 5;
+        }
+        .onion-toggle input:checked + span { color: var(--neon-pink); }
+
+        /* Right: Preview */
+        #preview-panel {
+            width: 150px;
+            background: var(--graphite-grey);
+            border: 1px solid var(--terminal-green);
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .preview-box {
+            width: 128px; /* 16px * 8 scale */
+            height: 128px;
+            /* Transparent Background for preview */
+            background-color: transparent; 
+            border: 1px solid #444;
+            image-rendering: pixelated;
+        }
+
+        .control-group {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .control-label { font-size: 0.7rem; color: #888; }
+        
+        /* Slider Styling */
+        input[type=range] {
+            width: 100%;
+            background: transparent;
+            -webkit-appearance: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 4px;
+            background: #444;
+            border: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 8px;
+            background: #000;
+            border: 1px solid var(--terminal-green);
+            margin-top: -6px;
+            cursor: pointer;
+        }
+
+        /* --- 3. BOTTOM TIMELINE --- */
+        #timeline {
+            height: 120px;
+            background: var(--graphite-grey);
+            border-top: 2px solid var(--terminal-green);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .timeline-controls {
+            height: 35px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .timeline-frames {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            padding: 5px 10px;
+            gap: 5px;
+        }
+
+        .frame-thumb {
+            min-width: 60px;
+            height: 60px;
+            background: #444; /* Slightly lighter thumb bg */
+            border: 1px solid #444;
+            position: relative;
+            cursor: pointer;
+            image-rendering: pixelated;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .frame-thumb canvas { width: 100%; height: 100%; object-fit: contain; }
+        .frame-thumb.active {
+            border: 2px solid var(--neon-pink);
+            box-shadow: 0 0 10px var(--neon-pink);
+        }
+        .frame-number {
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            font-size: 0.6rem;
+            background: rgba(0,0,0,0.7);
+            padding: 1px 3px;
+            color: #fff;
+        }
+
+        /* --- BUTTONS --- */
+        .cyber-btn {
+            background: transparent;
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            font-family: var(--font-ui);
+            font-weight: bold;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .cyber-btn:hover {
+            background: var(--terminal-green);
+            color: #000;
+            box-shadow: 0 0 8px var(--terminal-green);
+        }
+        .cyber-btn.pink { border-color: var(--neon-pink); color: var(--neon-pink); }
+        .cyber-btn.pink:hover { background: var(--neon-pink); color: #fff; box-shadow: 0 0 8px var(--neon-pink); }
+        
+        .cyber-btn.mini { padding: 2px 6px; font-size: 0.7rem; }
+
+        .btn-icon { font-size: 1rem; line-height: 1; }
+        
+        /* Eraser Specific */
+        #tool-eraser {
+            background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), 
+                              linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #ccc 75%), 
+                              linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            background-size: 10px 10px;
+            background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+            background-color: #fff;
+        }
+
+        /* Loading Overlay */
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 100;
+            display: none;
+            flex-direction: column;
+            justify-content: center; align-items: center;
+            color: var(--terminal-green);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #workspace { flex-direction: column; }
+            #palette-panel { width: 100%; height: 60px; flex-direction: row; overflow-x: auto; overflow-y: hidden;}
+            .color-swatch { width: 40px; height: 40px; aspect-ratio: auto; }
+            #preview-panel { 
+                position: absolute; bottom: 10px; right: 10px; 
+                width: 100px; height: auto; border: 1px solid var(--terminal-green); 
+                background: rgba(0,0,0,0.9); z-index: 5;
+            }
+            .preview-box { width: 80px; height: 80px; }
+            #canvas-container { padding: 5px; }
+            canvas#mainGrid { width: 90vmin; height: 90vmin; max-width: 320px; max-height: 320px; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="loading-overlay">
+        <div style="font-family: 'Press Start 2P'; font-size: 1.5rem; margin-bottom: 20px;">RENDERING GIF...</div>
+        <div style="color: #888;">PLEASE WAIT</div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard">
+        <div class="app-title">
+            <span>PIXEL STUDIO</span>
+            <span class="app-subtitle">A1 // ART IN DESIGN</span>
+        </div>
+        <div class="top-controls">
+            <button class="cyber-btn" onclick="togglePlay()">
+                <span id="play-icon">▶ PLAY</span>
+            </button>
+            <div class="control-group" style="width: 80px;">
+                <div class="control-label" style="display:flex; justify-content:space-between;">
+                    <span>FPS</span><span id="fps-val" style="color:var(--terminal-green)">12</span>
+                </div>
+                <input type="range" min="1" max="24" value="12" oninput="updateFPS(this.value)">
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN WORKSPACE -->
+    <div id="workspace">
+        <!-- Palette -->
+        <div id="palette-panel">
+            <div id="tool-eraser" class="color-swatch" onclick="setColor(null)" title="Eraser"></div>
+            <!-- Colors generated by JS -->
+        </div>
+
+        <!-- Canvas -->
+        <div id="canvas-container">
+            <label class="onion-toggle">
+                <input type="checkbox" id="onion-check" onchange="toggleOnion()"> 
+                <span>ONION SKIN</span>
+            </label>
+            <canvas id="mainGrid" width="320" height="320"></canvas>
+        </div>
+
+        <!-- Preview -->
+        <div id="preview-panel">
+            <div style="color:var(--terminal-green); font-size:0.8rem; font-weight:bold;">PREVIEW</div>
+            <canvas id="previewCanvas" width="128" height="128" class="preview-box"></canvas>
+            <button class="cyber-btn pink" onclick="exportGIF()" style="width:100%;">SAVE GIF</button>
+        </div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div id="timeline">
+        <div class="timeline-controls">
+            <button class="cyber-btn" onclick="addFrame()">+ NEW</button>
+            <button class="cyber-btn" onclick="duplicateFrame()">COPY</button>
+            <button class="cyber-btn pink" onclick="deleteFrame()">DEL</button>
+            
+            <div style="width: 1px; height: 20px; background: #444; margin: 0 10px;"></div>
+            
+            <!-- Frame Reordering -->
+            <button class="cyber-btn mini" onclick="moveFrame(-1)" title="Move Left">&lt;</button>
+            <button class="cyber-btn mini" onclick="moveFrame(1)" title="Move Right">&gt;</button>
+
+            <div style="flex:1"></div>
+            <span style="font-size:0.7rem; color:#666;">FRAME: <span id="frame-counter" style="color:#fff;">1/1</span></span>
+        </div>
+        <div class="timeline-frames" id="frames-container">
+            <!-- Thumbnails generated here -->
+        </div>
+    </div>
+
+    <script>
+        /**
+         * PIXEL SPRITE STUDIO ENGINE (A1) v2.2
+         * Fixes: GIF Export using gifshot, Lighter Canvas Background
+         */
+
+        // --- CONFIG & STATE ---
+        const GRID_SIZE = 16;
+        const CANVAS_SIZE = 320; // 20px per cell
+        const CELL_SIZE = CANVAS_SIZE / GRID_SIZE;
+        
+        // Classic NES Palette
+        const PALETTE = [
+            '#000000', '#ffffff', '#7C7C7C', '#BCBCBC',
+            '#F83800', '#F0D0B0', '#503000', '#FFE0A8',
+            '#0058F8', '#3CBCFC', '#00A800', '#80D010',
+            '#D800CC', '#F878F8', '#E40058', '#58F898'
+        ];
+
+        let frames = []; // Array of 2D arrays (16x16)
+        let currentFrameIndex = 0;
+        let currentColor = '#000000'; // null = eraser
+        let isDrawing = false;
+        let isPlaying = false;
+        let fps = 12;
+        let onionSkinEnabled = false;
+
+        // Elements
+        const mainCanvas = document.getElementById('mainGrid');
+        const ctx = mainCanvas.getContext('2d');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const pCtx = previewCanvas.getContext('2d');
+        pCtx.imageSmoothingEnabled = false;
+
+        // --- INITIALIZATION ---
+        function init() {
+            // Generate Palette UI
+            const pPanel = document.getElementById('palette-panel');
+            PALETTE.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'color-swatch';
+                div.style.backgroundColor = c;
+                div.onclick = () => setColor(c);
+                pPanel.appendChild(div);
+            });
+            setColor(PALETTE[0]); // Default black
+
+            // Create first frame
+            addFrame();
+
+            // Start Loops
+            drawMainCanvas();
+            animatePreview();
+        }
+
+        // --- DRAWING LOGIC ---
+        function getCellFromCoords(x, y) {
+            const rect = mainCanvas.getBoundingClientRect();
+            const scaleX = mainCanvas.width / rect.width;
+            const scaleY = mainCanvas.height / rect.height;
+            
+            const cx = (x - rect.left) * scaleX;
+            const cy = (y - rect.top) * scaleY;
+            
+            const col = Math.floor(cx / CELL_SIZE);
+            const row = Math.floor(cy / CELL_SIZE);
+            return { col, row };
+        }
+
+        function paint(col, row) {
+            if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return;
+            
+            const currentGrid = frames[currentFrameIndex];
+            if (currentGrid[row][col] !== currentColor) {
+                currentGrid[row][col] = currentColor;
+                drawMainCanvas();
+                updateThumbnail(currentFrameIndex);
+            }
+        }
+
+        // Mouse Events
+        mainCanvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const {col, row} = getCellFromCoords(e.clientX, e.clientY);
+            paint(col, row);
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+                const {col, row} = getCellFromCoords(e.clientX, e.clientY);
+                paint(col, row);
+            }
+        });
+        window.addEventListener('mouseup', () => isDrawing = false);
+
+        // Touch Events (Mobile)
+        mainCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isDrawing = true;
+            const t = e.touches[0];
+            const {col, row} = getCellFromCoords(t.clientX, t.clientY);
+            paint(col, row);
+        }, {passive: false});
+        mainCanvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (isDrawing) {
+                const t = e.touches[0];
+                const {col, row} = getCellFromCoords(t.clientX, t.clientY);
+                paint(col, row);
+            }
+        }, {passive: false});
+        window.addEventListener('touchend', () => isDrawing = false);
+
+        // --- RENDERING ---
+        function drawMainCanvas() {
+            // Clear to transparent (background is handled by CSS)
+            ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+
+            // 1. Draw Onion Skin (if enabled & not first frame)
+            if (onionSkinEnabled && currentFrameIndex > 0) {
+                ctx.save();
+                ctx.globalAlpha = 0.3;
+                drawGridToContext(ctx, frames[currentFrameIndex - 1]);
+                ctx.restore();
+            }
+
+            // 2. Draw Current Frame
+            drawGridToContext(ctx, frames[currentFrameIndex]);
+
+            // 3. Draw Grid Lines (RESTORED & VISIBLE - Bright Green)
+            ctx.strokeStyle = 'rgba(149, 255, 119, 0.4)'; // Brighter Green
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i <= GRID_SIZE; i++) {
+                ctx.moveTo(i * CELL_SIZE, 0); ctx.lineTo(i * CELL_SIZE, CANVAS_SIZE);
+                ctx.moveTo(0, i * CELL_SIZE); ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE);
+            }
+            ctx.stroke();
+        }
+
+        function drawGridToContext(context, gridData, scale = CELL_SIZE) {
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    const color = gridData[y][x];
+                    if (color) {
+                        context.fillStyle = color;
+                        context.fillRect(x * scale, y * scale, scale, scale);
+                    }
+                }
+            }
+        }
+
+        // --- FRAME MANAGEMENT ---
+        function createEmptyGrid() {
+            return Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
+        }
+
+        function addFrame() {
+            frames.push(createEmptyGrid());
+            rebuildTimeline();
+            selectFrame(frames.length - 1);
+        }
+
+        function duplicateFrame() {
+            const current = frames[currentFrameIndex];
+            // Deep copy
+            const newGrid = current.map(row => [...row]);
+            frames.splice(currentFrameIndex + 1, 0, newGrid);
+            rebuildTimeline();
+            selectFrame(currentFrameIndex + 1);
+        }
+
+        function deleteFrame() {
+            if (frames.length <= 1) return; // Must have at least 1 frame
+            frames.splice(currentFrameIndex, 1);
+            if (currentFrameIndex >= frames.length) currentFrameIndex = frames.length - 1;
+            rebuildTimeline();
+            selectFrame(currentFrameIndex);
+        }
+
+        function moveFrame(direction) {
+            // direction: -1 (left), 1 (right)
+            const newIndex = currentFrameIndex + direction;
+            if (newIndex < 0 || newIndex >= frames.length) return; // Out of bounds
+
+            // Swap frames
+            const temp = frames[currentFrameIndex];
+            frames[currentFrameIndex] = frames[newIndex];
+            frames[newIndex] = temp;
+
+            // Rebuild and follow selection
+            rebuildTimeline();
+            selectFrame(newIndex);
+        }
+
+        function rebuildTimeline() {
+            const container = document.getElementById('frames-container');
+            container.innerHTML = '';
+            frames.forEach((_, idx) => createThumbnailUI(idx));
+        }
+
+        function createThumbnailUI(index) {
+            const container = document.getElementById('frames-container');
+            const div = document.createElement('div');
+            div.className = 'frame-thumb';
+            div.id = `thumb-${index}`;
+            div.onclick = () => selectFrame(index);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = GRID_SIZE;
+            canvas.height = GRID_SIZE;
+            div.appendChild(canvas);
+
+            const num = document.createElement('div');
+            num.className = 'frame-number';
+            num.innerText = index + 1;
+            div.appendChild(num);
+
+            container.appendChild(div);
+            updateThumbnail(index);
+        }
+
+        function updateThumbnail(index) {
+            const thumbDiv = document.getElementById(`thumb-${index}`);
+            if (!thumbDiv) return;
+            const cvs = thumbDiv.querySelector('canvas');
+            const c = cvs.getContext('2d');
+            c.clearRect(0,0,16,16);
+            
+            // Draw pixel by pixel (1x1 size)
+            const grid = frames[index];
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    if (grid[y][x]) {
+                        c.fillStyle = grid[y][x];
+                        c.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+        }
+
+        function selectFrame(index) {
+            // Update UI State
+            document.querySelectorAll('.frame-thumb').forEach(el => el.classList.remove('active'));
+            const activeThumb = document.getElementById(`thumb-${index}`);
+            if(activeThumb) {
+                activeThumb.classList.add('active');
+                activeThumb.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'center'});
+            }
+
+            currentFrameIndex = index;
+            document.getElementById('frame-counter').innerText = `${index + 1}/${frames.length}`;
+            drawMainCanvas();
+        }
+
+        // --- TOOLS ---
+        function setColor(c) {
+            currentColor = c;
+            document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
+            
+            if (c === null) {
+                document.getElementById('tool-eraser').classList.add('active');
+            } else {
+                const els = document.querySelectorAll('.color-swatch');
+                const idx = PALETTE.indexOf(c);
+                if (idx !== -1) els[idx + 1].classList.add('active');
+            }
+        }
+
+        function toggleOnion() {
+            onionSkinEnabled = document.getElementById('onion-check').checked;
+            drawMainCanvas();
+        }
+
+        // --- PREVIEW & PLAYBACK ---
+        let lastFrameTime = 0;
+        let previewFrameIdx = 0;
+
+        function animatePreview(time) {
+            if (!lastFrameTime) lastFrameTime = time;
+            const interval = 1000 / fps;
+            
+            if (time - lastFrameTime > interval) {
+                if (isPlaying) {
+                    previewFrameIdx = (previewFrameIdx + 1) % frames.length;
+                } else {
+                    // Always show current editing frame when paused
+                    previewFrameIdx = currentFrameIndex; 
+                }
+                
+                // Scale 16x16 -> 128x128 (8x scale)
+                const scale = 8;
+                pCtx.clearRect(0, 0, 128, 128); // Clear to transparent
+                
+                // Draw frames
+                drawGridToContext(pCtx, frames[previewFrameIdx], scale);
+
+                lastFrameTime = time;
+            }
+            requestAnimationFrame(animatePreview);
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('play-icon').innerText = isPlaying ? "⏸ PAUSE" : "▶ PLAY";
+        }
+
+        function updateFPS(val) {
+            fps = parseInt(val);
+            document.getElementById('fps-val').innerText = fps;
+        }
+
+        // --- EXPORT GIF (Using gifshot) ---
+        function exportGIF() {
+            document.getElementById('loading-overlay').style.display = 'flex';
+            
+            setTimeout(() => {
+                // 1. Prepare images as Data URLs
+                const images = frames.map(grid => {
+                    const tCanvas = document.createElement('canvas');
+                    tCanvas.width = 128; // Scaled for GIF
+                    tCanvas.height = 128;
+                    const tCtx = tCanvas.getContext('2d');
+                    
+                    // Note: GIF transparency in browsers can be tricky with gifshot.
+                    // For best results, we'll use a background color or just draw the pixels.
+                    // Let's use a solid dark background for the GIF to look good everywhere.
+                    tCtx.fillStyle = '#1A1C1B'; 
+                    tCtx.fillRect(0, 0, 128, 128);
+                    
+                    // Draw grid scaled up
+                    drawGridToContext(tCtx, grid, 8); // 16 * 8 = 128
+                    
+                    return tCanvas.toDataURL('image/png');
+                });
+
+                // 2. Call gifshot
+                gifshot.createGIF({
+                    'images': images,
+                    'gifWidth': 128,
+                    'gifHeight': 128,
+                    'interval': 1 / fps, // seconds per frame
+                    'numFrames': images.length,
+                }, function(obj) {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    if(!obj.error) {
+                        const image = obj.image;
+                        const link = document.createElement('a');
+                        link.download = 'pixel_art.gif';
+                        link.href = image;
+                        link.click();
+                    } else {
+                        alert("GIF Generation Failed. Try reducing frames.");
+                    }
+                });
+
+            }, 100);
+        }
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>

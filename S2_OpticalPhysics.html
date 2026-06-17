@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optical Physics Puzzle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;600&display=swap');
+
+        /* Hide Scrollbar but allow scrolling */
+        * {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        *::-webkit-scrollbar {
+            display: none; /* Chrome, Safari and Opera */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1A1C1B;
+            font-family: 'Chakra Petch', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Allow body to grow */
+            height: 100vh; /* Fallback */
+            color: #eee;
+            user-select: none;
+            overflow-y: auto; /* Enable vertical scrolling */
+            overflow-x: hidden;
+        }
+
+        /* Game Area (Top) */
+        #game-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background-color: #1A1C1B;
+            border-bottom: 2px solid #333;
+            min-height: 50vh; /* Minimum height ensures playability on mobile */
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none; /* Prevent scrolling ONLY when touching the game canvas */
+        }
+
+        /* Instructions Overlay (Top Left) */
+        .instructions-overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: rgba(200, 200, 200, 0.8);
+            font-size: 0.8rem;
+            pointer-events: none; /* Container passes clicks through */
+            z-index: 20; /* High z-index to be on top */
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+            max-width: 250px;
+        }
+
+        .instructions-content {
+            background: rgba(0, 0, 0, 0.85); /* Darker bg for readability */
+            padding: 12px;
+            border-radius: 4px;
+            border-left: 3px solid #95FF77;
+            line-height: 1.5;
+            backdrop-filter: blur(4px);
+            pointer-events: auto; /* Allow interaction with content if needed */
+            transition: opacity 0.3s, transform 0.3s;
+            transform-origin: top left;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .instructions-content.hidden {
+            opacity: 0;
+            transform: scale(0.9);
+            pointer-events: none;
+            position: absolute; /* Take out of flow when hidden */
+            top: 30px; /* Offset to not overlap toggle button position */
+        }
+
+        /* Physics Data Styling inside Info */
+        .physics-data-section {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #444;
+        }
+        
+        .equation-title {
+            color: #95FF77;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .equation-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2px;
+            font-size: 0.8rem;
+            color: #ccc;
+            font-family: 'Courier New', monospace;
+        }
+
+        .equation-row span.label {
+            font-family: 'Chakra Petch', sans-serif;
+            color: #888;
+            font-size: 0.75rem;
+            margin-right: 10px;
+        }
+
+        .toggle-instructions-btn {
+            pointer-events: auto; /* Allow clicking the button */
+            background: rgba(26, 28, 27, 0.9);
+            border: 1px solid #95FF77;
+            color: #95FF77;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: 600;
+            box-shadow: 0 0 5px rgba(149, 255, 119, 0.2);
+            transition: all 0.2s;
+        }
+
+        .toggle-instructions-btn:hover {
+            background: #95FF77;
+            color: #1A1C1B;
+        }
+
+        .status-msg {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 15px #95FF77;
+            display: none;
+            animation: pulse 1s infinite;
+            z-index: 5;
+            pointer-events: none;
+            text-align: right;
+        }
+        .status-msg.win {
+            display: block;
+            color: #95FF77;
+        }
+        .status-msg.warning {
+            display: block;
+            color: #FFCC00;
+            text-shadow: 0 0 10px #FFCC00;
+            font-size: 1.2rem;
+            animation: none;
+        }
+        
+        /* Error Message Display */
+        #error-display {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #ff5555;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            z-index: 100;
+            font-family: monospace;
+            display: none;
+            max-width: 90%;
+            pointer-events: none;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Control Panel (Bottom) */
+        .ui-container {
+            flex: 0 0 auto; /* Do not shrink */
+            background: #111;
+            padding: 10px 20px; 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            border-top: 1px solid #95FF77;
+            z-index: 10;
+            width: 100%;
+        }
+
+        .control-panel {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+        }
+
+        .panel-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel-section.main-controls {
+            flex: 1;
+            min-width: 280px; /* Ensure sliders are usable */
+            border-left: 1px solid #333;
+            padding-left: 20px;
+            border-right: 1px solid #333;
+            padding-right: 20px;
+        }
+
+        h3 {
+            margin: 0 0 5px 0;
+            font-size: 0.85rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            flex-direction: column; 
+            gap: 8px; 
+            min-width: 120px;
+        }
+
+        .btn {
+            background: #1A1C1B;
+            border: 1px solid #95FF77;
+            color: #95FF77;
+            padding: 10px 16px; 
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem; 
+            transition: all 0.2s;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: #95FF77;
+            color: #000;
+            box-shadow: 0 0 10px #95FF77;
+        }
+
+        .btn.secondary {
+            border-color: #555;
+            color: #aaa;
+        }
+        .btn.secondary:hover {
+            border-color: #888;
+            background: #333;
+            color: #fff;
+            box-shadow: none;
+        }
+
+        /* Sliders */
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 5px;
+        }
+        
+        .slider-label {
+            min-width: 120px;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        .slider-value {
+            min-width: 45px;
+            text-align: right;
+            color: #95FF77;
+            font-family: monospace;
+            font-size: 1rem;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #111;
+            border: 2px solid #95FF77;
+            margin-top: -6px;
+            box-shadow: 0 0 5px #95FF77;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+        }
+        
+        input[type=range]:disabled::-webkit-slider-thumb {
+            border-color: #444;
+            box-shadow: none;
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 768px) {
+            .control-panel { 
+                gap: 20px; 
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .panel-section.main-controls { 
+                border: none; 
+                padding: 10px 0; 
+                border-top: 1px solid #333; 
+                border-bottom: 1px solid #333; 
+                min-width: auto;
+            }
+            
+            .btn-group { 
+                flex-direction: row; 
+            } 
+            .btn { flex: 1; }
+            
+            #game-container {
+                min-height: 60vh; /* Taller game area on mobile */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- New Instructions Overlay with Toggle -->
+        <div class="instructions-overlay">
+            <button id="toggleInstructions" class="toggle-instructions-btn" onclick="toggleInstructions()">Hide Info</button>
+            <div id="instructionsContent" class="instructions-content">
+                <div style="margin-bottom: 8px;">
+                    1. Drag objects to redirect light<br>
+                    2. Click objects to adjust properties<br>
+                    3. Hit the target with the laser
+                </div>
+                
+                <!-- Physics Data Moved Here -->
+                <div class="physics-data-section">
+                    <div class="equation-title">PHYSICS DATA</div>
+                    <div class="equation-row">
+                        <span class="label">Snell's Law</span>
+                        <span>n₁sin(θ₁) = n₂sin(θ₂)</span>
+                    </div>
+                    <div class="equation-row">
+                        <span class="label">Reflection</span>
+                        <span>θᵢ = θᵣ</span>
+                    </div>
+                    <div class="equation-row">
+                        <span class="label">Index (Air)</span>
+                        <span>n ≈ 1.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-display"></div>
+        <div id="winMessage" class="status-msg">
+            TARGET REACHED
+        </div>
+        <div id="angleMessage" class="status-msg warning">
+            ADJUST ANGLE
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div class="ui-container">
+        <div class="control-panel">
+            
+            <!-- Removed Equations from here -->
+
+            <!-- Object Controls -->
+            <div class="panel-section main-controls">
+                <h3>Selected Object: <span id="selectedObjectName" style="color:#fff;">None</span></h3>
+                
+                <div class="slider-row">
+                    <div class="slider-label">Rotation</div>
+                    <input type="range" id="rotSlider" min="0" max="360" step="1" value="0" disabled>
+                    <div class="slider-value" id="rotValue">--</div>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-label">Refractive Index</div>
+                    <input type="range" id="iorSlider" min="1.0" max="3.0" step="0.01" value="1.5" disabled>
+                    <div class="slider-value" id="iorValue">--</div>
+                </div>
+            </div>
+
+            <!-- Game Flow Buttons -->
+            <div class="panel-section">
+                <h3>Simulation Control</h3>
+                <div class="btn-group">
+                    <button class="btn secondary" onclick="resetPositions()">Reset Pos</button>
+                    <button class="btn" onclick="randomizeLevel()">Random Level</button>
+                    <!-- Sound Toggle: Removed 'secondary' class to make it green initially -->
+                    <button id="muteBtn" class="btn" style="font-size:0.7rem; padding:6px;" onclick="toggleMute()">Sound: ON</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Audio Engine
+        const AudioEngine = {
+            ctx: null,
+            muted: false,
+            init: function() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            playTone: function(freq, type, duration, vol = 0.1) {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            },
+            playSelect: function() {
+                this.init();
+                this.playTone(800, 'sine', 0.1, 0.05);
+            },
+            playWin: function() {
+                this.init();
+                if (this.muted) return;
+                const now = this.ctx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C Major Arpeggio
+                notes.forEach((freq, i) => {
+                    setTimeout(() => this.playTone(freq, 'sine', 0.4, 0.1), i * 100);
+                });
+            },
+            playError: function() {
+                this.init();
+                this.playTone(150, 'sawtooth', 0.4, 0.05);
+            },
+            playRandom: function() {
+                this.init();
+                // Play a quick sci-fi shuffle sound (ascending triplets)
+                this.playTone(300, 'triangle', 0.05, 0.08);
+                setTimeout(() => this.playTone(500, 'triangle', 0.05, 0.08), 60);
+                setTimeout(() => this.playTone(800, 'triangle', 0.1, 0.08), 120);
+            }
+        };
+
+        function toggleMute() {
+            AudioEngine.muted = !AudioEngine.muted;
+            const btn = document.getElementById('muteBtn');
+            
+            // FIX: Toggle class 'secondary' for consistent styling (Green/Gray)
+            if (AudioEngine.muted) {
+                btn.textContent = "Sound: OFF";
+                btn.classList.add('secondary'); // Make it Gray
+                btn.style.color = ""; // Clear inline style if present
+            } else {
+                btn.textContent = "Sound: ON";
+                btn.classList.remove('secondary'); // Make it Green
+                btn.style.color = "";
+            }
+            
+            // Resume context on click if needed
+            AudioEngine.init();
+        }
+
+        // Instructions Toggle Logic
+        function toggleInstructions() {
+            const content = document.getElementById('instructionsContent');
+            const btn = document.getElementById('toggleInstructions');
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                btn.textContent = 'Hide Info';
+            } else {
+                content.classList.add('hidden');
+                btn.textContent = 'Show Info';
+            }
+        }
+
+        // Global Error Handler
+        window.onerror = function(msg, url, line, col, error) {
+            const display = document.getElementById('error-display');
+            display.style.display = 'block';
+            display.innerHTML += `ERROR: ${msg} <br> Line: ${line} <br>`;
+            return false;
+        };
+
+        const container = document.getElementById('game-container');
+        const canvas = document.getElementById('gameCanvas');
+        let ctx;
+
+        try {
+            ctx = canvas.getContext('2d');
+        } catch(e) {
+            document.getElementById('error-display').style.display = 'block';
+            document.getElementById('error-display').innerText = "Canvas not supported";
+        }
+
+        // --- Configuration ---
+        const COLORS = {
+            background: '#1A1C1B',
+            grid: 'rgba(255, 255, 255, 0.03)',
+            laser: '#95FF77',
+            laserGlow: 'rgba(149, 255, 119, 0.4)',
+            mirrorFill: '#4A5555',
+            mirrorBorder: '#C0C0C0',
+            glassFill: 'rgba(100, 200, 255, 0.15)',
+            glassBorder: 'rgba(150, 220, 255, 0.5)',
+            obstacleFill: '#000000',
+            obstacleBorder: '#333333',
+            obstacleGrid: '#222222',
+            targetOff: '#333333',
+            targetOn: '#95FF77',
+            selection: '#FFFF00'
+        };
+
+        // Game State
+        let state = {
+            width: 800, 
+            height: 600,
+            objects: [],
+            selectedObj: null,
+            dragging: null,
+            dragOffset: { x: 0, y: 0 },
+            laserY: 0,
+            target: { x: 0, y: 0, radius: 25, hit: false, angleError: false, rotation: Math.PI },
+            maxBounces: 20,
+            time: 0,
+            prevHit: false, // For Sound Trigger
+            prevError: false // For Sound Trigger
+        };
+
+        // --- Math Helpers ---
+        const Vec2 = {
+            add: (v1, v2) => ({ x: v1.x + v2.x, y: v1.y + v2.y }),
+            sub: (v1, v2) => ({ x: v1.x - v2.x, y: v1.y - v2.y }),
+            mul: (v, s) => ({ x: v.x * s, y: v.y * s }),
+            dot: (v1, v2) => v1.x * v2.x + v1.y * v2.y,
+            mag: (v) => Math.sqrt(v.x * v.x + v.y * v.y),
+            norm: (v) => {
+                const m = Math.sqrt(v.x * v.x + v.y * v.y);
+                return m === 0 ? { x: 0, y: 0 } : { x: v.x / m, y: v.y / m };
+            },
+            rot: (v, angleRad) => ({
+                x: v.x * Math.cos(angleRad) - v.y * Math.sin(angleRad),
+                y: v.x * Math.sin(angleRad) + v.y * Math.cos(angleRad)
+            }),
+            dist: (v1, v2) => Math.sqrt((v1.x - v2.x) ** 2 + (v1.y - v2.y) ** 2),
+            angle: (v) => Math.atan2(v.y, v.x)
+        };
+
+        const degToRad = d => d * Math.PI / 180;
+        const radToDeg = r => r * 180 / Math.PI;
+
+        // --- Classes ---
+
+        class GameObject {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.rotation = 0; 
+                this.ior = 1.5; 
+                this.width = 100;
+                this.height = 10;
+                this.size = 60;
+                this.static = false;
+            }
+            draw(ctx, isSelected) {}
+            getSegments() {}
+            contains(x, y) {}
+        }
+
+        class RectObject extends GameObject {
+            constructor(x, y, w, h, type) {
+                super(x, y, type);
+                this.width = w;
+                this.height = h;
+                if (type === 'block') this.ior = 1.5;
+                if (type === 'obstacle') {
+                    this.static = true;
+                    // Note: Obstacles might be resized during creation
+                }
+            }
+
+            getSegments() {
+                const hw = this.width / 2;
+                const hh = this.height / 2;
+                const corners = [
+                    { x: -hw, y: -hh }, { x: hw, y: -hh },
+                    { x: hw, y: hh }, { x: -hw, y: hh }
+                ].map(p => {
+                    const r = Vec2.rot(p, this.rotation);
+                    return { x: this.x + r.x, y: this.y + r.y };
+                });
+
+                return [
+                    { p1: corners[0], p2: corners[1], normal: Vec2.rot({x:0, y:-1}, this.rotation) },
+                    { p1: corners[1], p2: corners[2], normal: Vec2.rot({x:1, y:0}, this.rotation) },
+                    { p1: corners[2], p2: corners[3], normal: Vec2.rot({x:0, y:1}, this.rotation) },
+                    { p1: corners[3], p2: corners[0], normal: Vec2.rot({x:-1, y:0}, this.rotation) }
+                ];
+            }
+
+            draw(ctx, isSelected) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                if (isSelected && !this.static) {
+                    ctx.strokeStyle = COLORS.selection;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-this.width/2 - 6, -this.height/2 - 6, this.width + 12, this.height + 12);
+                }
+
+                if (this.type === 'mirror') {
+                    ctx.fillStyle = COLORS.mirrorFill;
+                    ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+                    ctx.fillStyle = COLORS.mirrorBorder;
+                    ctx.fillRect(-this.width/2, -this.height/2, this.width, 3);
+                } else if (this.type === 'block') {
+                    ctx.fillStyle = COLORS.glassFill;
+                    ctx.strokeStyle = COLORS.glassBorder;
+                    ctx.lineWidth = 2;
+                    ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+                    ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
+                } else if (this.type === 'obstacle') {
+                    ctx.fillStyle = COLORS.obstacleFill;
+                    ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+                    
+                    // Internal Grid
+                    ctx.strokeStyle = COLORS.obstacleGrid;
+                    ctx.lineWidth = 1;
+                    const step = 8;
+                    ctx.beginPath();
+                    ctx.rect(-this.width/2, -this.height/2, this.width, this.height);
+                    ctx.clip();
+                    
+                    ctx.beginPath();
+                    for(let i = -this.width/2; i <= this.width/2; i+=step) {
+                        ctx.moveTo(i, -this.height/2);
+                        ctx.lineTo(i, this.height/2);
+                    }
+                    for(let i = -this.height/2; i <= this.height/2; i+=step) {
+                        ctx.moveTo(-this.width/2, i);
+                        ctx.lineTo(this.width/2, i);
+                    }
+                    ctx.stroke();
+
+                    // Border
+                    ctx.strokeStyle = '#444';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
+                }
+                ctx.restore();
+            }
+
+            contains(x, y) {
+                const local = Vec2.rot({x: x - this.x, y: y - this.y}, -this.rotation);
+                return Math.abs(local.x) < this.width/2 + 5 && Math.abs(local.y) < this.height/2 + 5;
+            }
+        }
+
+        class HexagonObject extends GameObject {
+            constructor(x, y, size) {
+                super(x, y, 'hexagon');
+                this.size = size;
+                this.ior = 1.5;
+            }
+
+            getVertices() {
+                const v = [];
+                for(let i = 0; i < 6; i++) {
+                    const angle = (i * 60 * Math.PI / 180) + this.rotation;
+                    v.push({
+                        x: this.x + this.size * Math.cos(angle),
+                        y: this.y + this.size * Math.sin(angle)
+                    });
+                }
+                return v;
+            }
+
+            getSegments() {
+                const v = this.getVertices();
+                const segs = [];
+                for (let i = 0; i < v.length; i++) {
+                    const p1 = v[i];
+                    const p2 = v[(i + 1) % v.length];
+                    let normal = Vec2.norm({ x: -(p2.y - p1.y), y: (p2.x - p1.x) });
+                    segs.push({ p1, p2, normal });
+                }
+                return segs;
+            }
+
+            draw(ctx, isSelected) {
+                const v = this.getVertices();
+                ctx.beginPath();
+                v.forEach((p, i) => i===0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+                ctx.closePath();
+
+                ctx.fillStyle = COLORS.glassFill;
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = COLORS.glassBorder;
+                ctx.stroke();
+
+                if (isSelected) {
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = COLORS.selection;
+                    ctx.stroke();
+                }
+
+                ctx.beginPath();
+                v.forEach((p, i) => {
+                     const innerP = { 
+                         x: this.x + (p.x - this.x) * 0.6,
+                         y: this.y + (p.y - this.y) * 0.6
+                     };
+                     i===0 ? ctx.moveTo(innerP.x, innerP.y) : ctx.lineTo(innerP.x, innerP.y);
+                });
+                ctx.closePath();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.stroke();
+            }
+
+            contains(x, y) {
+                return Vec2.dist({x,y}, {x: this.x, y: this.y}) < this.size;
+            }
+        }
+
+        class PrismObject extends GameObject {
+            constructor(x, y, size) {
+                super(x, y, 'prism');
+                this.size = size;
+                this.ior = 1.5;
+            }
+
+            getVertices() {
+                const r = this.size;
+                const angles = [ -Math.PI/2, Math.PI/6, 5*Math.PI/6 ];
+                return angles.map(a => ({
+                    x: this.x + r * Math.cos(a + this.rotation),
+                    y: this.y + r * Math.sin(a + this.rotation)
+                }));
+            }
+
+            getSegments() {
+                const v = this.getVertices();
+                const segs = [];
+                for (let i = 0; i < v.length; i++) {
+                    const p1 = v[i];
+                    const p2 = v[(i + 1) % v.length];
+                    let normal = Vec2.norm({ x: -(p2.y - p1.y), y: (p2.x - p1.x) });
+                    segs.push({ p1, p2, normal });
+                }
+                return segs;
+            }
+
+            draw(ctx, isSelected) {
+                const v = this.getVertices();
+                ctx.beginPath();
+                v.forEach((p, i) => i===0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+                ctx.closePath();
+
+                ctx.fillStyle = COLORS.glassFill;
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = COLORS.glassBorder;
+                ctx.stroke();
+
+                if (isSelected) {
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = COLORS.selection;
+                    ctx.stroke();
+                }
+                
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y - this.size * 0.5);
+                ctx.lineTo(this.x - this.size * 0.3, this.y + this.size * 0.3);
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.stroke();
+            }
+
+            contains(x, y) {
+                return Vec2.dist({x,y}, {x: this.x, y: this.y}) < this.size;
+            }
+        }
+
+        // --- Core Physics ---
+
+        function getIntersection(rayOrigin, rayDir, segment) {
+            const p1 = segment.p1;
+            const p2 = segment.p2;
+            const p3 = rayOrigin;
+            const p4 = Vec2.add(rayOrigin, rayDir);
+
+            const den = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x);
+            if (den === 0) return null;
+
+            const t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / den;
+            const u = -((p1.x - p2.x) * (p1.y - p3.y) - (p1.y - p2.y) * (p1.x - p3.x)) / den;
+
+            if (t >= 0 && t <= 1 && u > 0.001) {
+                return {
+                    point: { x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y) },
+                    distance: u,
+                    normal: segment.normal,
+                    segment: segment
+                };
+            }
+            return null;
+        }
+
+        function drawAngleVisualization(ctx, point, normal, incoming, outgoing, isRefraction) {
+            const radius = 25;
+            const normalAngle = Math.atan2(normal.y, normal.x);
+            // Incoming angle (we reverse the vector to measure from the point outwards)
+            const incomingAngle = Math.atan2(-incoming.y, -incoming.x);
+            const outgoingAngle = Math.atan2(outgoing.y, outgoing.x);
+
+            ctx.save();
+            ctx.translate(point.x, point.y);
+
+            // Draw Normal Line
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(normal.x * 40, normal.y * 40);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.setLineDash([2, 2]);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw Incoming Angle Arc
+            // Measure difference between Normal and Incoming
+            ctx.beginPath();
+            // Ensure we draw the smaller arc
+            ctx.arc(0, 0, radius, normalAngle, incomingAngle, 
+                Math.abs(normalAngle - incomingAngle) > Math.PI ? (normalAngle < incomingAngle) : (normalAngle > incomingAngle)
+            );
+            ctx.strokeStyle = 'rgba(149, 255, 119, 0.7)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Draw Outgoing Angle Arc
+            let refNormalAngle = normalAngle;
+            if (isRefraction) {
+                const dotOutNormal = outgoing.x * normal.x + outgoing.y * normal.y;
+                if (dotOutNormal < 0) refNormalAngle = normalAngle + Math.PI; // Same side as incoming? rarely happens for transmission
+                else refNormalAngle = normalAngle + Math.PI; // Opposite side normal
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, radius - 5, isRefraction ? normalAngle + Math.PI : normalAngle, outgoingAngle,
+                 Math.abs((isRefraction ? normalAngle + Math.PI : normalAngle) - outgoingAngle) > Math.PI ? 
+                 ((isRefraction ? normalAngle + Math.PI : normalAngle) < outgoingAngle) : 
+                 ((isRefraction ? normalAngle + Math.PI : normalAngle) > outgoingAngle)
+            );
+            ctx.strokeStyle = isRefraction ? 'rgba(100, 200, 255, 0.7)' : 'rgba(149, 255, 119, 0.7)';
+            ctx.stroke();
+
+            // Draw Angle Text
+            const incDeg = Math.round(Math.abs(radToDeg(incomingAngle - normalAngle)) % 180);
+            // Normalize for readable display (0-90)
+            const displayInc = incDeg > 90 ? 180 - incDeg : incDeg;
+            
+            ctx.fillStyle = '#aaa';
+            ctx.font = '10px monospace';
+            ctx.fillText(displayInc + "°", normal.x * (radius + 10), normal.y * (radius + 10));
+
+            ctx.restore();
+        }
+
+        function traceRay(start, dir, depth = 0) {
+            if (depth > state.maxBounces) return;
+
+            let closestHit = null;
+            let closestDist = Infinity;
+            let hitObject = null;
+
+            const walls = [
+                { p1: {x:0,y:0}, p2: {x:state.width,y:0}, normal: {x:0,y:1} },
+                { p1: {x:state.width,y:0}, p2: {x:state.width,y:state.height}, normal: {x:-1,y:0} },
+                { p1: {x:state.width,y:state.height}, p2: {x:0,y:state.height}, normal: {x:0,y:-1} },
+                { p1: {x:0,y:state.height}, p2: {x:0,y:0}, normal: {x:1,y:0} }
+            ];
+
+            const allSegments = [];
+            state.objects.forEach(obj => {
+                obj.getSegments().forEach(seg => {
+                    allSegments.push({ ...seg, parent: obj });
+                });
+            });
+
+            [...walls, ...allSegments].forEach(seg => {
+                const hit = getIntersection(start, dir, seg);
+                if (hit && hit.distance < closestDist) {
+                    closestDist = hit.distance;
+                    closestHit = hit;
+                    hitObject = seg.parent;
+                }
+            });
+
+            const endPoint = closestHit ? closestHit.point : Vec2.add(start, Vec2.mul(dir, 3000));
+            
+            const segVec = Vec2.sub(endPoint, start);
+            const segLen = Vec2.mag(segVec);
+            const segDir = Vec2.norm(segVec);
+            const toTargetV = Vec2.sub(state.target, start);
+            const projT = Vec2.dot(toTargetV, segDir);
+            
+            // TARGET HIT LOGIC
+            if (projT > 0 && projT < segLen) {
+                const closestPointOnLine = Vec2.add(start, Vec2.mul(segDir, projT));
+                if (Vec2.dist(closestPointOnLine, state.target) < state.target.radius) {
+                    const targetFacing = { x: Math.cos(state.target.rotation), y: Math.sin(state.target.rotation) };
+                    const impactDot = Vec2.dot(segDir, targetFacing);
+                    
+                    // Tolerance Logic: Relaxed to ~20 degrees
+                    // cos(20) ~ 0.939
+                    // impactDot must be less than -0.94
+                    if (impactDot < -0.94) { 
+                        state.target.hit = true;
+                        // Clear angle error if we found a valid hit
+                        state.target.angleError = false; 
+                    } else {
+                        // Only set angle error if we haven't already hit successfully in this frame
+                        if (!state.target.hit) {
+                            state.target.angleError = true;
+                        }
+                    }
+                }
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(endPoint.x, endPoint.y);
+            ctx.strokeStyle = COLORS.laser;
+            ctx.lineWidth = 2 + (Math.random() * 1.5);
+            ctx.stroke();
+
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = COLORS.laserGlow;
+            ctx.stroke();
+
+            if (!closestHit) return;
+
+            if (hitObject) {
+                if (hitObject.type === 'obstacle') {
+                    ctx.fillStyle = '#FF5500';
+                    ctx.beginPath();
+                    ctx.arc(endPoint.x, endPoint.y, 3, 0, Math.PI*2);
+                    ctx.fill();
+                    return;
+                }
+                
+                if (hitObject.type === 'mirror') {
+                    const dot = Vec2.dot(dir, closestHit.normal);
+                    const reflect = Vec2.sub(dir, Vec2.mul(closestHit.normal, 2 * dot));
+                    
+                    drawAngleVisualization(ctx, endPoint, closestHit.normal, dir, reflect, false);
+                    traceRay(endPoint, reflect, depth + 1);
+                } 
+                else if (['hexagon', 'block', 'prism'].includes(hitObject.type)) {
+                    const n1 = 1.00; 
+                    const n2 = hitObject.ior;
+                    let normal = closestHit.normal;
+                    let eta = n1 / n2;
+
+                    const entering = Vec2.dot(dir, normal) < 0;
+                    
+                    if (!entering) {
+                        normal = Vec2.mul(normal, -1);
+                        eta = n2 / n1;
+                    }
+
+                    const d_dot_n = Vec2.dot(dir, normal);
+                    const k = 1 - eta * eta * (1 - d_dot_n * d_dot_n);
+
+                    if (k < 0) {
+                        const reflect = Vec2.sub(dir, Vec2.mul(normal, 2 * d_dot_n));
+                        drawAngleVisualization(ctx, endPoint, normal, dir, reflect, false);
+                        traceRay(endPoint, reflect, depth + 1);
+                    } else {
+                        const refract = Vec2.add(
+                            Vec2.mul(dir, eta),
+                            Vec2.mul(normal, (eta * d_dot_n - Math.sqrt(k)))
+                        );
+                        drawAngleVisualization(ctx, endPoint, normal, dir, refract, true);
+                        traceRay(endPoint, refract, depth + 1);
+                    }
+                }
+            }
+        }
+
+        // --- Game Logic ---
+
+        function randomizeLevel() {
+            // Play sound effect
+            AudioEngine.playRandom();
+
+            const marginY = 100;
+            state.laserY = marginY + Math.random() * (state.height - marginY * 2);
+            
+            const rightEdge = state.width - 40; 
+            let targetY = 0;
+            
+            // Calculate scale based on screen width
+            // Base width is roughly 1000px.
+            // Minimum scale 0.5 (for mobile), max 1.2 (for large screens)
+            const s = Math.max(0.5, Math.min(state.width / 1000, 1.2));
+
+            let safety = 0;
+            do {
+                targetY = marginY + Math.random() * (state.height - marginY * 2);
+                safety++;
+            } while (Math.abs(targetY - state.laserY) < 150 && safety < 100);
+
+            state.target.x = rightEdge;
+            state.target.y = targetY;
+            
+            state.target.rotation = Math.PI + (Math.random() * Math.PI/2 - Math.PI/4); 
+            state.target.hit = false;
+            state.target.angleError = false;
+
+            state.objects = [];
+            
+            const startX = state.width * 0.15;
+            const areaW = state.width * 0.65;
+            
+            const isTooClose = (x, y, minDist = 120 * s) => {
+                for (let o of state.objects) {
+                    if (Vec2.dist({x,y}, {x:o.x, y:o.y}) < minDist) return true;
+                }
+                return false;
+            };
+
+            const getSafePos = () => {
+                let x, y, tries = 0;
+                do {
+                    x = startX + Math.random() * areaW;
+                    y = marginY + Math.random() * (state.height - marginY * 2);
+                    tries++;
+                } while(isTooClose(x, y) && tries < 50);
+                return {x, y};
+            }
+
+            for(let i=0; i<2; i++) {
+                const pos = getSafePos();
+                const obs = new RectObject(pos.x, pos.y, 60 * s, 60 * s, 'obstacle');
+                obs.rotation = Math.random() * Math.PI;
+                state.objects.push(obs);
+            }
+
+            const movableTypes = ['mirror', 'mirror', 'hexagon', 'prism', 'block'];
+            
+            movableTypes.forEach((type) => {
+                const pos = getSafePos();
+                
+                if (type === 'mirror') {
+                    const obj = new RectObject(pos.x, pos.y, 120 * s, 10 * s, 'mirror');
+                    obj.rotation = Math.random() * Math.PI;
+                    state.objects.push(obj);
+                } else if (type === 'block') {
+                    const obj = new RectObject(pos.x, pos.y, 80 * s, 100 * s, 'block');
+                    obj.rotation = Math.random() * Math.PI;
+                    obj.ior = 1.3 + Math.random() * 0.4;
+                    state.objects.push(obj);
+                } else if (type === 'hexagon') {
+                    const obj = new HexagonObject(pos.x, pos.y, 50 * s);
+                    obj.rotation = Math.random() * Math.PI;
+                    obj.ior = 1.3 + Math.random() * 0.4;
+                    state.objects.push(obj);
+                } else if (type === 'prism') {
+                    const obj = new PrismObject(pos.x, pos.y, 60 * s);
+                    obj.rotation = Math.random() * Math.PI;
+                    obj.ior = 1.3 + Math.random() * 0.4;
+                    state.objects.push(obj);
+                }
+            });
+
+            selectObject(null);
+        }
+
+        function resetPositions() {
+            const cx = state.width / 2;
+            const cy = state.height / 2;
+            const s = Math.max(0.5, Math.min(state.width / 1000, 1.2)); // Recalculate scale for spacing
+            
+            let draggableCount = 0;
+            state.objects.forEach((obj, i) => {
+                if (!obj.static) {
+                    // Spread based on scale
+                    obj.x = cx + (draggableCount - 2) * (110 * s); 
+                    obj.y = cy;
+                    obj.rotation = 0;
+                    draggableCount++;
+                }
+            });
+            draw();
+        }
+
+        function selectObject(obj) {
+            if (obj && obj.static) return;
+
+            state.selectedObj = obj;
+            const rotSlider = document.getElementById('rotSlider');
+            const iorSlider = document.getElementById('iorSlider');
+            const nameLabel = document.getElementById('selectedObjectName');
+            const rotVal = document.getElementById('rotValue');
+            const iorVal = document.getElementById('iorValue');
+
+            if (obj) {
+                rotSlider.disabled = false;
+                rotSlider.value = Math.round(radToDeg(obj.rotation) % 360);
+                rotVal.textContent = rotSlider.value + "°";
+
+                nameLabel.textContent = obj.type.toUpperCase();
+
+                if (obj.type === 'mirror') {
+                    iorSlider.disabled = true;
+                    iorSlider.value = 1.5;
+                    iorVal.textContent = "N/A";
+                } else {
+                    iorSlider.disabled = false;
+                    iorSlider.value = obj.ior;
+                    iorVal.textContent = obj.ior.toFixed(2);
+                }
+            } else {
+                rotSlider.disabled = true;
+                iorSlider.disabled = true;
+                nameLabel.textContent = "None";
+                rotVal.textContent = "--";
+                iorVal.textContent = "--";
+            }
+        }
+
+        function drawTarget(ctx) {
+            const { x, y, radius, hit, rotation } = state.target;
+            
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation); 
+
+            // 1. Base Box
+            ctx.fillStyle = '#222';
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const tx = -10, ty = -35, tw = 30, th = 70, tr = 5;
+            ctx.moveTo(tx + tr, ty);
+            ctx.lineTo(tx + tw - tr, ty);
+            ctx.quadraticCurveTo(tx + tw, ty, tx + tw, ty + tr);
+            ctx.lineTo(tx + tw, ty + th - tr);
+            ctx.quadraticCurveTo(tx + tw, ty + th, tx + tw - tr, ty + th);
+            ctx.lineTo(tx + tr, ty + th);
+            ctx.quadraticCurveTo(tx, ty + th, tx, ty + th - tr);
+            ctx.lineTo(tx, ty + tr);
+            ctx.quadraticCurveTo(tx, ty, tx + tr, ty);
+            ctx.closePath();
+            
+            ctx.fill();
+            ctx.stroke();
+
+            // 2. Dish / Lens Holder
+            ctx.beginPath();
+            ctx.moveTo(10, -30);
+            ctx.quadraticCurveTo(-15, 0, 10, 30); 
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 3. Sensor Core
+            // Use Yellow/Orange if angle error
+            const coreColor = hit ? COLORS.targetOn : (state.target.angleError ? '#FFCC00' : '#441111');
+            const glowColor = hit ? COLORS.targetOn : (state.target.angleError ? 'rgba(255, 204, 0, 0.5)' : 'transparent');
+            
+            ctx.save();
+            ctx.scale(0.5, 1); 
+            ctx.beginPath();
+            ctx.arc(0, 0, 15, 0, Math.PI * 2); 
+            ctx.fillStyle = coreColor;
+            ctx.fill();
+            if (hit || state.target.angleError) {
+                ctx.shadowColor = glowColor;
+                ctx.shadowBlur = 20;
+                ctx.fill(); 
+            }
+            ctx.restore();
+
+            // 4. Angle Indicators
+            ctx.strokeStyle = hit ? 'rgba(149, 255, 119, 0.3)' : (state.target.angleError ? 'rgba(255, 204, 0, 0.3)' : 'rgba(255, 0, 0, 0.1)');
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(10, -30);
+            ctx.lineTo(60, -45); 
+            ctx.moveTo(10, 30);
+            ctx.lineTo(60, 45);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.restore();
+        }
+
+        function draw() {
+            try {
+                if (canvas.width !== container.clientWidth || canvas.height !== container.clientHeight) {
+                    // Handle Resize - Scale positions relative to new size
+                    const oldW = state.width;
+                    const oldH = state.height;
+                    
+                    canvas.width = container.clientWidth;
+                    canvas.height = container.clientHeight;
+                    state.width = canvas.width;
+                    state.height = canvas.height;
+
+                    // If valid previous size, scale coordinates
+                    if (oldW > 0 && oldH > 0 && oldW !== state.width) {
+                        const scaleX = state.width / oldW;
+                        const scaleY = state.height / oldH;
+
+                        state.laserY *= scaleY;
+                        state.target.x = state.width - 40; // Pin target to right
+                        state.target.y *= scaleY;
+
+                        state.objects.forEach(obj => {
+                            obj.x *= scaleX;
+                            obj.y *= scaleY;
+                        });
+                    }
+                }
+
+                state.time++;
+
+                ctx.fillStyle = COLORS.background;
+                ctx.fillRect(0, 0, state.width, state.height);
+
+                ctx.strokeStyle = COLORS.grid;
+                ctx.lineWidth = 1;
+                const gridSize = 40;
+                ctx.beginPath();
+                for (let x = 0; x < state.width; x+=gridSize) { ctx.moveTo(x,0); ctx.lineTo(x, state.height); }
+                for (let y = 0; y < state.height; y+=gridSize) { ctx.moveTo(0,y); ctx.lineTo(state.width, y); }
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(20, state.laserY);
+                ctx.fillStyle = '#333';
+                ctx.fillRect(0, -12, 35, 24); 
+                ctx.fillStyle = COLORS.laser;
+                ctx.shadowColor = COLORS.laser;
+                ctx.shadowBlur = 10;
+                ctx.fillRect(35, -3, 4, 6); 
+                ctx.restore();
+
+                // Reset hit states
+                state.target.hit = false;
+                state.target.angleError = false;
+
+                state.objects.forEach(obj => obj.draw(ctx, state.selectedObj === obj));
+
+                traceRay({x: 60, y: state.laserY}, {x: 1, y: 0});
+
+                drawTarget(ctx);
+
+                const winMsg = document.getElementById('winMessage');
+                const angleMsg = document.getElementById('angleMessage');
+                
+                if (state.target.hit && !state.prevHit) AudioEngine.playWin();
+                if (state.target.angleError && !state.prevError) AudioEngine.playError();
+                
+                state.prevHit = state.target.hit;
+                state.prevError = state.target.angleError;
+
+                if (state.target.hit) {
+                    winMsg.classList.add('win');
+                    angleMsg.style.display = 'none';
+                } else if (state.target.angleError) {
+                    winMsg.classList.remove('win');
+                    angleMsg.style.display = 'block';
+                } else {
+                    winMsg.classList.remove('win');
+                    angleMsg.style.display = 'none';
+                }
+
+                requestAnimationFrame(draw);
+            } catch (e) {
+                console.error(e);
+                document.getElementById('error-display').style.display = 'block';
+                document.getElementById('error-display').innerText = "RUNTIME ERROR: " + e.message;
+            }
+        }
+
+        // --- Inputs ---
+
+        const rotSlider = document.getElementById('rotSlider');
+        const iorSlider = document.getElementById('iorSlider');
+
+        rotSlider.addEventListener('input', (e) => {
+            if (state.selectedObj) {
+                state.selectedObj.rotation = degToRad(e.target.value);
+                document.getElementById('rotValue').textContent = e.target.value + "°";
+            }
+        });
+
+        iorSlider.addEventListener('input', (e) => {
+            if (state.selectedObj && state.selectedObj.type !== 'mirror') {
+                state.selectedObj.ior = parseFloat(e.target.value);
+                document.getElementById('iorValue').textContent = state.selectedObj.ior.toFixed(2);
+            }
+        });
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function handleStart(e) {
+            if (AudioEngine.ctx && AudioEngine.ctx.state === 'suspended') {
+                AudioEngine.ctx.resume();
+            }
+            
+            const pos = getPos(e);
+            let clicked = null;
+            for (let i = state.objects.length - 1; i >= 0; i--) {
+                if (state.objects[i].contains(pos.x, pos.y)) {
+                    clicked = state.objects[i];
+                    break;
+                }
+            }
+
+            if (clicked && !clicked.static) {
+                selectObject(clicked);
+                state.dragging = clicked;
+                state.dragOffset = { x: pos.x - clicked.x, y: pos.y - clicked.y };
+                AudioEngine.playSelect();
+            } else {
+                selectObject(null);
+            }
+        }
+
+        function handleMove(e) {
+            const pos = getPos(e);
+            if (state.dragging) {
+                state.dragging.x = pos.x - state.dragOffset.x;
+                state.dragging.y = pos.y - state.dragOffset.y;
+            }
+        }
+
+        canvas.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', () => state.dragging = null);
+
+        canvas.addEventListener('touchstart', (e) => { handleStart(e); e.preventDefault(); }, {passive: false});
+        window.addEventListener('touchmove', (e) => { if(state.dragging){ handleMove(e); e.preventDefault(); } }, {passive: false});
+        window.addEventListener('touchend', () => state.dragging = null);
+
+        // Safe Init
+        window.onload = () => {
+            try {
+                // FIX: ปรับขนาด Canvas ให้ตรงกับหน้าจอจริงก่อนเริ่มสุ่มตำแหน่ง
+                if (container.clientWidth > 0 && container.clientHeight > 0) {
+                    canvas.width = container.clientWidth;
+                    canvas.height = container.clientHeight;
+                    state.width = canvas.width;
+                    state.height = canvas.height;
+                }
+
+                randomizeLevel();
+                draw();
+            } catch(e) {
+                document.getElementById('error-display').style.display = 'block';
+                document.getElementById('error-display').innerText = "INIT ERROR: " + e.message;
+            }
+        };
+
+    </script>
+</body>
+</html>

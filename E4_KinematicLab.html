@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KINEMATIC_LINKAGE_LAB // VITHINAWAT v7.13.30</title>
+    
+    <!-- นำเข้าฟอนต์ Share Tech Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* ระบบสีดีไซน์ VITHINAWAT */
+            --void-black: #121212;
+            --grid-color: #252525;
+            --panel-bg: rgba(18, 18, 18, 0.95);
+            --border-color: #444;
+            --text-main: #ccc;
+            --text-highlight: #fff;
+            
+            /* สีแอคชันต่าง ๆ */
+            --terminal-green: #95FF77;
+            --alert-red: #FF0055;
+            --warning-orange: #FFB300;
+            --trace-green: #39FF14;
+            --cyan-select: #00F3FF;
+            
+            /* สีประจำเลเยอร์ */
+            --l1: #00F3FF; 
+            --l2: #B026FF; 
+            --l3: #FFB300; 
+            --l4: #FF0055; 
+            --l5: #FF00FF; /* ชมพูเข้ม */
+            --l6: #FFF300; 
+
+            --font-main: 'Share Tech Mono', monospace;
+        }
+
+        * { box-sizing: border-box; user-select: none; border-radius: 0 !important; }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--void-black);
+            font-family: var(--font-main);
+            color: var(--text-main);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- แถบเครื่องมือด้านบน --- */
+        #top-toolbar {
+            min-height: 70px;
+            background: var(--panel-bg);
+            border-bottom: 2px solid var(--terminal-green);
+            display: flex;
+            align-items: center;
+            padding: 10px 10px;
+            gap: 15px;
+            z-index: 10;
+            overflow-x: auto;
+            white-space: nowrap;
+            flex-wrap: wrap;
+        }
+
+        .tb-section {
+            display: flex; align-items: center; gap: 5px;
+            border-right: 1px solid #333; padding-right: 15px;
+            height: 100%;
+            position: relative;
+            padding-top: 12px;
+        }
+        .tb-section:last-child { border-right: none; }
+        .tb-label { font-size: 0.65rem; color: #888; position: absolute; top: -2px; left: 0; font-weight: bold; letter-spacing: 1px;}
+
+        .cyber-btn {
+            background: transparent; border: 1px solid #555; color: #aaa;
+            font-family: var(--font-main); font-size: 0.75rem;
+            padding: 6px 10px; cursor: pointer; text-transform: uppercase;
+            transition: all 0.2s; position: relative;
+            font-weight: bold;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .cyber-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+        .cyber-btn:hover { border-color: var(--text-highlight); color: var(--text-highlight); }
+        
+        .cyber-btn.active {
+            background: rgba(255,255,255,0.1); border-color: var(--terminal-green);
+            color: var(--terminal-green); box-shadow: 0 0 10px rgba(149,255,119,0.2);
+        }
+        
+        /* สีปุ่มควบคุมที่มีความคมชัดสูง */
+        .btn-interact { border-color: #555; color: #888; }
+        .btn-interact:hover { border-color: #ccc; color: #fff; background: rgba(255,255,255,0.1); }
+        .btn-interact.active-orange.active { border-color: var(--warning-orange) !important; color: var(--warning-orange) !important; background: rgba(255, 179, 0, 0.1) !important; box-shadow: 0 0 10px rgba(255, 179, 0, 0.2) !important; }
+        .btn-interact.active-red.active { border-color: var(--alert-red) !important; color: var(--alert-red) !important; background: rgba(255, 0, 85, 0.1) !important; box-shadow: 0 0 10px rgba(255, 0, 85, 0.2) !important; }
+
+        .cyber-btn.danger-btn { border-color: var(--alert-red); color: var(--alert-red); }
+        .cyber-btn.danger-btn:hover { background: var(--alert-red); color: #fff; box-shadow: 0 0 10px var(--alert-red);}
+        .cyber-btn.sim-btn { border-color: var(--terminal-green); color: var(--terminal-green); background: rgba(149,255,119,0.05);}
+        .cyber-btn.sim-btn:hover { background: var(--terminal-green); color: #000; }
+        .cyber-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #333; color: #555; box-shadow: none; background: transparent; }
+
+        /* ซ่อนแถบเครื่องมือย่อยเริ่มต้น */
+        .dynamic-tb { display: none; }
+
+        /* --- พื้นที่ทำงานหลัก --- */
+        #workspace {
+            display: flex; flex: 1; overflow: hidden; position: relative;
+        }
+
+        /* --- พื้นที่ตัวสร้างกราฟิก --- */
+        #canvas-container {
+            flex: 1; position: relative; background: transparent;
+            cursor: crosshair; overflow: hidden;
+        }
+        canvas { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        
+        #overlay-ui { position: absolute; top: 10px; left: 10px; pointer-events: none; display: flex; flex-direction: column; gap: 5px;}
+        .info-text { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
+        
+        .state-indicator {
+            padding: 4px 8px; border: 1px solid #555;
+            font-weight: bold; font-size: 0.9rem; letter-spacing: 2px;
+            display: inline-block; background: rgba(0,0,0,0.5);
+        }
+        .state-draw { color: var(--l1); border-color: var(--l1); }
+        .state-motion { color: var(--warning-orange); border-color: var(--warning-orange); }
+        .state-interact { color: var(--terminal-green); border-color: var(--terminal-green); }
+
+        /* --- กล่องแจ้งเตือนป๊อปอัป --- */
+        #toast {
+            position: absolute; 
+            top: 20px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            background: rgba(255,0,85,0.9); color: #fff; padding: 10px 20px;
+            font-weight: bold; font-size: 0.8rem; border: 1px solid var(--alert-red);
+            box-shadow: 0 0 15px rgba(255,0,85,0.5); opacity: 0; transition: opacity 0.3s;
+            z-index: 1000; pointer-events: none; letter-spacing: 1px; text-transform: uppercase;
+        }
+
+        /* --- RIGHT SIDEBAR --- */
+        #layer-panel {
+            width: 240px; background: var(--panel-bg); border-left: 1px solid var(--border-color);
+            padding: 15px; display: flex; flex-direction: column; gap: 10px; z-index: 5;
+            overflow-y: auto;
+        }
+        .panel-title { font-size: 1rem; color: var(--terminal-green); border-bottom: 1px solid #444; padding-bottom: 5px; margin-bottom: 5px; letter-spacing: 1px; }
+        
+        .layer-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px; border: 1px solid #333; cursor: pointer; transition: all 0.2s;
+        }
+        .layer-item:hover { background: rgba(255,255,255,0.05); }
+        .layer-item.active { border-color: #fff; background: rgba(255,255,255,0.1); }
+        
+        .layer-color-box { width: 15px; height: 15px; border: 1px solid #000; }
+        .layer-name { font-size: 0.8rem; flex: 1; margin-left: 10px; }
+        .layer-vis { cursor: pointer; color: #888; font-size: 1.2rem; line-height: 1;}
+        .layer-vis:hover { color: #fff; }
+
+        /* System Tools in Sidebar */
+        .system-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        .sys-btn-full { grid-column: span 2; }
+
+        /* --- ป๊อปอัปตั้งค่ามอเตอร์ --- */
+        #motor-config {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--panel-bg); border: 2px solid var(--warning-orange);
+            padding: 20px; z-index: 100; display: none; flex-direction: column; gap: 15px;
+            box-shadow: 0 0 20px rgba(255, 179, 0, 0.2); width: 300px;
+        }
+        .config-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+        input[type=range] { width: 100%; -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { height: 4px; background: #555; border: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 8px; background: #000; border: 1px solid var(--terminal-green); margin-top: -5px; cursor: pointer; }
+
+        .cb-container { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; cursor: pointer;}
+        .cb-container input { display: none; }
+        .checkmark { width: 14px; height: 14px; border: 1px solid #555; display: inline-block; position: relative; }
+        .cb-container input:checked ~ .checkmark { background: var(--terminal-green); }
+
+    </style>
+</head>
+<body>
+
+    <!-- แถบเครื่องมือด้านบน -->
+    <div id="top-toolbar">
+        <div class="tb-section">
+            <span class="tb-label">WORKFLOW</span>
+            <button class="cyber-btn active" id="btn-draw" onclick="setMode('DRAW')">1. DRAW</button>
+            <button class="cyber-btn" id="btn-gear" onclick="setMode('GEAR')">2. GEAR&SPROCKET</button>
+            <button class="cyber-btn" id="btn-motion" onclick="setMode('MOTION')">3. MOTION</button>
+            <button class="cyber-btn" id="btn-interact" onclick="setMode('INTERACT')">4. INTERACT</button>
+        </div>
+
+        <!-- เครื่องมือวาดรูปทรงอิสระ -->
+        <div class="tb-section dynamic-tb" id="tb-draw" style="display:flex;">
+            <span class="tb-label">DRAWING TOOLS</span>
+            <button class="cyber-btn active" id="dt-poly" onclick="setDrawTool('poly')" title="Polygon">
+                <svg viewBox="0 0 24 24"><polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/></svg>
+            </button>
+            <button class="cyber-btn" id="dt-line" onclick="setDrawTool('line')" title="Line">
+                <svg viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4"/></svg>
+            </button>
+            <button class="cyber-btn" id="dt-rect" onclick="setDrawTool('rect')" title="Rectangle">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/></svg>
+            </button>
+            <button class="cyber-btn" id="dt-circle" onclick="setDrawTool('circle')" title="Circle">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+            </button>
+            <button class="cyber-btn" id="dt-arc" onclick="setDrawTool('arc')" title="Arc">
+                <svg viewBox="0 0 24 24"><path d="M3,16 Q12,2 21,16"/></svg>
+            </button>
+        </div>
+
+        <!-- เครื่องมือวาดเฟือง & สป็อกเก็ต -->
+        <div class="tb-section dynamic-tb" id="tb-gear">
+            <span class="tb-label">GEAR & SPROCKET TOOLS</span>
+            <button class="cyber-btn active" id="gt-gear12" onclick="setGearTool('gear', 12)" title="Gear 12T">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke-dasharray="2,2"/><circle cx="12" cy="12" r="8"/></svg> 12
+            </button>
+            <button class="cyber-btn" id="gt-gear36" onclick="setGearTool('gear', 36)" title="Gear 36T">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke-dasharray="2,2"/><circle cx="12" cy="12" r="9"/></svg> 36
+            </button>
+            <button class="cyber-btn" id="gt-gear60" onclick="setGearTool('gear', 60)" title="Gear 60T">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-dasharray="2,2"/><circle cx="12" cy="12" r="10"/></svg> 60
+            </button>
+            <div style="width:1px; height:20px; background:#444; margin:0 5px;"></div>
+            <button class="cyber-btn" id="gt-sprocket12" onclick="setGearTool('sprocket', 12)" title="Sprocket 12T">
+                <svg viewBox="0 0 24 24"><polygon points="12,2 14,6 18,4 17,9 22,12 17,15 18,20 14,18 12,22 10,18 6,20 7,15 2,12 7,9 6,4 10,6"/><circle cx="12" cy="12" r="3"/></svg> 12
+            </button>
+            <button class="cyber-btn" id="gt-sprocket36" onclick="setGearTool('sprocket', 36)" title="Sprocket 36T">
+                <svg viewBox="0 0 24 24"><polygon points="12,1 13,5 17,3 16,7 21,9 18,12 21,15 16,17 17,21 13,19 12,23 11,19 7,21 8,17 3,15 6,12 3,9 8,7 7,3 11,5"/><circle cx="12" cy="12" r="4"/></svg> 36
+            </button>
+            <button class="cyber-btn" id="gt-sprocket60" onclick="setGearTool('sprocket', 60)" title="Sprocket 60T">
+                <svg viewBox="0 0 24 24"><polygon points="12,0 13,4 16,2 15,6 19,5 18,9 22,10 19,12 22,14 18,15 19,19 15,18 16,22 13,20 12,24 11,20 8,22 9,18 5,19 6,15 2,14 5,12 2,10 6,9 5,5 9,6 8,2 11,4"/><circle cx="12" cy="12" r="5"/></svg> 60
+            </button>
+        </div>
+
+        <!-- เครื่องมือจำลองการเคลื่อนที่ -->
+        <div class="tb-section dynamic-tb" id="tb-motion">
+            <span class="tb-label">MOTION TOOLS (MUST PLACE INSIDE BODY)</span>
+            <button class="cyber-btn active" id="mt-free" onclick="setMotionTool('JOINT_FREE')">HOLE</button>
+            <button class="cyber-btn" id="mt-lock" onclick="setMotionTool('JOINT_FIX')">RIGID</button>
+            <button class="cyber-btn" id="mt-motor" onclick="setMotionTool('ACTUATOR')">MOTOR</button>
+            <button class="cyber-btn" id="mt-slot" onclick="setMotionTool('SLOT')">SLOT</button>
+            <button class="cyber-btn" id="mt-trace" onclick="setMotionTool('TRACE')">TRACE</button>
+            <button class="cyber-btn" id="mt-chain" onclick="setMotionTool('CHAIN')">CHAIN</button>
+        </div>
+
+        <!-- เครื่องมือจัดการเชื่อมลิงก์จลนศาสตร์ -->
+        <div class="tb-section dynamic-tb" id="tb-interact">
+            <span class="tb-label">INTERACT TOOLS (SELECT TOOL FIRST)</span>
+            <button class="cyber-btn btn-interact active" id="it-select" onclick="setInteractTool('select')">SELECT</button>
+            <button class="cyber-btn btn-interact active-orange" id="it-align" onclick="setInteractTool('align')">ALIGN</button>
+            <button class="cyber-btn btn-interact active-orange" id="it-link" onclick="setInteractTool('link')">LINK</button>
+            <button class="cyber-btn btn-interact active-orange" id="it-unlink" onclick="setInteractTool('unlink')">UNLINK</button>
+            <button class="cyber-btn btn-interact active-orange" id="it-static" onclick="setInteractTool('static')">STATIC</button>
+            <button class="cyber-btn btn-interact active-red" id="it-del" onclick="setInteractTool('del')">DEL</button>
+        </div>
+    </div>
+
+    <!-- พื้นที่ทำงานหลัก -->
+    <div id="workspace">
+        <!-- ตัวแคนวาสวาดกราฟิก -->
+        <div id="canvas-container">
+            <canvas id="simCanvas"></canvas>
+            
+            <div id="overlay-ui">
+                <div id="state-display" class="state-indicator state-draw">MODE: DRAW</div>
+                <div class="info-text" id="mode-info">DRAW: Click to add points. Close shape to build Body.</div>
+            </div>
+            
+            <div id="toast">WARNING</div>
+        </div>
+
+        <!-- พาเนลแถบด้านขวาสำหรับควบคุมระบบและเลเยอร์ -->
+        <div id="layer-panel">
+            <div class="panel-title">SYSTEM</div>
+            <div class="system-grid">
+                <button class="cyber-btn active sys-btn-full" id="btn-snap" onclick="toggleSnap()">SNAP: ON</button>
+                <button class="cyber-btn" onclick="undo()">↶ UNDO</button>
+                <button class="cyber-btn" onclick="redo()">↷ REDO</button>
+                <button class="cyber-btn danger-btn sys-btn-full" onclick="clearAll()">CLEAR ALL</button>
+            </div>
+
+            <div class="panel-title">SIMULATION</div>
+            <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:15px;">
+                <div style="display:flex; gap:5px;">
+                    <button class="cyber-btn sim-btn" id="btn-play" onclick="togglePlay()" style="flex:1; padding:6px 0;">▶ PLAY</button>
+                    <button class="cyber-btn" onclick="restartSim()" style="flex:1; padding:6px 0;">⏮ RESET</button>
+                </div>
+            </div>
+
+            <div class="panel-title">LAYER MANAGER</div>
+            <div id="layer-list"></div>
+        </div>
+    </div>
+
+    <!-- พาเนลย่อยแสดงผลการตั้งค่ามอเตอร์ -->
+    <div id="motor-config">
+        <div style="color:var(--warning-orange); font-size:1rem; border-bottom:1px solid #444; padding-bottom:5px;">ACTUATOR SETUP</div>
+        <div class="config-row">
+            <span>Speed (RPM):</span>
+            <input type="range" id="motor-speed" min="-30" max="30" value="10" style="width:100px;">
+            <span id="speed-val">10</span>
+        </div>
+        <label class="cb-container" style="margin-top:10px;">
+            <input type="checkbox" id="motor-reverse">
+            <span class="checkmark"></span> AUTO-REVERSE ON BLOCK
+        </label>
+        <div style="display:flex; justify-content:space-between; margin-top:10px;">
+            <button class="cyber-btn" onclick="cancelMotor()">CANCEL</button>
+            <button class="cyber-btn action-btn" onclick="confirmMotor()">APPLY</button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * KINEMATIC LINKAGE LAB - ENGINE v7.13.30 (Hard Constraints & Free Drag)
+         * สถาปนิกผู้สร้าง: VITHINAWAT
+         */
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const GRID_SIZE = 20;
+
+        const COLORS = {
+            bg: '#121212', grid: '#252525', draft: 'rgba(255,255,255,0.5)',
+            jointFree: '#fff', jointLock: '#FF0055', jointMotor: '#FFB300', jointSlot: '#00F3FF', trace: '#39FF14',
+            selectBox: 'rgba(0, 243, 255, 0.2)', selectBorder: '#00F3FF'
+        };
+
+        const LAYERS = [
+            { id: 0, color: '#00F3FF', name: 'L1: CYAN', visible: true },
+            { id: 1, color: '#B026FF', name: 'L2: PURPLE', visible: true },
+            { id: 2, color: '#FFB300', name: 'L3: AMBER', visible: true },
+            { id: 3, color: '#FF0055', name: 'L4: PINK', visible: true },
+            { id: 4, color: '#FF00FF', name: 'L5: MAGENTA', visible: true },
+            { id: 5, color: '#FFF300', name: 'L6: YELLOW', visible: true }
+        ];
+
+        const AudioSys = {
+            ctx: null,
+            init: function() {
+                if(!this.ctx) { const AC = window.AudioContext || window.webkitAudioContext; this.ctx = new AC(); }
+                if(this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            playClick: function() {
+                if(!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+            },
+            playError: function() {
+                if(!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+            }
+        };
+
+        let state = { mode: 'DRAW', tool: 'JOINT_FREE', activeLayer: 0, width: 0, height: 0, time: 0 };
+        let rigidBodies = []; let globalJoints = []; let staticPattern = null;
+        let undoStack = []; let redoStack = []; let isStateRestoring = false;
+        window.isPlaying = false; let playStartState = null;
+        let draftVertices = []; let slotDrafting = false; let slotStart = null;
+        let selectedBodies = []; let selectedJoints = [];
+        let mouse = { x: 0, y: 0, lastSnapX: 0, lastSnapY: 0 };
+        let isDraggingItems = false; let isBoxSelecting = false; let boxStart = { x: 0, y: 0 };
+        let useSnap = true;
+        let drawState = { tool: 'poly', startX: 0, startY: 0, drafting: false, step: 0 };
+        let gearState = { type: 'gear', teeth: 12 };
+        let chainStartBody = null; let interactTool = 'select'; let actionTarget1 = null; let pendingMotorPos = null; 
+
+        function generateShapeVertices(tool, sx, sy, cx, cy) {
+            if(tool === 'line') {
+                let dx = cx - sx; let dy = cy - sy; let len = Math.hypot(dx, dy); if(len===0) return [];
+                let nx = -dy/len * 5; let ny = dx/len * 5;
+                return [ {x:sx+nx, y:sy+ny}, {x:cx+nx, y:cy+ny}, {x:cx-nx, y:cy-ny}, {x:sx-nx, y:sy-ny} ];
+            }
+            if(tool === 'rect') return [ {x:sx, y:sy}, {x:cx, y:sy}, {x:cx, y:cy}, {x:sx, y:cy} ];
+            if(tool === 'circle') {
+                let r = Math.hypot(cx-sx, cy-sy); let pts = [];
+                for(let i=0; i<32; i++) { let a=(i/32)*Math.PI*2; pts.push({x:sx+Math.cos(a)*r, y:sy+Math.sin(a)*r}); }
+                return pts;
+            }
+            if(tool === 'arc') {
+                let rX = Math.abs(cx-sx); let rY = Math.abs(cy-sy); let pts = [];
+                let r = Math.max(rX, rY);
+                for(let i=0; i<=16; i++) { let a=Math.PI + (i/16)*Math.PI; pts.push({x:sx+Math.cos(a)*r, y:sy+Math.sin(a)*r}); }
+                pts.push({x: sx+r, y: sy}); 
+                return pts;
+            }
+            return [];
+        }
+
+        function generateGearVertices(teeth, type) {
+            let pts = []; let module = 4; let R = (teeth * module) / 2;
+            if (type === 'gear') {
+                let outR = R + 4; let inR = R - 3; let steps = teeth * 4; 
+                for(let i=0; i<steps; i++) {
+                    let a = (i/steps)*Math.PI*2; let phase = i % 4;
+                    let radius = (phase === 0 || phase === 1) ? outR : inR;
+                    pts.push({x: Math.cos(a)*radius, y: Math.sin(a)*radius});
+                }
+            } else {
+                let outR = R + 5; let inR = R - 3; let steps = teeth * 4; 
+                for(let i=0; i<steps; i++) {
+                    let a = (i/steps)*Math.PI*2; let phase = i % 4;
+                    let radius = (phase === 0) ? outR : inR;
+                    pts.push({x: Math.cos(a)*radius, y: Math.sin(a)*radius});
+                }
+            }
+            return { pts, R };
+        }
+
+        function init() {
+            window.addEventListener('resize', resize); resize();
+            buildLayerUI(); createStaticPattern();
+            canvas.addEventListener('mousedown', handleDown); canvas.addEventListener('mousemove', handleMove); window.addEventListener('mouseup', handleUp);
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+            canvas.addEventListener('touchstart', handleDown, {passive: false}); canvas.addEventListener('touchmove', handleMove, {passive: false}); window.addEventListener('touchend', handleUp);
+            const speedInput = document.getElementById('motor-speed');
+            if (speedInput) { speedInput.addEventListener('input', (e) => { const speedVal = document.getElementById('speed-val'); if (speedVal) speedVal.innerText = e.target.value; }); }
+            saveState(); requestAnimationFrame(simLoop);
+        }
+
+        function resize() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            state.width = rect.width; state.height = rect.height;
+            canvas.width = state.width; canvas.height = state.height;
+        }
+
+        function createStaticPattern() {
+            const pCanvas = document.createElement('canvas'); pCanvas.width = 16; pCanvas.height = 16;
+            const pCtx = pCanvas.getContext('2d'); pCtx.strokeStyle = 'rgba(255,255,255,0.4)'; pCtx.lineWidth = 2;
+            pCtx.beginPath(); pCtx.moveTo(-2, 18); pCtx.lineTo(18, -2); pCtx.stroke();
+            staticPattern = ctx.createPattern(pCanvas, 'repeat');
+        }
+
+        function buildLayerUI() {
+            const list = document.getElementById('layer-list'); if(!list) return; list.innerHTML = '';
+            LAYERS.forEach(l => {
+                const div = document.createElement('div'); div.className = `layer-item ${l.id === state.activeLayer ? 'active' : ''}`;
+                div.onclick = () => setActiveLayer(l.id);
+                div.innerHTML = `<div style="display:flex; align-items:center;"><div class="layer-color-box" style="background:${l.color}"></div><div class="layer-name">${l.name}</div></div><div class="layer-vis" onclick="toggleVis(event, ${l.id})">${l.visible ? '👁' : '✕'}</div>`;
+                list.appendChild(div);
+            });
+        }
+
+        function showToast(msg, type="error") {
+            const t = document.getElementById('toast'); if(!t) return;
+            t.innerText = msg; t.style.background = type === "error" ? "rgba(255,0,85,0.9)" : "rgba(149,255,119,0.9)";
+            t.style.color = type === "error" ? "#fff" : "#000"; t.style.borderColor = type === "error" ? "#FF0055" : "#95FF77";
+            t.style.opacity = 1; AudioSys[type === "error" ? "playError" : "playClick"]();
+            setTimeout(() => t.style.opacity = 0, 2500);
+        }
+
+        function saveState() {
+            if (isStateRestoring) return;
+            if (!window.isPlaying && state.time > 0) { state.time = 0; rigidBodies.forEach(b => b.traceFeatures.forEach(t => t.history = [])); }
+            const cleanBodies = rigidBodies.map(b => ({...b, traceFeatures: b.traceFeatures.map(t => ({...t, history:[]})), meshData: b.meshData ? {...b.meshData} : {} }));
+            const stateStr = JSON.stringify({ rigidBodies: cleanBodies, globalJoints });
+            if (undoStack.length > 0 && undoStack[undoStack.length - 1] === stateStr) return;
+            undoStack.push(stateStr); redoStack = [];
+        }
+
+        window.undo = function() {
+            if (undoStack.length > 1) {
+                isStateRestoring = true; redoStack.push(undoStack.pop());
+                const s = JSON.parse(undoStack[undoStack.length - 1]);
+                rigidBodies = s.rigidBodies; globalJoints = s.globalJoints;
+                selectedBodies = []; selectedJoints = []; state.time = 0; isStateRestoring = false; 
+            }
+        }
+
+        window.redo = function() {
+            if (redoStack.length > 0) {
+                isStateRestoring = true; const stateStr = redoStack.pop(); undoStack.push(stateStr);
+                const s = JSON.parse(stateStr); rigidBodies = s.rigidBodies; globalJoints = s.globalJoints;
+                selectedBodies = []; selectedJoints = []; state.time = 0; isStateRestoring = false; 
+            }
+        }
+
+        window.togglePlay = function() {
+            window.isPlaying = !window.isPlaying; const btn = document.getElementById('btn-play');
+            if (window.isPlaying) {
+                btn.innerText = "⏸ PAUSE"; btn.classList.add('danger-btn'); btn.classList.remove('sim-btn');
+                if (state.time === 0) {
+                    const cleanBodies = rigidBodies.map(b => ({...b, traceFeatures: b.traceFeatures.map(t => ({...t, history:[]})), meshData: b.meshData ? {...b.meshData} : {} }));
+                    playStartState = JSON.stringify({ rigidBodies: cleanBodies, globalJoints });
+                }
+            } else { btn.innerText = "▶ PLAY"; btn.classList.remove('danger-btn'); btn.classList.add('sim-btn'); }
+        }
+
+        window.restartSim = function() {
+            if (playStartState) {
+                const s = JSON.parse(playStartState); rigidBodies = s.rigidBodies; globalJoints = s.globalJoints;
+                state.time = 0; window.isPlaying = false; 
+                const btn = document.getElementById('btn-play'); btn.innerText = "▶ PLAY"; btn.classList.remove('danger-btn'); btn.classList.add('sim-btn');
+                updateVisualCoordinates();
+            }
+        }
+
+        function snap(val) { return useSnap ? Math.round(val / GRID_SIZE) * GRID_SIZE : val; }
+        function generateId() { return Math.random().toString(36).substr(2, 9); }
+        function localToGlobal(body, lx, ly) { const cosA = Math.cos(body.angle); const sinA = Math.sin(body.angle); return { x: body.x + lx * cosA - ly * sinA, y: body.y + lx * sinA + ly * cosA }; }
+        function globalToLocal(body, gx, gy) { const cosA = Math.cos(-body.angle); const sinA = Math.sin(-body.angle); const dx = gx - body.x; const dy = gy - body.y; return { x: dx * cosA - dy * sinA, y: dx * sinA + dy * cosA }; }
+        function isPointInPoly(pt, poly) { let inside = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { let xi = poly[i].x, yi = poly[i].y; let xj = poly[j].x, yj = poly[j].y; let intersect = ((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi); if (intersect) inside = !inside; } return inside; }
+        function pointToSegmentDist(p, v, w) { let l2 = Math.pow(v.x - w.x, 2) + Math.pow(v.y - w.y, 2); if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y); let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2; t = Math.max(0, Math.min(1, t)); return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y))); }
+        function isStrictlyInside(px, py, b) { if (!b || !b.polygons || b.polygons.length === 0) return false; let pW = {x: px, y: py}; let poly = b.polygons[0].map(v => localToGlobal(b, v.x, v.y)); if (!isPointInPoly(pW, poly)) return false; for (let i = 0; i < poly.length; i++) { let p1 = poly[i]; let p2 = poly[(i + 1) % poly.length]; let d = pointToSegmentDist(pW, p1, p2); if (d < 8) return false; } return true; }
+        function getBodyAt(px, py) { for (let i = rigidBodies.length - 1; i >= 0; i--) { let b = rigidBodies[i]; if (b.layer !== state.activeLayer) continue; if (!LAYERS[b.layer].visible) continue; let globalPolys = b.polygons.map(poly => poly.map(v => localToGlobal(b, v.x, v.y))); if (globalPolys.some(poly => isPointInPoly({x: px, y: py}, poly))) return b; } return null; }
+        function closestPointOnLineSegment(p, a, b) { let dx = b.x - a.x; let dy = b.y - a.y; let len2 = dx * dx + dy * dy; if (len2 === 0) return {x: a.x, y: a.y}; let t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2)); return { x: a.x + t * dx, y: a.y + t * dy }; }
+
+        function getNormals(poly) { let normals = []; for (let i = 0; i < poly.length; i++) { let p1 = poly[i]; let p2 = poly[(i + 1) % poly.length]; let dx = p2.x - p1.x; let dy = p2.y - p1.y; let len = Math.hypot(dx, dy); if (len > 0) normals.push({ x: -dy / len, y: dx / len }); } return normals; }
+        function projectPoly(poly, normal, padding = 0) { let min = Infinity, max = -Infinity; for (let p of poly) { let dot = p.x * normal.x + p.y * normal.y; if (dot < min) min = dot; if (dot > max) max = dot; } return { min: min - padding, max: max + padding }; }
+        function satCollidePolys(polyA, polyB, padding = 0) {
+            let normals = [...getNormals(polyA), ...getNormals(polyB)]; let minOverlap = Infinity; let smallestNormal = null; let pushDirection = 1;
+            for (let n of normals) {
+                let projA = projectPoly(polyA, n, padding); let projB = projectPoly(polyB, n, padding);
+                if (projA.max <= projB.min || projB.max <= projA.min) return null; 
+                let overlap1 = projA.max - projB.min; let overlap2 = projB.max - projA.min; 
+                if (overlap1 < overlap2) { if (overlap1 < minOverlap) { minOverlap = overlap1; smallestNormal = n; pushDirection = 1; } } else { if (overlap2 < minOverlap) { minOverlap = overlap2; smallestNormal = n; pushDirection = -1; } }
+            }
+            let normal = { x: smallestNormal.x * pushDirection, y: smallestNormal.y * pushDirection };
+            let contactB = {x:0, y:0}; let minSupp = Infinity; for(let p of polyB) { let d = p.x * (-normal.x) + p.y * (-normal.y); if (d < minSupp) { minSupp = d; contactB = {x: p.x, y: p.y}; } }
+            let contactA = {x:0, y:0}; let maxSupp = -Infinity; for(let p of polyA) { let d = p.x * normal.x + p.y * normal.y; if (d > maxSupp) { maxSupp = d; contactA = {x: p.x, y: p.y}; } }
+            let finalContact = { x: (contactA.x + contactB.x)/2, y: (contactA.y + contactB.y)/2 };
+            return { overlap: minOverlap, normal: normal, contact: finalContact };
+        }
+
+        function getPolyBox(poly) { let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity; poly.forEach(v => { if (v.x < minX) minX = v.x; if (v.x > maxX) maxX = v.x; if (v.y < minY) minY = v.y; if (v.y > maxY) maxY = v.y; }); return { minX, minY, maxX, maxY }; }
+        function getBoundingBox(body) { let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity; body.polygons.forEach(poly => { poly.forEach(v => { let g = localToGlobal(body, v.x, v.y); if (g.x < minX) minX = g.x; if (g.x > maxX) maxX = g.x; if (g.y < minY) minY = g.y; if (g.y > maxY) maxY = g.y; }); }); return { minX, minY, maxX, maxY }; }
+        document.boxIntersect = function(a, b) { return (a.minX < b.maxX && a.maxX > b.minX && a.minY < b.maxY && a.maxY > b.minY); }
+
+        function checkDraftCollision(draftGlobalPoly, layer, isDraftGear = false) {
+            let boxDraft = getPolyBox(draftGlobalPoly);
+            for (let b of rigidBodies) {
+                if (b.layer !== layer) continue;
+                if (isDraftGear && b.isGear) continue; 
+                let boxB = getBoundingBox(b);
+                if (!document.boxIntersect(boxDraft, boxB)) continue;
+                for (let pB of b.polygons) {
+                    let polyBWorld = pB.map(v => localToGlobal(b, v.x, v.y));
+                    if (satCollidePolys(draftGlobalPoly, polyBWorld, 0)) return true;
+                }
+            }
+            return false;
+        }
+
+        function getInvI(b) { let maxR2 = 10; if(b.polygons && b.polygons[0]) { b.polygons[0].forEach(v => { let r2 = v.x*v.x + v.y*v.y; if(r2 > maxR2) maxR2 = r2; }); } return 1.0 / (maxR2 * 0.5); }
+
+        function isJointVisible(j) {
+            if (j.type === 'SLOT') { if (j.slotBodyId) { let sb = rigidBodies.find(x => x.id === j.slotBodyId); if (sb && LAYERS[sb.layer].visible) return true; } if (j.links && j.links.length > 0) { let b = rigidBodies.find(x => x.id === j.links[0].bodyId); if (b && LAYERS[b.layer].visible) return true; } } 
+            else if (j.type === 'CHAIN') { let b1 = rigidBodies.find(x => x.id === j.b1); if (b1 && LAYERS[b1.layer].visible) return true; } 
+            else { if (j.links && j.links.some(l => { let b = rigidBodies.find(x => x.id === l.bodyId); return b && LAYERS[b.layer].visible; })) return true; }
+            return false;
+        }
+
+        function isJointGrounded(j) {
+            if (j.type === 'CHAIN') return false;
+            if (!j.links || j.links.length === 0) return true;
+            if (j.links.length === 1 && j.type === 'MOTOR') return true; 
+            return j.links.some(l => { let b = rigidBodies.find(x => x.id === l.bodyId); return b && b.isStatic; });
+        }
+
+        function getKinematicIsland(startBodyId) {
+            let islandBodies = new Set([startBodyId]); let islandJoints = new Set(); let queue = [startBodyId]; let isGrounded = false;
+            while (queue.length > 0) {
+                let currId = queue.shift(); let b = rigidBodies.find(x => x.id === currId); if (b && b.isStatic) isGrounded = true;
+                globalJoints.forEach(j => {
+                    if (j.type === 'CHAIN') return;
+                    let hasCurr = j.links && j.links.some(l => l.bodyId === currId);
+                    let hasStaticLink = j.links && j.links.some(l => {let tb = rigidBodies.find(x=>x.id===l.bodyId); return tb&&tb.isStatic;});
+                    if (j.type === 'SLOT' && j.slotBodyId === currId) hasCurr = true;
+                    if (j.type === 'SLOT' && j.slotBodyId) { let sb = rigidBodies.find(x=>x.id===j.slotBodyId); if(sb && sb.isStatic) hasStaticLink = true; }
+                    if (hasCurr) {
+                        islandJoints.add(j); if(hasStaticLink) isGrounded = true;
+                        if (j.links) { j.links.forEach(l => { if (!islandBodies.has(l.bodyId)) { islandBodies.add(l.bodyId); queue.push(l.bodyId); } }); }
+                        if (j.type === 'SLOT' && j.slotBodyId && !islandBodies.has(j.slotBodyId)) { islandBodies.add(j.slotBodyId); queue.push(j.slotBodyId); }
+                    }
+                });
+            }
+            return { bodies: Array.from(islandBodies).map(id => rigidBodies.find(b => b.id === id)).filter(b=>b), joints: Array.from(islandJoints), isGrounded };
+        }
+
+        function isBodyMotorDriven(bodyId) {
+            if (window.isPlaying) return globalJoints.some(j => j.type === 'MOTOR' && j.links.some(l => l.bodyId === bodyId && l.type === 'FIX'));
+            return false;
+        }
+
+        function areBodiesConnected(bA, bB) {
+            return globalJoints.some(j => {
+                let hasA = false, hasB = false;
+                if (j.slotBodyId === bA.id) hasA = true; if (j.slotBodyId === bB.id) hasB = true;
+                if (j.links && j.links.some(l => l.bodyId === bA.id)) hasA = true; if (j.links && j.links.some(l => l.bodyId === bB.id)) hasB = true;
+                if (j.linkedJoints) { j.linkedJoints.forEach(jid => { let tj = globalJoints.find(g => g.id === jid); if (tj && tj.links) { if (tj.links.some(l => l.bodyId === bA.id)) hasA = true; if (tj.links.some(l => l.bodyId === bB.id)) hasB = true; } }); }
+                return hasA && hasB;
+            });
+        }
+
+        function areGearsMeshed(bA, bB) {
+            if (!bA.isGear || !bB.isGear || bA.gearType === 'sprocket' || bB.gearType === 'sprocket') return false;
+            let dist = Math.hypot(bA.x - bB.x, bA.y - bB.y); let idealDist = bA.pitchRadius + bB.pitchRadius; return Math.abs(dist - idealDist) < 20; 
+        }
+
+        window.setMode = function(m) {
+            if (state.mode === 'DRAW') draftVertices = []; 
+            state.mode = m; drawState.step = 0; drawState.drafting = false;
+            
+            document.querySelectorAll('#top-toolbar .tb-section > .cyber-btn').forEach(btn => btn.classList.remove('active'));
+            if(m==='DRAW') document.getElementById('btn-draw').classList.add('active');
+            if(m==='GEAR') document.getElementById('btn-gear').classList.add('active');
+            if(m==='MOTION') document.getElementById('btn-motion').classList.add('active');
+            if(m==='INTERACT') document.getElementById('btn-interact').classList.add('active');
+            
+            document.querySelectorAll('.dynamic-tb').forEach(el => el.style.display = 'none');
+            const tb = document.getElementById('tb-' + m.toLowerCase());
+            if(tb) tb.style.display = 'flex';
+
+            if (m === 'DRAW') window.setDrawTool('poly');
+            else if (m === 'GEAR') window.setGearTool('gear', 12);
+            else if (m === 'MOTION') window.setMotionTool('JOINT_FREE');
+            else if (m === 'INTERACT') window.setInteractTool('select');
+
+            const stateDisplay = document.getElementById('state-display');
+            if (stateDisplay) { stateDisplay.innerText = `MODE: ${m}`; stateDisplay.className = `state-indicator state-${m.toLowerCase()}`; }
+            
+            const modeInfo = document.getElementById('mode-info');
+            if (modeInfo) {
+                if(m === 'DRAW') modeInfo.innerText = "DRAW: Click to add points. Close shape to build Body.";
+                else if(m === 'GEAR') modeInfo.innerText = "GEAR: Hover to preview. Click to spawn.";
+                else if(m === 'MOTION') { if (state.tool === 'CHAIN') modeInfo.innerText = "CHAIN: Click 1st Sprocket, move mouse, Click 2nd Sprocket."; else modeInfo.innerText = "MOTION: Must place strictly inside a body."; }
+                else if(m === 'INTERACT') { if (interactTool === 'select') modeInfo.innerText = "SELECT: Drag near Pivot to MOVE. Drag far from Pivot to ROTATE."; }
+            }
+        }
+
+        window.toggleSnap = function() {
+            useSnap = !useSnap; const btn = document.getElementById('btn-snap');
+            if (btn) { btn.innerText = useSnap ? "SNAP: ON" : "SNAP: OFF"; btn.classList.toggle('active', useSnap); }
+        }
+
+        window.setDrawTool = function(t) {
+            drawState.tool = t; drawState.step = 0; drawState.drafting = false; draftVertices = [];
+            document.querySelectorAll('#tb-draw .cyber-btn').forEach(b => { if(b.id && b.id.startsWith('dt-')) b.classList.remove('active'); });
+            document.getElementById('dt-' + t).classList.add('active');
+            if(t === 'poly') document.getElementById('mode-info').innerText = "DRAW: Click to add points. Close shape to build Body.";
+            else document.getElementById('mode-info').innerText = "DRAW: Click to set start point. Move & Click to finish.";
+        }
+
+        window.setGearTool = function(type, teeth) {
+            gearState.type = type; gearState.teeth = teeth;
+            document.querySelectorAll('#tb-gear .cyber-btn').forEach(b => { if(b.id && b.id.startsWith('gt-')) b.classList.remove('active'); });
+            document.getElementById(`gt-${type}${teeth}`).classList.add('active');
+        }
+
+        window.setMotionTool = function(t) {
+            state.tool = t;
+            document.querySelectorAll('#tb-motion .cyber-btn').forEach(b => { if(b.id && b.id.startsWith('mt-')) b.classList.remove('active'); });
+            let idMap = {'JOINT_FREE':'free', 'JOINT_FIX':'lock', 'ACTUATOR':'motor', 'SLOT':'slot', 'TRACE':'trace', 'CHAIN':'chain'};
+            if(idMap[t]) document.getElementById('mt-' + idMap[t]).classList.add('active');
+            slotDrafting = false; chainStartBody = null;
+            if(t === 'CHAIN') document.getElementById('mode-info').innerText = "CHAIN: Click 1st Sprocket, move mouse, Click 2nd Sprocket.";
+            else document.getElementById('mode-info').innerText = "MOTION: Must place strictly inside a body.";
+        }
+
+        window.setActiveLayer = function(id) { state.activeLayer = id; buildLayerUI(); }
+        window.toggleVis = function(e, id) { e.stopPropagation(); LAYERS[id].visible = !LAYERS[id].visible; buildLayerUI(); }
+        
+        window.clearAll = function() {
+            rigidBodies = []; globalJoints = []; draftVertices = []; selectedBodies = []; selectedJoints = [];
+            drawState.step = 0; drawState.drafting = false; chainStartBody = null;
+            if(window.isPlaying) togglePlay(); playStartState = null; saveState(); 
+        }
+
+        window.setInteractTool = function(t) {
+            interactTool = t; actionTarget1 = null; selectedBodies = []; selectedJoints = [];
+            document.querySelectorAll('#tb-interact .cyber-btn').forEach(b => { b.classList.remove('active', 'active-orange', 'active-red'); });
+            const btn = document.getElementById('it-' + t);
+            if (t === 'select') btn.classList.add('active'); else if (t === 'del') btn.classList.add('active', 'active-red'); else btn.classList.add('active', 'active-orange');
+            let info = "";
+            if(t==='select') info = "SELECT: Drag near Pivot to MOVE. Drag far from Pivot to ROTATE.";
+            if(t==='align') info = "ALIGN: Click 1st Joint (to move), then 2nd Joint (target).";
+            if(t==='link') info = "LINK: Click overlapping joints to merge them all.";
+            if(t==='unlink') info = "UNLINK: Click a Body or Joint to separate it.";
+            if(t==='static') info = "STATIC: Click a Body to toggle Anchor state.";
+            if(t==='del') info = "DELETE: Click a Body or Joint to remove it.";
+            const modeInfo = document.getElementById('mode-info'); if(modeInfo) modeInfo.innerText = info;
+        }
+
+        window.alignSelected = function() {
+            if (selectedJoints.length !== 2) return;
+            let j1 = selectedJoints[0]; let j2 = selectedJoints[1]; let b1Id = null;
+            if (j1.type === 'SLOT' && j1.slotBodyId) b1Id = j1.slotBodyId; else if (j1.links && j1.links.length > 0) b1Id = j1.links[0].bodyId;
+            let body1 = rigidBodies.find(b => b.id === b1Id);
+            if (!body1) { showToast("FIRST JOINT BODY NOT FOUND", "error"); return; }
+            if (body1.isStatic) { showToast("FIRST JOINT BODY IS STATIC / UNMOVABLE", "error"); return; }
+            let dx = j2.worldX - j1.worldX; let dy = j2.worldY - j1.worldY;
+            if (j1.type === 'SLOT') { dx = j2.worldX - j1.wA.x; dy = j2.worldY - j1.wA.y; }
+            if (j2.type === 'SLOT') { dx = j2.wA.x - j1.worldX; dy = j2.wA.y - j1.worldY; }
+            let island = getKinematicIsland(body1.id);
+            island.bodies.forEach(b => { b.x += dx; b.y += dy; });
+            if (j1.worldX !== undefined) { j1.worldX += dx; j1.worldY += dy; }
+            solvePhysics(false, 1); showToast("BODIES ALIGNED!", "success"); saveState(); 
+        };
+
+        window.linkSelected = function() {
+            if (selectedJoints.length < 2 && !selectedJoints.some(j => j.type === 'SLOT')) { showToast("SELECT 2+ JOINTS TO LINK", "error"); return; }
+            let slotJoint = selectedJoints.find(j => j.type === 'SLOT');
+            if (slotJoint) {
+                let jointsToLink = selectedJoints.filter(j => j !== slotJoint && j.type !== 'SLOT');
+                if (!slotJoint.linkedJoints) slotJoint.linkedJoints = [];
+                jointsToLink.forEach(dragJ => { if (!slotJoint.linkedJoints.includes(dragJ.id)) { slotJoint.linkedJoints.push(dragJ.id); } });
+                showToast("LINKED TO SLOT!", "success"); saveState(); return;
+            }
+            let validJoints = selectedJoints.filter(j => j.type !== 'SLOT');
+            let targetJ = validJoints.find(j => j.type === 'MOTOR') || validJoints.find(j => j.links.some(l => { let b = rigidBodies.find(x => x.id === l.bodyId); return b && b.isStatic; })) || validJoints[0];
+            let mergeJoints = validJoints.filter(j => j !== targetJ);
+            mergeJoints.forEach(dragJ => {
+                if (targetJ.type === 'PIN' && dragJ.type === 'MOTOR') { targetJ.type = 'MOTOR'; targetJ.speed = dragJ.speed; targetJ.autoReverse = dragJ.autoReverse; }
+                dragJ.links.forEach(dl => {
+                    let existingLink = targetJ.links.find(tl => tl.bodyId === dl.bodyId);
+                    if (!existingLink) {
+                        const b = rigidBodies.find(x => x.id === dl.bodyId);
+                        if (b) { const newLoc = globalToLocal(b, targetJ.worldX, targetJ.worldY); dl.localX = newLoc.x; dl.localY = newLoc.y; dl.baseAngle = b.angle - (targetJ.angle || 0); }
+                        targetJ.links.push(dl);
+                    } else { if (dl.type === 'FIX') existingLink.type = 'FIX'; }
+                });
+                globalJoints = globalJoints.filter(j => j !== dragJ);
+            });
+            globalJoints.forEach(j => { if (j.type === 'SLOT' && j.linkedJoints) { mergeJoints.forEach(dragJ => { const idx = j.linkedJoints.indexOf(dragJ.id); if (idx !== -1) { j.linkedJoints[idx] = targetJ.id; } }); } });
+            showToast("JOINTS LINKED!", "success"); saveState(); 
+        };
+
+        window.unlinkSelected = function() {
+            let jointsToProcess = [...selectedJoints];
+            if (selectedBodies.length > 0) {
+                selectedBodies.forEach(b => {
+                    globalJoints.forEach(j => {
+                        let hasBody = false;
+                        if (j.type === 'SLOT') { if (j.slotBodyId === b.id) hasBody = true; if (j.links && j.links.some(l => l.bodyId === b.id)) hasBody = true; } 
+                        else { if (j.links && j.links.some(l => l.bodyId === b.id)) hasBody = true; }
+                        if (hasBody && !jointsToProcess.includes(j)) jointsToProcess.push(j);
+                    });
+                });
+            }
+            if (jointsToProcess.length === 0) return;
+            let unlinked = false;
+            jointsToProcess.forEach(j => {
+                if (j.type === 'SLOT') {
+                    if (j.linkedJoints && j.linkedJoints.length > 0) { j.linkedJoints = []; unlinked = true; }
+                } else if (j.links && j.links.length > 1) {
+                    let removedLinks = j.links.splice(1);
+                    removedLinks.forEach(rl => {
+                        let newJ = { type: 'PIN', id: generateId(), worldX: j.worldX, worldY: j.worldY, angle: j.angle || 0, speed: j.speed, autoReverse: j.autoReverse, links: [rl] };
+                        globalJoints.push(newJ);
+                        globalJoints.forEach(sj => { if (sj.type === 'SLOT' && sj.linkedJoints && sj.linkedJoints.includes(j.id)) { sj.linkedJoints.push(newJ.id); } });
+                    });
+                    unlinked = true;
+                }
+            });
+            if(unlinked) { showToast("UNLINKED!", "success"); saveState(); }
+        };
+
+        window.toggleStatic = function() {
+            if(selectedBodies.length === 0) return;
+            selectedBodies.forEach(b => b.isStatic = !b.isStatic); saveState();
+        }
+
+        window.deleteSelected = function() {
+            if (selectedBodies.length === 0 && selectedJoints.length === 0) return;
+            let bodyIds = selectedBodies.map(b => b.id);
+            rigidBodies = rigidBodies.filter(b => !bodyIds.includes(b.id));
+            globalJoints = globalJoints.filter(j => {
+                if (selectedJoints.includes(j)) return false; 
+                if (j.links) { j.links = j.links.filter(l => !bodyIds.includes(l.bodyId)); if (j.links.length === 0) return false; }
+                if (j.type === 'CHAIN' && (bodyIds.includes(j.b1) || bodyIds.includes(j.b2))) return false;
+                return true;
+            });
+            globalJoints.forEach(j => { if (j.type === 'SLOT' && j.linkedJoints) { j.linkedJoints = j.linkedJoints.filter(id => globalJoints.some(gj => gj.id === id)); } });
+            selectedBodies = []; selectedJoints = []; saveState(); 
+        }
+
+        // --- DRAWING / GENERATION ---
+        function finalizeBody() {
+            if(draftVertices.length < 3) return;
+            let draftGlobalPoly = [...draftVertices];
+            if (checkDraftCollision(draftGlobalPoly, state.activeLayer, false)) { showToast("COLLISION DETECTED!", "error"); return; }
+            let cx = 0, cy = 0; draftVertices.forEach(v => { cx += v.x; cy += v.y; }); cx /= draftVertices.length; cy /= draftVertices.length;
+            rigidBodies.push({
+                id: generateId(), layer: state.activeLayer, color: LAYERS[state.activeLayer].color,
+                x: cx, y: cy, angle: 0, isStatic: false, polygons: [ draftVertices.map(v => ({ x: v.x - cx, y: v.y - cy })) ], traceFeatures: [], islandId: -1
+            });
+            draftVertices = []; saveState(); 
+        }
+
+        function addFeatureAt(type, px, py, extra = {}) {
+            let b;
+            if (type === 'SLOT' && extra.bodyId) { b = rigidBodies.find(x => x.id === extra.bodyId); } 
+            else {
+                let hitBodies = rigidBodies.filter(b => b.layer === state.activeLayer && isStrictlyInside(px, py, b));
+                if (hitBodies.length === 0) { showToast("MUST BE PLACED INSIDE A BODY ON CURRENT LAYER", "error"); return; }
+                b = hitBodies[0];
+            }
+
+            if (type === 'SLOT') {
+                let lA = globalToLocal(b, extra.x1, extra.y1); let lB = globalToLocal(b, extra.x2, extra.y2);
+                globalJoints.push({ type: 'SLOT', id: generateId(), slotBodyId: b.id, wA: {x: extra.x1, y: extra.y1}, wB: {x: extra.x2, y: extra.y2}, localA: lA, localB: lB, linkedJoints: [] });
+            } else if (type === 'TRACE') {
+                b.traceFeatures.push({ localX: globalToLocal(b, px, py).x, localY: globalToLocal(b, px, py).y, history: [] });
+            } else {
+                let linkType = (type === 'JOINT_FREE') ? 'FREE' : 'FIX';
+                let jointType = (type === 'ACTUATOR') ? 'MOTOR' : 'PIN';
+                let newLinks = [{ bodyId: b.id, localX: globalToLocal(b, px, py).x, localY: globalToLocal(b, px, py).y, type: linkType, baseAngle: b.angle }];
+                globalJoints.push({ type: jointType, id: generateId(), worldX: px, worldY: py, angle: 0, links: newLinks, speed: extra.speed || 15, autoReverse: extra.autoReverse || false, reverseCooldown: 0 });
+            }
+            saveState(); 
+        }
+
+        // --- PBD PHYSICS CORE ---
+        function updateVisualCoordinates() {
+            globalJoints.forEach(j => {
+                if (j.type === 'SLOT') {
+                    const slotBody = rigidBodies.find(x => x.id === j.slotBodyId);
+                    if (slotBody) { j.wA = localToGlobal(slotBody, j.localA.x, j.localA.y); j.wB = localToGlobal(slotBody, j.localB.x, j.localB.y); }
+                } else if (j.type === 'CHAIN') {
+                    let b1 = rigidBodies.find(x => x.id === j.b1); let b2 = rigidBodies.find(x => x.id === j.b2);
+                    if (b1 && b2) { j.wA = {x: b1.x, y: b1.y}; j.wB = {x: b2.x, y: b2.y}; }
+                } else {
+                    let staticLink = j.links.find(l => { let b = rigidBodies.find(x => x.id === l.bodyId); return b && b.isStatic; });
+                    if (staticLink) {
+                        let b = rigidBodies.find(x => x.id === staticLink.bodyId); let pW = localToGlobal(b, staticLink.localX, staticLink.localY);
+                        j.worldX = pW.x; j.worldY = pW.y;
+                    } else if (j.links.length === 1 && j.type === 'MOTOR') {
+                        // Grounded motor! Keep its worldX and worldY fixed at its original placed position.
+                    } else if (j.links.length === 1 && j.type === 'PIN') {
+                        let b = rigidBodies.find(x => x.id === j.links[0].bodyId);
+                        if (b) { let pW = localToGlobal(b, j.links[0].localX, j.links[0].localY); j.worldX = pW.x; j.worldY = pW.y; }
+                    } else {
+                        let cx = 0, cy = 0, count = 0;
+                        j.links.forEach(l => { let b = rigidBodies.find(x => x.id === l.bodyId); if (b) { let pW = localToGlobal(b, l.localX, l.localY); cx += pW.x; cy += pW.y; count++; } });
+                        if (count > 0) { j.worldX = cx / count; j.worldY = cy / count; }
+                    }
+                }
+            });
+        }
+
+        function applyGroundedConstraint(b, l, j) {
+            if (b.isStatic) return;
+            let currP = localToGlobal(b, l.localX, l.localY);
+            b.x += j.worldX - currP.x; b.y += j.worldY - currP.y;
+        }
+
+        function applyPositionalConstraint(b1, l1, b2, l2) {
+            let w1 = (b1.isStatic) ? 0 : 1;  let w2 = (b2.isStatic) ? 0 : 1; if (w1 === 0 && w2 === 0) return;
+            let p1 = localToGlobal(b1, l1.localX, l1.localY); let p2 = localToGlobal(b2, l2.localX, l2.localY);
+            let dx = p2.x - p1.x; let dy = p2.y - p1.y; let len = Math.hypot(dx, dy); if (len < 0.1) return; 
+            let nX = dx / len; let nY = dy / len;
+            let getInvI = (b) => { let maxR2 = 10; if(b.polygons && b.polygons[0]) { b.polygons[0].forEach(v => { let r2 = v.x*v.x + v.y*v.y; if(r2>maxR2) maxR2=r2; }); } return 1.0 / (maxR2 * 0.5); };
+            let invI1 = w1 === 0 ? 0 : getInvI(b1); let invI2 = w2 === 0 ? 0 : getInvI(b2);
+            let r1X = p1.x - b1.x; let r1Y = p1.y - b1.y; let r2X = p2.x - b2.x; let r2Y = p2.y - b2.y;
+            let cross1 = r1X * nY - r1Y * nX; let cross2 = r2X * nY - r2Y * nX;
+            let wSum = w1 + w2 + (cross1*cross1)*invI1 + (cross2*cross2)*invI2; if (wSum === 0) return;
+            let lambda = (len / wSum) * 1.0; let pX = nX * lambda; let pY = nY * lambda;
+            if (w1 > 0) { b1.x += pX * w1; b1.y += pY * w1; b1.angle += cross1 * invI1 * lambda; }
+            if (w2 > 0) { b2.x -= pX * w2; b2.y -= pY * w2; b2.angle -= cross2 * invI2 * lambda; }
+        }
+        
+        function applyAngularConstraint(b1, l1, b2, l2) {
+            let w1 = (b1.isStatic) ? 0 : 1; let w2 = (b2.isStatic) ? 0 : 1; if (w1 === 0 && w2 === 0) return;
+            let targetDiff = l1.baseAngle - l2.baseAngle; let currDiff = b1.angle - b2.angle;
+            let error = currDiff - targetDiff; while(error > Math.PI) error -= Math.PI*2; while(error < -Math.PI) error += Math.PI*2;
+            let wSum = w1 + w2; if(wSum === 0) return;
+            let correction = error * 0.5; 
+            if (w1 > 0) b1.angle -= correction * (w1/wSum);
+            if (w2 > 0) b2.angle += correction * (w2/wSum);
+        }
+
+        function applySlotConstraint(b1, l1, slotBody, localA, localB) {
+            let w1 = (b1.isStatic) ? 0 : 1; let wS = (slotBody.isStatic) ? 0 : 1; if (w1 === 0 && wS === 0) return;
+            let p1 = localToGlobal(b1, l1.localX, l1.localY); let wA = localToGlobal(slotBody, localA.x, localA.y); let wB = localToGlobal(slotBody, localB.x, localB.y);
+            let closest = closestPointOnLineSegment(p1, wA, wB); let dx = closest.x - p1.x; let dy = closest.y - p1.y; let len = Math.hypot(dx, dy); if (len < 0.1) return;
+            let nX = dx / len; let nY = dy / len;
+            let getInvI = (b) => { let maxR2 = 10; if(b.polygons && b.polygons[0]) { b.polygons[0].forEach(v => { let r2 = v.x*v.x + v.y*v.y; if(r2>maxR2) maxR2=r2; }); } return 1.0 / (maxR2 * 0.5); };
+            let invI1 = w1 === 0 ? 0 : getInvI(b1); let invIS = wS === 0 ? 0 : getInvI(slotBody); 
+            let r1X = p1.x - b1.x; let r1Y = p1.y - b1.y; let rsX = closest.x - slotBody.x; let rsY = closest.y - slotBody.y;
+            let cross = r1X * nY - r1Y * nX; let crossS = rsX * nY - rsY * nX;
+            let wSum = w1 + wS + (cross*cross)*invI1 + (crossS*crossS)*invIS; if (wSum === 0) return;
+            let lambda = (len / wSum) * 1.0; let pX = nX * lambda; let pY = nY * lambda;
+            if (w1 > 0) { b1.x += pX * w1; b1.y += pY * w1; b1.angle += cross * invI1 * lambda; }
+            if (wS > 0) { slotBody.x -= pX * wS; slotBody.y -= pY * wS; slotBody.angle -= crossS * invIS * lambda; }
+        }
+
+        function solvePhysics(advanceTime = true, customIters = null) {
+
+            if (advanceTime) {
+                globalJoints.forEach(j => {
+                    if (j.type === 'MOTOR') {
+                        if (j.reverseCooldown === undefined) j.reverseCooldown = 0;
+                        if (j.reverseCooldown > 0) j.reverseCooldown--;
+                    }
+                });
+            }
+
+            let backup;
+            if (advanceTime) {
+                backup = JSON.stringify({ rigidBodies, globalJoints });
+            }
+
+            globalJoints.forEach(j => {
+                if (j.angle === undefined) j.angle = 0;
+                
+                if (advanceTime && j.type === 'MOTOR') {
+                    let rpm = j.speed;
+                    let radPerSec = rpm * (Math.PI / 30);
+                    let delta = radPerSec / 60; 
+                    
+                    if (j.isBlocked) {
+                        delta = 0; 
+                    }
+                    j.motorOffset = (j.motorOffset || 0) + delta;
+                    j.lastDelta = delta;
+                }
+            });
+
+            rigidBodies.forEach(b => b.islandId = -1);
+            let currentIslandId = 0;
+            rigidBodies.forEach(b => {
+                if (b.islandId === -1) {
+                    let island = getKinematicIsland(b.id);
+                    island.bodies.forEach(ib => ib.islandId = currentIslandId);
+                    currentIslandId++;
+                }
+            });
+
+            let iters = customIters || (advanceTime ? 40 : 60); 
+            for (let iter = 0; iter < iters; iter++) { 
+                
+                // 1. Collisions (V7.13.31: Strict Layer Collision)
+                for (let cIter = 0; cIter < 4; cIter++) { 
+                    for (let i = 0; i < rigidBodies.length; i++) {
+                        for (let j = i + 1; j < rigidBodies.length; j++) {
+                            let bA = rigidBodies[i]; let bB = rigidBodies[j];
+                            
+                            if (bA.layer !== bB.layer || (bA.isStatic && bB.isStatic)) continue;
+                            if (bA.isGear && bB.isGear) continue; 
+                            
+                            // V7.13.31: อนุญาตให้วัตถุในเครื่องจักร (Island) เดียวกันชนกันได้ 
+                            // จะเว้นการชนก็ต่อเมื่อมันถูกตอกหมุดติดกันโดยตรง (areBodiesConnected) เท่านั้น!
+                            if (areBodiesConnected(bA, bB)) continue;
+                            if (areGearsMeshed(bA, bB)) continue;
+
+                            let boxA = getBoundingBox(bA); let boxB = getBoundingBox(bB);
+                            if (!document.boxIntersect(boxA, boxB)) continue;
+
+                            for (let pA of bA.polygons) {
+                                let polyAWorld = pA.map(v => localToGlobal(bA, v.x, v.y));
+                                for (let pB of bB.polygons) {
+                                    let polyBWorld = pB.map(v => localToGlobal(bB, v.x, v.y));
+                                    
+                                    let col = satCollidePolys(polyAWorld, polyBWorld, 8.0);
+                                    if (col) {
+                                        let wA = (bA.isStatic) ? 0 : 1; let wB = (bB.isStatic) ? 0 : 1;
+                                        let invIA = wA === 0 ? 0 : getInvI(bA); let invIB = wB === 0 ? 0 : getInvI(bB);
+                                        let rA = { x: col.contact.x - bA.x, y: col.contact.y - bA.y };
+                                        let rB = { x: col.contact.x - bB.x, y: col.contact.y - bB.y };
+                                        let cross1 = rA.x * col.normal.y - rA.y * col.normal.x;
+                                        let cross2 = rB.x * col.normal.y - rB.y * col.normal.x;
+
+                                        let wSum = wA + wB + (cross1 * cross1) * invIA + (cross2 * cross2) * invIB;
+                                        if (wSum > 0) {
+                                            let lambda = (col.overlap / wSum) * 1.0; 
+                                            let pushX = col.normal.x * lambda; let pushY = col.normal.y * lambda;
+                                            if (wA > 0) { bA.x -= pushX * wA; bA.y -= pushY * wA; bA.angle -= cross1 * invIA * lambda; }
+                                            if (wB > 0) { bB.x += pushX * wB; bB.y += pushY * wB; bB.angle += cross2 * invIB * lambda; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Constraints Core
+                globalJoints.forEach(j => {
+                    if (j.type === 'SLOT') {
+                        const slotBody = rigidBodies.find(x => x.id === j.slotBodyId);
+                        if (!slotBody) return;
+                        if (j.linkedJoints) {
+                            j.linkedJoints.forEach(jId => {
+                                let tj = globalJoints.find(gj => gj.id === jId);
+                                if (tj) {
+                                    tj.links.forEach(l => {
+                                        const b = rigidBodies.find(x => x.id === l.bodyId);
+                                        if(b) {
+                                            applySlotConstraint(b, l, slotBody, j.localA, j.localB);
+                                            if (l.type === 'FIX') {
+                                                let targetAngle = slotBody.angle + l.baseAngle;
+                                                let currDiff = b.angle - targetAngle;
+                                                while(currDiff > Math.PI) currDiff -= Math.PI*2;
+                                                while(currDiff < -Math.PI) currDiff += Math.PI*2; 
+                                                let w1 = b.isStatic ? 0 : 1; let wS = slotBody.isStatic ? 0 : 1; let wSum = w1 + wS;
+                                                if(wSum > 0) {
+                                                    if(w1 > 0) b.angle -= currDiff * (w1/wSum) * 0.8;
+                                                    if(wS > 0) slotBody.angle += currDiff * (wS/wSum) * 0.8;
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    } else if (j.type === 'CHAIN') {
+                        let b1 = rigidBodies.find(x => x.id === j.b1); let b2 = rigidBodies.find(x => x.id === j.b2);
+                        if (b1 && b2) {
+                            if (j.baseAngle1 === undefined) { j.baseAngle1 = b1.angle; j.baseAngle2 = b2.angle; }
+                            let expectedAngle2 = j.baseAngle2 + (b1.angle - j.baseAngle1) / j.ratio;
+                            let diff = b2.angle - expectedAngle2;
+                            while(diff > Math.PI) diff -= Math.PI*2; while(diff < -Math.PI) diff += Math.PI*2;
+                            let w1 = (b1.isStatic) ? 0 : 1; let w2 = (b2.isStatic) ? 0 : 1; let wSum = w1 + w2;
+                            if(wSum > 0) {
+                                let factor = (w1 === 0 || w2 === 0) ? 1.0 : 0.5; 
+                                if (w1 > 0) b1.angle += diff * (w1/wSum) * j.ratio * factor;
+                                if (w2 > 0) b2.angle -= diff * (w2/wSum) * factor;
+                            }
+                        }
+                    } else {
+                        if (j.type === 'MOTOR') {
+                            let statorLink = null;
+                            if (j.links.length > 1) { statorLink = j.links.find(lnk => { let tb = rigidBodies.find(x => x.id === lnk.bodyId); return tb && tb.isStatic; }) || j.links[0]; }
+                            if (statorLink) {
+                                let sb = rigidBodies.find(x => x.id === statorLink.bodyId);
+                                if (sb) j.angle = (sb.angle - statorLink.baseAngle) + (j.motorOffset || 0);
+                            } else { j.angle = (j.motorOffset || 0); }
+
+                            j.links.forEach(l => {
+                                if (l !== statorLink && l.type === 'FIX') {
+                                    let b = rigidBodies.find(x => x.id === l.bodyId);
+                                    if (b && !b.isStatic) {
+                                        let targetAngle = j.angle + l.baseAngle;
+                                        if (j.links.length === 1) { targetAngle = l.baseAngle + j.angle; }
+                                        let diff = b.angle - targetAngle;
+                                        while(diff > Math.PI) diff -= Math.PI*2; while(diff < -Math.PI) diff += Math.PI*2;
+                                        
+                                        let maxRot = advanceTime ? 0.2 : Infinity; 
+                                        if (diff > maxRot) diff = maxRot; if (diff < -maxRot) diff = -maxRot;
+                                        b.angle -= diff; 
+                                    }
+                                }
+                            });
+                        } else if (j.type === 'PIN') {
+                            if (j.links.length > 1) {
+                                for(let i=0; i<j.links.length; i++) {
+                                    for(let k=i+1; k<j.links.length; k++) {
+                                        let b1 = rigidBodies.find(x => x.id === j.links[i].bodyId); let b2 = rigidBodies.find(x => x.id === j.links[k].bodyId);
+                                        if(b1 && b2 && j.links[i].type === 'FIX' && j.links[k].type === 'FIX') { applyAngularConstraint(b1, j.links[i], b2, j.links[k]); }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (j.links.length === 1) {
+                            if (j.type === 'MOTOR') {
+                                let b = rigidBodies.find(x => x.id === j.links[0].bodyId);
+                                if (b) { applyGroundedConstraint(b, j.links[0], j); }
+                            }
+                        } else {
+                            for(let i=0; i<j.links.length; i++) {
+                                for(let k=i+1; k<j.links.length; k++) {
+                                    let b1 = rigidBodies.find(x => x.id === j.links[i].bodyId); let b2 = rigidBodies.find(x => x.id === j.links[k].bodyId);
+                                    if(b1 && b2) { applyPositionalConstraint(b1, j.links[i], b2, j.links[k]); }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // 3. AUTO GEAR MESHING 
+                let gears = rigidBodies.filter(b => b.isGear && b.gearType === 'gear');
+                for (let i = 0; i < gears.length; i++) {
+                    for (let k = i + 1; k < gears.length; k++) {
+                        let g1 = gears[i]; let g2 = gears[k];
+                        if (g1.layer !== g2.layer) continue;
+                        let dist = Math.hypot(g1.x - g2.x, g1.y - g2.y); let idealDist = g1.pitchRadius + g2.pitchRadius;
+                        
+                        if (Math.abs(dist - idealDist) < 20) { 
+                            if (!g1.meshData) g1.meshData = {};
+                            if (g1.meshData[g2.id] === undefined) { g1.meshData[g2.id] = { base1: g1.angle, base2: g2.angle }; }
+                            let mesh = g1.meshData[g2.id];
+                            let targetAngle2 = mesh.base2 - (g1.angle - mesh.base1) * (g1.pitchRadius / g2.pitchRadius);
+                            let currDiff = g2.angle - targetAngle2;
+                            while(currDiff > Math.PI) currDiff -= Math.PI*2; while(currDiff < -Math.PI) currDiff += Math.PI*2;
+                            
+                            let w1 = (g1.isStatic) ? 0 : 1; let w2 = (g2.isStatic) ? 0 : 1;
+                            if (w1 === 0 && w2 === 0) continue;
+                            let r1 = g1.pitchRadius; let r2 = g2.pitchRadius; let M = w1 * r1 * r1 + w2 * r2 * r2;
+                            if (M > 0) {
+                                let lambda = -currDiff * r2 / M * 0.8; 
+                                if (w1 > 0) g1.angle += r1 * lambda; if (w2 > 0) g2.angle += r2 * lambda;
+                            }
+                        } else { if (g1.meshData && g1.meshData[g2.id] !== undefined) delete g1.meshData[g2.id]; }
+                    }
+                }
+            } // end iter loop
+
+            updateVisualCoordinates();
+
+            if (advanceTime) {
+                globalJoints.forEach(j => {
+                    if (j.type === 'MOTOR') {
+                         let maxStrain = 0;
+                         j.links.forEach(l => {
+                             if(l.type === 'FIX') {
+                                 const b = rigidBodies.find(x => x.id === l.bodyId);
+                                 if (b && !b.isStatic) {
+                                     let targetAngle = j.angle + l.baseAngle;
+                                     if (j.links.length === 1) targetAngle = l.baseAngle + j.angle;
+                                     let diff = b.angle - targetAngle;
+                                     while(diff > Math.PI) diff -= Math.PI*2; while(diff < -Math.PI) diff += Math.PI*2;
+                                     if (Math.abs(diff) > maxStrain) maxStrain = Math.abs(diff);
+                                 }
+                             }
+                         });
+                         
+                         if (maxStrain > 0.05) {
+                             if (j.autoReverse) {
+                                 if (!j.reverseCooldown || j.reverseCooldown <= 0) {
+                                     j.speed *= -1; 
+                                     j.reverseCooldown = 15; 
+                                     j.isBlocked = false;
+                                 }
+                             } else { j.isBlocked = true; }
+                         } else if (maxStrain < 0.02) { j.isBlocked = false; }
+                    }
+                });
+
+                if (state.time % 2 === 0) {
+                    rigidBodies.forEach(b => {
+                        b.traceFeatures.forEach(t => {
+                            t.history.push(localToGlobal(b, t.localX, t.history.length > 0 ? t.localY : t.localY)); 
+                            t.history.push(localToGlobal(b, t.localX, t.localY));
+                            if(t.history.length > 150) t.history.shift(); 
+                        });
+                    });
+                }
+            }
+            return true;
+        }
+
+        function handleDown(e) {
+            let ex = e.touches ? e.touches[0].clientX : e.clientX; let ey = e.touches ? e.touches[0].clientY : e.clientY;
+            const rect = canvas.getBoundingClientRect(); mouse.x = ex - rect.left; mouse.y = ey - rect.top;
+            const px = snap(mouse.x); const py = snap(mouse.y); mouse.lastSnapX = px; mouse.lastSnapY = py;
+
+            if (state.mode === 'DRAW') {
+                if (e.button === 2) {
+                    if (drawState.tool === 'poly' && drawState.drafting) finalizeBody();
+                    else { drawState.step = 0; drawState.drafting = false; draftVertices = []; }
+                } else {
+                    if (drawState.tool === 'poly') {
+                        drawState.drafting = true;
+                        if(draftVertices.length > 2 && Math.hypot(px - draftVertices[0].x, py - draftVertices[0].y) < 15) finalizeBody();
+                        else draftVertices.push({x: px, y: py});
+                    } else {
+                        if (drawState.step === 0) {
+                            drawState.startX = px; drawState.startY = py; drawState.drafting = true; drawState.step = 1; draftVertices = [];
+                        } else {
+                            draftVertices = generateShapeVertices(drawState.tool, drawState.startX, drawState.startY, px, py);
+                            finalizeBody(); drawState.drafting = false; drawState.step = 0;
+                        }
+                    }
+                }
+            }
+            else if (state.mode === 'GEAR') {
+                if (e.button !== 2) {
+                    let gData = generateGearVertices(gearState.teeth, gearState.type);
+                    let checkPoly = gData.pts.map(v => ({x: v.x + px, y: v.y + py}));
+                    if (checkDraftCollision(checkPoly, state.activeLayer, true)) { showToast("COLLISION DETECTED!", "error"); return; }
+                    rigidBodies.push({ id: generateId(), layer: state.activeLayer, color: LAYERS[state.activeLayer].color, x: px, y: py, angle: 0, isStatic: false, polygons: [ gData.pts ], traceFeatures: [], islandId: -1, isGear: true, gearType: gearState.type, teeth: gearState.teeth, pitchRadius: gData.R });
+                    saveState(); showToast("SPAWNED " + gearState.type.toUpperCase(), "success");
+                }
+            }
+            else if (state.mode === 'MOTION') {
+                if (e.button === 2) { slotDrafting = false; slotStart = null; chainStartBody = null; } 
+                else if (e.button !== 2) {
+                    if (state.tool === 'ACTUATOR') window.openMotorConfig(px, py);
+                    else if (state.tool === 'SLOT') { 
+                        if (!slotDrafting) {
+                            let hitBody = getBodyAt(px, py);
+                            if (hitBody) { slotDrafting = true; slotStart = {x: px, y: py, bodyId: hitBody.id}; AudioSys.playClick(); } 
+                            else { showToast("SLOT MUST START INSIDE A BODY", "error"); }
+                        } else {
+                            let b = rigidBodies.find(x => x.id === slotStart.bodyId);
+                            if (b) {
+                                let hitBodyEnd = getBodyAt(px, py);
+                                if (hitBodyEnd && hitBodyEnd.id === b.id) { if (Math.hypot(px - slotStart.x, py - slotStart.y) > 10) { addFeatureAt('SLOT', px, py, {x1: slotStart.x, y1: slotStart.y, x2: px, y2: py, bodyId: b.id}); } } 
+                                else { showToast("SLOT END MUST BE INSIDE THE SAME BODY", "error"); }
+                            }
+                            slotDrafting = false; slotStart = null; AudioSys.playClick();
+                        }
+                    }
+                    else if (state.tool === 'CHAIN') {
+                        let hitBody = getBodyAt(mouse.x, mouse.y);
+                        if (!chainStartBody) {
+                            if (hitBody && hitBody.isGear && hitBody.gearType === 'sprocket') { chainStartBody = hitBody.id; AudioSys.playClick(); } 
+                            else { showToast("SELECT A SPROCKET ON THIS LAYER FIRST", "error"); }
+                        } else {
+                            if (hitBody && hitBody.isGear && hitBody.gearType === 'sprocket' && hitBody.id !== chainStartBody) {
+                                let b1 = rigidBodies.find(x => x.id === chainStartBody);
+                                globalJoints.push({ type: 'CHAIN', id: generateId(), b1: b1.id, b2: hitBody.id, ratio: b1.teeth / hitBody.teeth, wA: {x: b1.x, y: b1.y}, wB: {x: hitBody.x, y: hitBody.y} });
+                                showToast("SPROCKETS CHAINED!", "success"); saveState(); AudioSys.playClick();
+                            } else { showToast("CHAIN CANCELLED", "error"); }
+                            chainStartBody = null;
+                        }
+                    }
+                    else addFeatureAt(state.tool, px, py);
+                }
+            }
+            else if (state.mode === 'INTERACT') {
+                let hitJoints = [];
+                for(let j of globalJoints) {
+                    if (!isJointVisible(j)) continue; 
+                    if (j.type === 'SLOT') {
+                        let wA = j.wA, wB = j.wB;
+                        if (j.slotBodyId) { const sb = rigidBodies.find(x => x.id === j.slotBodyId); if (sb) { wA = localToGlobal(sb, j.localA.x, j.localA.y); wB = localToGlobal(sb, j.localB.x, j.localB.y); } }
+                        if (wA && wB) { const closest = closestPointOnLineSegment({x: mouse.x, y: mouse.y}, wA, wB); if (Math.hypot(mouse.x - closest.x, mouse.y - closest.y) < 15) hitJoints.push(j); }
+                    } else if (j.type !== 'CHAIN') { if (j.worldX !== undefined && Math.hypot(mouse.x - j.worldX, mouse.y - j.worldY) < 15) hitJoints.push(j); }
+                }
+                let hitBody = getBodyAt(mouse.x, mouse.y); 
+
+                if (interactTool === 'select') {
+                    if (hitJoints.length > 0) {
+                        selectedJoints = hitJoints; selectedBodies = []; isDraggingItems = true;
+                        selectedJoints.forEach(j => { j.dragStartX = j.worldX || (j.wA ? (j.wA.x + j.wB.x)/2 : 0); j.dragStartY = j.worldY || (j.wA ? (j.wA.y + j.wB.y)/2 : 0); j.dragStartMouseX = mouse.x; j.dragStartMouseY = mouse.y; });
+                    } else if (hitBody) {
+                        let island = getKinematicIsland(hitBody.id);
+                        if (island.isGrounded) { selectedBodies = [hitBody]; selectedJoints = globalJoints.filter(j => j.links && j.links.some(l => l.bodyId === hitBody.id)); } 
+                        else { selectedBodies = island.bodies; selectedJoints = island.joints; }
+                        isDraggingItems = true;
+                        
+                        let pivotJoint = null;
+                        if (island.isGrounded && selectedBodies.length === 1) {
+                            pivotJoint = globalJoints.find(j => j.type === 'MOTOR' && j.links.some(l => l.bodyId === hitBody.id && l.type === 'FIX')) || 
+                                         globalJoints.find(j => j.type !== 'SLOT' && j.type !== 'CHAIN' && j.links.some(l => l.bodyId === hitBody.id && (isJointGrounded(j) || j.links.some(ol=> rigidBodies.find(r=>r.id===ol.bodyId)?.isStatic))));
+                        }
+                        if (pivotJoint) { let distToPivot = Math.hypot(mouse.x - pivotJoint.worldX, mouse.y - pivotJoint.worldY); hitBody.isRotating = distToPivot > 40; } 
+                        else { hitBody.isRotating = false; }
+                        
+                        selectedBodies.forEach(b => { b.dragStartX = b.x; b.dragStartY = b.y; b.dragStartMouseX = mouse.x; b.dragStartMouseY = mouse.y; b.dragStartAngle = b.angle; });
+                    } else { isBoxSelecting = true; boxStart = { x: mouse.x, y: mouse.y }; selectedBodies = []; selectedJoints = []; }
+                }
+                else if (interactTool === 'align') {
+                    if (hitJoints.length > 0) {
+                        let clickedJ = hitJoints[0];
+                        if (!actionTarget1) { actionTarget1 = clickedJ; AudioSys.playClick(); showToast("SELECT TARGET JOINT", "success"); } 
+                        else if (actionTarget1 !== clickedJ) { selectedJoints = [actionTarget1, clickedJ]; alignSelected(); actionTarget1 = null; }
+                    } else { actionTarget1 = null; showToast("ALIGN CANCELLED", "error"); }
+                }
+                else if (interactTool === 'link') {
+                    if (hitJoints.length > 1) { selectedJoints = hitJoints; linkSelected(); selectedJoints = []; AudioSys.playClick(); } 
+                    else if (hitJoints.length === 1) { showToast("NEED OVERLAPPING JOINTS TO LINK", "error"); } 
+                    else { showToast("CLICK ON JOINTS", "error"); }
+                }
+                else if (interactTool === 'unlink') {
+                    if (hitJoints.length > 0) { selectedJoints = [hitJoints[0]]; unlinkSelected(); selectedJoints = []; } 
+                    else if (hitBody) { selectedBodies = [hitBody]; unlinkSelected(); selectedBodies = []; }
+                }
+                else if (interactTool === 'static') { if (hitBody) { hitBody.isStatic = !hitBody.isStatic; AudioSys.playClick(); saveState(); } }
+                else if (interactTool === 'del') {
+                    if (hitJoints.length > 0) { selectedJoints = [hitJoints[0]]; deleteSelected(); } 
+                    else if (hitBody) { selectedBodies = [hitBody]; deleteSelected(); }
+                }
+            }
+        }
+
+        function handleMove(e) {
+            const rect = canvas.getBoundingClientRect(); let ex = e.touches ? e.touches[0].clientX : e.clientX; let ey = e.touches ? e.touches[0].clientY : e.clientY;
+            mouse.x = ex - rect.left; mouse.y = ey - rect.top;
+
+            if (state.mode === 'DRAW' && drawState.drafting && drawState.tool !== 'poly') {
+                let cx = snap(mouse.x); let cy = snap(mouse.y); draftVertices = generateShapeVertices(drawState.tool, drawState.startX, drawState.startY, cx, cy);
+            }
+
+            if (state.mode === 'INTERACT') {
+                if (interactTool === 'select' && isDraggingItems) {
+                    if (selectedBodies.length > 0) {
+                        e.preventDefault();
+                        let dx = snap(mouse.x) - mouse.lastSnapX; let dy = snap(mouse.y) - mouse.lastSnapY;
+                        mouse.lastSnapX = snap(mouse.x); mouse.lastSnapY = snap(mouse.y);
+                        
+                        if (dx !== 0 || dy !== 0) {
+                            let primaryBody = selectedBodies[0];
+                            if (primaryBody.isRotating) {
+                                let pivotJoint = globalJoints.find(j => j.type === 'MOTOR' && j.links.some(l => l.bodyId === primaryBody.id && l.type === 'FIX')) || 
+                                                 globalJoints.find(j => j.type !== 'SLOT' && j.type !== 'CHAIN' && j.links.some(l => l.bodyId === primaryBody.id && (isJointGrounded(j) || j.links.some(ol=> rigidBodies.find(r=>r.id===ol.bodyId)?.isStatic))));
+                                if (pivotJoint) {
+                                    let pLink = pivotJoint.links.find(l => l.bodyId === primaryBody.id);
+                                    let pivotW = {x: pivotJoint.worldX, y: pivotJoint.worldY}; let pivotL = {x: pLink.localX, y: pLink.localY};
+                                    let prevA = Math.atan2((mouse.y - dy) - pivotW.y, (mouse.x - dx) - pivotW.x);
+                                    let currA = Math.atan2(mouse.y - pivotW.y, mouse.x - pivotW.x);
+                                    primaryBody.angle += (currA - prevA);
+                                    let newAWorld = localToGlobal(primaryBody, pivotL.x, pivotL.y);
+                                    primaryBody.x += pivotW.x - newAWorld.x; primaryBody.y += pivotW.y - newAWorld.y;
+                                    
+                                    if (!window.isPlaying) {
+                                        let pLink = pivotJoint.links.find(l => l.bodyId === primaryBody.id);
+                                        if (pLink) pLink.baseAngle = primaryBody.angle - (pivotJoint.angle || 0);
+                                        solvePhysics(false, 15);
+                                    }
+                                }
+                            } else {
+                                let steps = Math.ceil(Math.hypot(dx, dy) / 4); if (steps === 0) steps = 1; let stepDx = dx / steps; let stepDy = dy / steps;
+                                for (let s = 0; s < steps; s++) {
+                                    const stepBackup = JSON.stringify({ rigidBodies, globalJoints });
+                                    selectedBodies.forEach(b => { if (!b.isStatic) { b.x += stepDx; b.y += stepDy; } });
+                                    selectedJoints.forEach(j => {
+                                        if (j.type === 'SLOT') { j.wA.x += stepDx; j.wA.y += stepDy; j.wB.x += stepDx; j.wB.y += stepDy; } 
+                                        else if (j.type !== 'CHAIN' && j.worldX !== undefined) { j.worldX += stepDx; j.worldY += stepDy; }
+                                    });
+                                    if (!window.isPlaying) { let success = solvePhysics(false, 15); if (!success) { const parsed = JSON.parse(stepBackup); rigidBodies = parsed.rigidBodies; globalJoints = parsed.globalJoints; updateVisualCoordinates(); break; } }
+                                }
+                            }
+                        }
+                    } else if (selectedJoints.length > 0) {
+                        e.preventDefault();
+                        let dx = snap(mouse.x) - mouse.lastSnapX; let dy = snap(mouse.y) - mouse.lastSnapY;
+                        mouse.lastSnapX = snap(mouse.x); mouse.lastSnapY = snap(mouse.y);
+                        
+                        selectedJoints.forEach(j => {
+                            if (j.type === 'SLOT') {
+                                j.wA.x += dx; j.wA.y += dy; j.wB.x += dx; j.wB.y += dy;
+                                let sb = rigidBodies.find(x => x.id === j.slotBodyId);
+                                if (sb) { j.localA = globalToLocal(sb, j.wA.x, j.wA.y); j.localB = globalToLocal(sb, j.localB.x, j.localB.y); }
+                            } else if (j.type !== 'CHAIN') {
+                                j.worldX += dx; j.worldY += dy;
+                                if (isJointGrounded(j)) {
+                                    j.links.forEach(l => { let b = rigidBodies.find(x => x.id === l.bodyId); if (b && !b.isStatic) { b.x += dx; b.y += dy; } });
+                                } else {
+                                    j.links.forEach(l => { let b = rigidBodies.find(x => x.id === l.bodyId); if (b) { let localPos = globalToLocal(b, j.worldX, j.worldY); l.localX = localPos.x; l.localY = localPos.y; } });
+                                }
+                            }
+                        });
+                        if (!window.isPlaying) solvePhysics(false);
+                    }
+                } else if (isBoxSelecting) { mouse.x = ex - rect.left; mouse.y = ey - rect.top; }
+            }
+        }
+
+        function handleUp(e) {
+            if (state.mode === 'INTERACT') {
+                if (interactTool === 'select') {
+                    if (isBoxSelecting) {
+                        let minX = Math.min(boxStart.x, mouse.x); let maxX = Math.max(boxStart.x, mouse.x);
+                        let minY = Math.min(boxStart.y, mouse.y); let maxY = Math.max(boxStart.y, mouse.y);
+                        selectedBodies = rigidBodies.filter(b => {
+                            if (b.layer !== state.activeLayer) return false; if (!LAYERS[b.layer].visible) return false;
+                            return b.polygons.some(poly => poly.some(v => { let g = localToGlobal(b, v.x, v.y); return g.x >= minX && g.x <= maxX && g.y >= minY && g.y <= maxY; }));
+                        });
+                        selectedJoints = globalJoints.filter(j => {
+                            if (!isJointVisible(j)) return false; 
+                            let x = j.worldX || (j.wA ? (j.wA.x+j.wB.x)/2 : 0); let y = j.worldY || (j.wA ? (j.wA.y+j.wB.y)/2 : 0);
+                            let inBox = (x >= minX && x <= maxX && y >= minY && y <= maxY);
+                            let attached = (j.links && j.links.some(l => selectedBodies.some(b => b.id === l.bodyId))); return inBox || attached;
+                        });
+                    } else if (isDraggingItems) { if (!window.isPlaying) solvePhysics(false); saveState(); }
+                    isBoxSelecting = false; isDraggingItems = false;
+                }
+            }
+        }
+
+        window.openMotorConfig = function(x, y) { pendingMotorPos = {x, y}; document.getElementById('motor-config').style.display = 'flex'; }
+        window.cancelMotor = function() { document.getElementById('motor-config').style.display = 'none'; pendingMotorPos = null; }
+        window.confirmMotor = function() { addFeatureAt('ACTUATOR', pendingMotorPos.x, pendingMotorPos.y, { speed: parseFloat(document.getElementById('motor-speed').value), autoReverse: document.getElementById('motor-reverse').checked }); document.getElementById('motor-config').style.display = 'none'; pendingMotorPos = null; }
+
+        function drawGrid() {
+            ctx.strokeStyle = COLORS.grid; ctx.lineWidth = 1; ctx.beginPath();
+            for (let x = 0; x <= state.width; x += GRID_SIZE) { ctx.moveTo(x, 0); ctx.lineTo(x, state.height); }
+            for (let y = 0; y <= state.height; y += GRID_SIZE) { ctx.moveTo(0, y); ctx.lineTo(state.width, y); }
+            ctx.stroke();
+        }
+
+        function drawFeatureIcon(x, y, jointType, linkType, isSelected) {
+            ctx.beginPath();
+            if (jointType === 'MOTOR') {
+                ctx.arc(x, y, 8, 0, Math.PI*2); ctx.fillStyle = COLORS.jointMotor; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = isSelected ? '#fff' : '#000'; ctx.stroke();
+                for(let i=0; i<8; i++) { const a = (i/8)*Math.PI*2 + (state.time*0.05); ctx.beginPath(); ctx.moveTo(x + Math.cos(a)*8, y + Math.sin(a)*8); ctx.lineTo(x + Math.cos(a)*12, y + Math.sin(a)*12); ctx.stroke(); }
+            } else if (linkType === 'FIX') { 
+                ctx.rect(x-6, y-6, 12, 12); ctx.fillStyle = COLORS.jointLock; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = isSelected ? '#fff' : '#000'; ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x-4, y-4); ctx.lineTo(x+4, y+4); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x+4, y-4); ctx.lineTo(x-4, y+4); ctx.stroke();
+            } else { 
+                ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fillStyle = COLORS.bg; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = isSelected ? '#fff' : COLORS.jointFree; ctx.stroke();
+            }
+        }
+
+        function drawSelectionBox() {
+            if (state.mode === 'INTERACT' && interactTool === 'select' && isBoxSelecting) {
+                ctx.beginPath(); ctx.strokeStyle = COLORS.selectBorder; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
+                let w = mouse.x - boxStart.x; let h = mouse.y - boxStart.y; ctx.strokeRect(boxStart.x, boxStart.y, w, h); ctx.fillStyle = COLORS.selectBox; ctx.fillRect(boxStart.x, boxStart.y, w, h); ctx.setLineDash([]);
+            }
+        }
+
+        function drawDraft() {
+            if (useSnap && state.mode !== 'INTERACT' && !isDraggingItems) {
+                const spx = snap(mouse.x); const spy = snap(mouse.y); ctx.strokeStyle = '#95FF77'; ctx.lineWidth = 1; ctx.beginPath();
+                ctx.moveTo(spx - 10, spy); ctx.lineTo(spx + 10, spy); ctx.moveTo(spx, spy - 10); ctx.lineTo(spx, spy + 10); ctx.stroke();
+            }
+
+            if (state.mode === 'DRAW' && drawState.drafting) {
+                let px = snap(mouse.x); let py = snap(mouse.y);
+                if (drawState.tool === 'poly') {
+                    if (draftVertices.length > 0) {
+                        ctx.beginPath(); ctx.moveTo(draftVertices[0].x, draftVertices[0].y); for (let i = 1; i < draftVertices.length; i++) ctx.lineTo(draftVertices[i].x, draftVertices[i].y);
+                        let draftGlobalPoly = [...draftVertices, {x: px, y: py}]; let collides = checkDraftCollision(draftGlobalPoly, state.activeLayer, false); ctx.lineTo(px, py);
+                        ctx.strokeStyle = collides ? "#FF0055" : LAYERS[state.activeLayer].color; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+                        ctx.fillStyle = '#fff'; draftVertices.forEach(v => { ctx.fillRect(v.x-3, v.y-3, 6, 6); });
+                    }
+                } else if (drawState.step === 1) {
+                    let pts = generateShapeVertices(drawState.tool, drawState.startX, drawState.startY, px, py);
+                    if (pts.length > 0) {
+                        let collides = checkDraftCollision(pts, state.activeLayer, false); ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for(let i=1; i<pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath();
+                        ctx.strokeStyle = collides ? "#FF0055" : LAYERS[state.activeLayer].color; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+                    }
+                }
+            }
+
+            if (state.mode === 'GEAR') {
+                const px = snap(mouse.x); const py = snap(mouse.y); let gData = generateGearVertices(gearState.teeth, gearState.type);
+                ctx.save(); ctx.translate(px, py); ctx.beginPath(); ctx.moveTo(gData.pts[0].x, gData.pts[0].y); for(let i=1; i<gData.pts.length; i++) ctx.lineTo(gData.pts[i].x, gData.pts[i].y); ctx.closePath();
+                let checkPoly = gData.pts.map(v => ({x: v.x + px, y: v.y + py})); let collides = checkDraftCollision(checkPoly, state.activeLayer, true); 
+                ctx.strokeStyle = collides ? 'rgba(255, 0, 85, 0.5)' : 'rgba(149, 255, 119, 0.5)'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.beginPath(); ctx.arc(0,0,gData.R,0,Math.PI*2); ctx.setLineDash([5,5]); ctx.stroke(); ctx.restore();
+            }
+
+            if (slotDrafting && slotStart) { ctx.beginPath(); ctx.moveTo(slotStart.x, slotStart.y); ctx.lineTo(snap(mouse.x), snap(mouse.y)); ctx.strokeStyle = COLORS.jointSlot; ctx.lineWidth = 4; ctx.stroke(); }
+            if (state.mode === 'MOTION' && state.tool === 'CHAIN' && chainStartBody) {
+                let b = rigidBodies.find(x => x.id === chainStartBody);
+                if (b) { ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(mouse.x, mouse.y); ctx.strokeStyle = '#888'; ctx.lineWidth = 4; ctx.setLineDash([10,10]); ctx.stroke(); ctx.setLineDash([]); }
+            }
+
+            if (state.mode === 'INTERACT' && actionTarget1) {
+                let sx = actionTarget1.worldX; let sy = actionTarget1.worldY; if (actionTarget1.type === 'SLOT') { sx = actionTarget1.wA.x; sy = actionTarget1.wA.y; }
+                if (interactTool === 'align') { ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(snap(mouse.x), snap(mouse.y)); ctx.strokeStyle = '#FFB300'; ctx.lineWidth = 2; ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]); } 
+                else if (interactTool === 'link') { ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(snap(mouse.x), snap(mouse.y)); ctx.strokeStyle = '#FF0055'; ctx.lineWidth = 2; ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]); }
+                ctx.beginPath(); ctx.arc(sx, sy, 8, 0, Math.PI*2); ctx.fillStyle = (interactTool === 'align') ? '#FFB300' : '#00F3FF'; ctx.fill();
+            }
+
+            if (state.mode === 'MOTION' && !pendingMotorPos && state.tool !== 'SLOT' && state.tool !== 'CHAIN') {
+                const px = snap(mouse.x); const py = snap(mouse.y);
+                let hitBodies = rigidBodies.filter(b => b.layer === state.activeLayer && isStrictlyInside(px, py, b)); let isValid = hitBodies.length > 0;
+                ctx.globalAlpha = isValid ? 1.0 : 0.4; let previewLinkType = (state.tool === 'JOINT_FIX') ? 'FIX' : 'FREE'; let previewJointType = (state.tool === 'ACTUATOR') ? 'MOTOR' : 'PIN';
+                if(!isValid) { ctx.strokeStyle = '#FF0055'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(px-10, py-10); ctx.lineTo(px+10, py+10); ctx.moveTo(px+10, py-10); ctx.lineTo(px-10, py+10); ctx.stroke(); } 
+                else { drawFeatureIcon(px, py, previewJointType, previewLinkType, false); }
+                ctx.beginPath(); ctx.moveTo(px-15, py); ctx.lineTo(px+15, py); ctx.moveTo(px, py-15); ctx.lineTo(px, py+15);
+                ctx.strokeStyle = isValid ? 'rgba(255,255,255,0.8)' : 'rgba(255,0,85,0.8)'; ctx.lineWidth = 1; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+            }
+        }
+
+        function drawBodies() {
+            rigidBodies.forEach(body => {
+                if (!LAYERS[body.layer].visible) return;
+                body.traceFeatures.forEach(t => {
+                    if(t.history.length > 1) { ctx.beginPath(); ctx.moveTo(t.history[0].x, t.history[0].y); for(let i=1; i<t.history.length; i++) ctx.lineTo(t.history[i].x, t.history[i].y); ctx.strokeStyle = COLORS.trace; ctx.lineWidth = 3; ctx.shadowBlur = 10; ctx.shadowColor = COLORS.trace; ctx.stroke(); ctx.shadowBlur = 0; }
+                });
+            });
+
+            globalJoints.forEach(j => {
+                if(j.type === 'CHAIN') {
+                    let b1 = rigidBodies.find(x => x.id === j.b1); let b2 = rigidBodies.find(x => x.id === j.b2);
+                    if (b1 && b2 && b1.isGear && b2.isGear && LAYERS[b1.layer].visible) {
+                        let x1 = b1.x, y1 = b1.y, r1 = b1.pitchRadius; let x2 = b2.x, y2 = b2.y, r2 = b2.pitchRadius; let dx = x2 - x1; let dy = y2 - y1; let dist = Math.hypot(dx, dy);
+                        if (dist > Math.abs(r1 - r2)) {
+                            let angle = Math.atan2(dy, dx); let theta = Math.acos((r1 - r2) / dist); let a1 = angle + theta; let a2 = angle - theta;
+                            let p1x = x1 + r1 * Math.cos(a1), p1y = y1 + r1 * Math.sin(a1); let p2x = x2 + r2 * Math.cos(a1), p2y = y2 + r2 * Math.sin(a1); let p3x = x2 + r2 * Math.cos(a2), p3y = y2 + r2 * Math.sin(a2); let p4x = x1 + r1 * Math.cos(a2), p4y = y1 + r1 * Math.sin(a2);
+                            ctx.beginPath(); ctx.moveTo(p1x, p1y); ctx.lineTo(p2x, p2y); ctx.arc(x2, y2, r2, a1, a2, true); ctx.lineTo(p4x, p4y); ctx.arc(x1, y1, r1, a2, a1, true);
+                            ctx.strokeStyle = '#555'; ctx.lineWidth = 6; ctx.setLineDash([8, 8]); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineDashOffset = -b1.angle * r1; ctx.stroke(); ctx.setLineDash([]);
+                            if (selectedJoints.includes(j)) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
+                        }
+                    }
+                } else if(j.type === 'SLOT') {
+                    let wA = j.wA, wB = j.wB; let slotColor = COLORS.jointSlot; let isVis = false;
+                    if (j.slotBodyId) { const sb = rigidBodies.find(x => x.id === j.slotBodyId); if (sb && LAYERS[sb.layer].visible) { slotColor = sb.color; isVis = true; } }
+                    if (wA && wB && isVis) {
+                        ctx.beginPath(); ctx.moveTo(wA.x, wA.y); ctx.lineTo(wB.x, wB.y); ctx.strokeStyle = slotColor; ctx.lineWidth = 14; ctx.lineCap = 'round'; ctx.stroke();
+                        ctx.globalCompositeOperation = 'destination-out'; ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.lineWidth = 8; ctx.stroke(); ctx.globalCompositeOperation = 'source-over';
+                        if (selectedJoints.includes(j)) { ctx.beginPath(); ctx.moveTo(wA.x, wA.y); ctx.lineTo(wB.x, wB.y); ctx.strokeStyle = '#fff'; ctx.lineWidth = 16; ctx.stroke(); ctx.globalCompositeOperation = 'destination-out'; ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.lineWidth = 10; ctx.stroke(); ctx.globalCompositeOperation = 'source-over'; }
+                        if (j.linkedJoints) { j.linkedJoints.forEach(jId => { let tj = globalJoints.find(gj => gj.id === jId); if (tj) { ctx.fillStyle = selectedJoints.includes(j) ? '#fff' : '#aaa'; ctx.beginPath(); ctx.arc(tj.worldX, tj.worldY, 6, 0, Math.PI*2); ctx.fill(); } }); }
+                    }
+                }
+            });
+
+            rigidBodies.forEach(body => {
+                if (!LAYERS[body.layer].visible) return; let isActiveLayer = (body.layer === state.activeLayer);
+                ctx.save(); ctx.translate(body.x, body.y); ctx.rotate(body.angle);
+                if (!isActiveLayer) { ctx.globalAlpha = 0.3; }
+                body.polygons.forEach(poly => {
+                    ctx.beginPath(); ctx.moveTo(poly[0].x, poly[0].y); for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x, poly[i].y); ctx.closePath();
+                    const isSelected = selectedBodies.includes(body);
+                    ctx.fillStyle = isSelected ? '#fff' : body.color; ctx.globalAlpha = isSelected ? 0.2 : (isActiveLayer ? 0.05 : 0.02); ctx.fill(); ctx.globalAlpha = isActiveLayer ? 1.0 : 0.3;
+                    if (body.isStatic) { ctx.fillStyle = staticPattern; ctx.fill(); }
+                    ctx.strokeStyle = isSelected ? '#fff' : body.color; ctx.lineWidth = isSelected ? 3 : 2; ctx.shadowBlur = 0; 
+                    if (isSelected) { ctx.shadowBlur = 15; ctx.shadowColor = '#fff'; } ctx.stroke(); ctx.shadowBlur = 0;
+                });
+                ctx.fillStyle = '#444'; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill();
+                body.traceFeatures.forEach(t => { ctx.beginPath(); ctx.arc(t.localX, t.localY, 3, 0, Math.PI*2); ctx.fillStyle=COLORS.trace; ctx.fill(); });
+                if (body.isGear) { ctx.beginPath(); ctx.arc(0, 0, body.pitchRadius, 0, Math.PI*2); ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.setLineDash([5,5]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]); }
+                ctx.restore();
+            });
+
+            let ringLocations = [];
+            globalJoints.forEach(j => {
+                if (j.type === 'CHAIN' || j.type === 'SLOT') return; 
+                let x = j.worldX; let y = j.worldY; if (x === undefined || y === undefined) return;
+                let isVis = j.links && j.links.some(l => { const b=rigidBodies.find(bx=>bx.id===l.bodyId); return b && LAYERS[b.layer].visible; }); if (!isVis) return;
+                let linked = false; if (j.links && j.links.length > 1) linked = true; if (globalJoints.some(sj => sj.type === 'SLOT' && sj.linkedJoints && sj.linkedJoints.includes(j.id))) linked = true;
+                let isActive = j.links && j.links.some(l => { const b=rigidBodies.find(bx=>bx.id===l.bodyId); return b && b.layer === state.activeLayer && LAYERS[b.layer].visible; });
+                let loc = ringLocations.find(loc => Math.hypot(loc.x - x, loc.y - y) < 10);
+                if (!loc) { ringLocations.push({ x: x, y: y, hasLinked: linked, hasUnlinked: !linked, activeLayerVisible: isActive }); } 
+                else { if (linked) loc.hasLinked = true; if (!linked) loc.hasUnlinked = true; if (isActive) loc.activeLayerVisible = true; }
+            });
+
+            ringLocations.forEach(loc => {
+                if (loc.hasLinked) {
+                    ctx.beginPath(); ctx.arc(loc.x, loc.y, 17, 0, Math.PI * 2); ctx.lineWidth = 2; ctx.strokeStyle = '#95FF77'; ctx.globalAlpha = loc.activeLayerVisible ? 1.0 : 0.3;
+                    if (loc.hasUnlinked) { ctx.setLineDash([5, 4]); ctx.lineDashOffset = -(Date.now() % 10000) / 20; } else { ctx.setLineDash([]); }
+                    ctx.shadowBlur = 8; ctx.shadowColor = '#95FF77'; ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur = 0; ctx.globalAlpha = 1.0;
+                }
+            });
+
+            globalJoints.forEach(j => {
+                if(j.type !== 'SLOT' && j.type !== 'CHAIN') {
+                    let visible = false; let belongsToActive = false;
+                    if (j.links && j.links.length > 0) {
+                        visible = j.links.some(l => { const b = rigidBodies.find(x=>x.id===l.bodyId); return b && LAYERS[b.layer].visible; });
+                        belongsToActive = j.links.some(l => { const b = rigidBodies.find(x=>x.id===l.bodyId); return b && b.layer === state.activeLayer; });
+                    } else { visible = true; belongsToActive = true; }
+
+                    if(visible) {
+                        ctx.globalAlpha = belongsToActive ? 1.0 : 0.3;
+                        let drawAsLinkType = 'FREE'; if (j.links.some(l => l.type === 'FIX')) drawAsLinkType = 'FIX';
+                        let isSelected = selectedJoints.includes(j) || (j === actionTarget1);
+                        if (isSelected) { ctx.beginPath(); ctx.arc(j.worldX, j.worldY, 12, 0, Math.PI*2); ctx.strokeStyle = '#fff'; ctx.setLineDash([2,2]); ctx.stroke(); ctx.setLineDash([]); }
+                        drawFeatureIcon(j.worldX, j.worldY, j.type, drawAsLinkType, isSelected); ctx.globalAlpha = 1.0;
+                    }
+                }
+            });
+        }
+
+        function simLoop() {
+            if (window.isPlaying) { state.time++; solvePhysics(true); }
+            ctx.fillStyle = COLORS.bg; ctx.fillRect(0, 0, state.width, state.height);
+            drawGrid(); drawBodies(); drawDraft(); drawSelectionBox();
+            requestAnimationFrame(simLoop);
+        }
+
+        init();
+
+    </script>
+</body>
+</html>

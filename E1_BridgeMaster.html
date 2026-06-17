@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BRIDGE_MASTER_LAB v6.1 // MOBILE FIX</title>
+    
+    <!-- Import Share Tech Mono Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #1A1C1B;
+            --terminal-green: #95FF77;     
+            --plasma-orange: #FF8800;      
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            --track-grey: #2A2C2B;
+            --muted-text: #888888;
+            --alert-red: #FF3300;
+            --electric-blue: #00F3FF;      
+            
+            --main-font: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Dark Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--void-black); }
+        ::-webkit-scrollbar-thumb { background: var(--wire-off); border-radius: 4px; border: 1px solid var(--void-black); }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--void-black);
+            color: var(--terminal-green);
+            font-family: var(--main-font);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- LAYOUT --- */
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 1. TOP TOOLBAR */
+        #toolbar {
+            height: 60px;
+            background-color: var(--graphite-grey);
+            border-bottom: 1px solid var(--terminal-green);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 10;
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+
+        .tools {
+            display: flex;
+            gap: 10px;
+        }
+
+        .cyber-btn {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            padding: 8px 16px;
+            font-family: var(--main-font);
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .cyber-btn:hover { background: var(--terminal-green); color: #000; }
+        .cyber-btn.active { background: var(--terminal-green); color: #000; font-weight: bold; box-shadow: 0 0 10px var(--terminal-green); }
+        
+        .btn-test { border-color: var(--plasma-orange); color: var(--plasma-orange); }
+        .btn-test:hover { background: var(--plasma-orange); color: #000; }
+        .btn-test.active { background: var(--plasma-orange); color: #000; box-shadow: 0 0 15px var(--plasma-orange); }
+        
+        .btn-reset { border-color: var(--alert-red); color: var(--alert-red); }
+        .btn-reset:hover { background: var(--alert-red); color: #000; }
+
+        /* 2. MAIN CANVAS */
+        #sim-stage {
+            flex: 1;
+            position: relative;
+            background-color: var(--void-black);
+            overflow: hidden;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 3. ENGINEERING OVERLAY */
+        #engineering-data {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.85);
+            border: 1px solid var(--terminal-green);
+            padding: 0; 
+            pointer-events: auto; 
+            backdrop-filter: blur(5px);
+            min-width: 260px;
+            transition: all 0.3s;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .data-header {
+            padding: 10px;
+            background: rgba(149, 255, 119, 0.1);
+            border-bottom: 1px solid var(--terminal-green);
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .data-content {
+            padding: 10px;
+            display: block;
+        }
+        
+        #engineering-data.collapsed .data-content {
+            display: none;
+        }
+        
+        #engineering-data.collapsed {
+            height: auto;
+            min-width: 180px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            border-bottom: 1px dashed #333;
+            padding-bottom: 2px;
+        }
+        .data-label { color: var(--muted-text); }
+        .data-val { color: #fff; font-weight: bold; }
+        
+        #status-display {
+            margin-top: 10px;
+            text-align: center;
+            font-weight: bold;
+            color: var(--terminal-green);
+            border: 1px solid var(--terminal-green);
+            padding: 5px;
+        }
+
+        /* Controls Group */
+        .control-group {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #333;
+        }
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--plasma-orange);
+            margin-bottom: 5px;
+        }
+        
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer;
+            background: var(--track-grey); border: 1px solid #444;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px; width: 10px; border: 1px solid var(--plasma-orange);
+            background: #000; cursor: pointer; -webkit-appearance: none;
+            margin-top: -7px; box-shadow: 0 0 5px var(--plasma-orange);
+        }
+
+        /* Gap Button Grid */
+        .gap-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 5px;
+        }
+        .gap-btn {
+            background: transparent;
+            border: 1px solid var(--muted-text);
+            color: var(--muted-text);
+            font-size: 0.7rem;
+            padding: 5px 0;
+            cursor: pointer;
+            font-family: var(--main-font);
+        }
+        .gap-btn:hover { border-color: var(--electric-blue); color: var(--electric-blue); }
+        .gap-btn.active { background: rgba(0, 243, 255, 0.2); border-color: var(--electric-blue); color: var(--electric-blue); font-weight: bold; }
+
+        /* Test Controls */
+        .test-controls {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .test-btn {
+            flex: 1;
+            font-size: 0.7rem;
+            padding: 5px;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 768px) {
+            #toolbar { 
+                padding: 10px; 
+                height: auto; 
+                flex-wrap: wrap; 
+                justify-content: center; 
+                gap: 10px;
+            }
+            .logo { width: 100%; text-align: center; margin-bottom: 5px; font-size: 1rem; }
+            .tools { width: 100%; justify-content: center; flex-wrap: wrap; gap: 5px; }
+            .cyber-btn { padding: 6px 10px; font-size: 0.7rem; flex: 1; justify-content: center; min-width: 60px; }
+            
+            /* Mobile Layout: Move Data to Top */
+            #engineering-data { 
+                top: 10px;      /* Stick to top */
+                left: 10px; 
+                right: 10px; 
+                width: auto; 
+                font-size: 0.8rem;
+                bottom: auto;   /* Unset bottom */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- TOOLBAR -->
+        <div id="toolbar">
+            <div class="logo">BRIDGE_MASTER <span style="font-size:0.6em; opacity:0.7;">// E1</span></div>
+            <div class="tools">
+                <button id="tool-build" class="cyber-btn active" onclick="setTool('BUILD')">✏️ BUILD</button>
+                <button id="tool-erase" class="cyber-btn" onclick="setTool('ERASE')">🧹 ERASE</button>
+                <button id="btn-reset" class="cyber-btn btn-reset" onclick="resetBridge()">🔄 RESET</button>
+            </div>
+        </div>
+
+        <!-- SIMULATION STAGE -->
+        <div id="sim-stage">
+            <canvas id="simCanvas"></canvas>
+            
+            <div id="engineering-data">
+                <div class="data-header" onclick="toggleDataPanel()">
+                    <span>ENGINEERING DATA</span>
+                    <span id="toggle-icon">[ - ]</span>
+                </div>
+                <div class="data-content">
+                    
+                    <!-- GAP WIDTH CONFIG -->
+                    <div class="control-group">
+                        <div class="veh-header" style="color:var(--electric-blue); font-size:0.8rem; margin-bottom:5px;">GAP WIDTH (GRID UNITS)</div>
+                        <div class="gap-grid">
+                            <button class="gap-btn active" onclick="setGap(10)">10</button>
+                            <button class="gap-btn" onclick="setGap(12)">12</button>
+                            <button class="gap-btn" onclick="setGap(14)">14</button>
+                            <button class="gap-btn" onclick="setGap(16)">16</button>
+                            <button class="gap-btn" onclick="setGap(18)">18</button>
+                            <button class="gap-btn" onclick="setGap(20)">20</button>
+                        </div>
+                    </div>
+
+                    <!-- VEHICLE CONFIG -->
+                    <div class="control-group">
+                        <div class="veh-header" style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--plasma-orange); margin-bottom:5px;">
+                            <span>VEHICLE LOAD</span>
+                            <span id="val-weight">SEDAN (10 TONS)</span>
+                        </div>
+                        <input type="range" id="weight-slider" min="10" max="60" value="10" step="5" oninput="updateVehicleWeight()">
+                        
+                        <!-- DIRECTION CONTROLS -->
+                        <div class="test-controls">
+                            <button id="btn-test-L" class="cyber-btn btn-test test-btn" onclick="toggleSim(1)">TEST >>></button>
+                            <button id="btn-test-R" class="cyber-btn btn-test test-btn" onclick="toggleSim(-1)">TEST <<<</button>
+                        </div>
+                    </div>
+
+                    <div class="data-row">
+                        <span class="data-label">COST / WEIGHT</span>
+                        <span id="val-cost" class="data-val">0</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">MAX STRESS</span>
+                        <span id="val-stress" class="data-val">0%</span>
+                    </div>
+                    <div id="status-display">DESIGN PHASE</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * E1: BRIDGE_MASTER_LAB v6.1
+         * FIXES: Mobile Horizontal Initialization, Adaptive Zoom, Safe Start
+         */
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- CONFIG ---
+        const COLORS = {
+            bg: '#1A1C1B',
+            grid: 'rgba(149, 255, 119, 0.05)',
+            anchor: '#00F3FF',     
+            node: '#95FF77',       
+            beamSafe: '#95FF77',   
+            beamStress: '#FF8800', 
+            beamBreak: '#FF3300',  
+            beamDeck: '#00F3FF',   
+            vehicle: '#FF8800',
+            ground: '#2A2C2B'
+        };
+
+        const PHYSICS = {
+            gravity: 0.5,
+            friction: 0.98, 
+            stiffness: 0.6,   
+            breakLimit: 0.18, 
+            climbLimit: 0.5,  
+            sagLimit: 40.0    
+        };
+
+        const BASE_GRID_SIZE = 40;
+        let GRID_SIZE = 40; // Dynamic based on zoom
+        let NODE_HIT_RADIUS = 20;
+        let MAX_BEAM_LENGTH = GRID_SIZE * 5; 
+
+        // --- STATE ---
+        let nodes = [];
+        let beams = [];
+        let anchors = []; 
+        let savedNodesState = []; 
+        let particles = []; 
+        
+        let mode = 'BUILD'; 
+        let isSimulating = false;
+        let isCollapsing = false; 
+        let vehicleTimer = 0; 
+        let dragStartNode = null;
+        let mousePos = { x: 0, y: 0 };
+        let activeNode = null; 
+        
+        // Vehicle State
+        let vehicle = {
+            active: false,
+            x: 0, y: 0,
+            vx: 0, vy: 0,
+            angle: 0, 
+            dir: 1, 
+            width: 40, height: 20,
+            weight: 1.0, 
+            type: 'SEDAN'
+        };
+        
+        // Level Geometry
+        let groundLevelY = 0;
+        let gapLeftX = 0;
+        let gapRightX = 0;
+        let canyonFloorY = 0;
+        let isInitialized = false;
+        let currentGapUnits = 10; 
+        let viewScale = 1.0;
+
+        // --- AUDIO ENGINE ---
+        const AudioSys = {
+            ctx: null,
+            init: function() {
+                if (!this.ctx) {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AC();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            playTone: function(freq, type, duration, vol=0.1) {
+                if(!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + duration);
+            },
+            playBuild: function() { this.playTone(600, 'square', 0.05); },
+            playConnect: function() { this.playTone(800, 'sine', 0.1); },
+            playBreak: function() { 
+                this.playTone(100, 'sawtooth', 0.1, 0.4); 
+                setTimeout(() => this.playTone(50, 'square', 0.2, 0.3), 50);
+            },
+            playFail: function() { 
+                this.playTone(150, 'sawtooth', 0.5); 
+                setTimeout(() => this.playTone(80, 'sawtooth', 0.8), 100);
+            },
+            playSuccess: function() { 
+                this.playTone(500, 'triangle', 0.1); 
+                setTimeout(() => this.playTone(800, 'triangle', 0.2), 100);
+            }
+        };
+
+        // --- HELPER: COLOR GRADIENT ---
+        function getStressColor(ratio, isDeck) {
+            const strain = ratio * PHYSICS.breakLimit;
+            if (strain < 0.10) return isDeck ? COLORS.beamDeck : COLORS.beamSafe; 
+            else if (strain < 0.15) return COLORS.beamStress; 
+            else return COLORS.beamBreak; 
+        }
+
+        // --- PARTICLES ---
+        function spawnBreakFX(x, y) {
+            for(let i=0; i<10; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 1.0,
+                    color: i % 2 === 0 ? COLORS.alert_red : '#FFF'
+                });
+            }
+        }
+
+        function updateParticles() {
+            for(let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2; 
+                p.life -= 0.02;
+                if(p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, 3, 3);
+                ctx.globalAlpha = 1.0;
+            });
+        }
+
+        // --- INITIALIZATION ---
+        function initLevel() {
+            nodes = []; beams = []; anchors = []; particles = [];
+            const w = canvas.width; const h = canvas.height;
+            
+            // Adaptive Scale for Wide Gaps on Mobile
+            viewScale = 1.0;
+            const requiredWidth = (currentGapUnits + 6) * BASE_GRID_SIZE; // Gap + Banks
+            if (w < requiredWidth) {
+                viewScale = w / requiredWidth;
+            }
+            // Limit minimum scale for visibility
+            if (viewScale < 0.6) viewScale = 0.6;
+            
+            // Apply scale
+            GRID_SIZE = BASE_GRID_SIZE * viewScale;
+            NODE_HIT_RADIUS = 20 * viewScale;
+            MAX_BEAM_LENGTH = GRID_SIZE * 5;
+            
+            // Update Vehicle size visually (physics uses same mass, just visual scale)
+            vehicle.width = 40 * viewScale;
+            vehicle.height = 20 * viewScale;
+
+            groundLevelY = Math.round((h * 0.6) / GRID_SIZE) * GRID_SIZE; 
+            
+            // Adjustable Gap
+            const gapWidth = currentGapUnits * GRID_SIZE; 
+            gapLeftX = Math.round(((w - gapWidth) / 2) / GRID_SIZE) * GRID_SIZE;
+            gapRightX = gapLeftX + gapWidth;
+            canyonFloorY = h - 20;
+
+            addNode(gapLeftX, groundLevelY, true);
+            addNode(gapLeftX, groundLevelY + (40*viewScale), true);
+            addNode(gapLeftX, groundLevelY + (80*viewScale), true);
+            addNode(gapLeftX, groundLevelY + (120*viewScale), true);
+
+            addNode(gapRightX, groundLevelY, true);
+            addNode(gapRightX, groundLevelY + (40*viewScale), true);
+            addNode(gapRightX, groundLevelY + (80*viewScale), true);
+            addNode(gapRightX, groundLevelY + (120*viewScale), true);
+
+            isInitialized = true;
+            updateVehicleWeight(); 
+        }
+
+        function setGap(units) {
+            currentGapUnits = units;
+            document.querySelectorAll('.gap-btn').forEach(b => {
+                b.classList.remove('active');
+                if(b.innerText == units) b.classList.add('active');
+            });
+            resetBridge();
+        }
+
+        function addNode(x, y, fixed=false) {
+            const existing = findNodeNear(x, y, 10 * viewScale);
+            if(existing) return existing;
+            const node = { x: x, y: y, oldx: x, oldy: y, designY: y, fixed: fixed, id: nodes.length };
+            nodes.push(node);
+            if(fixed) anchors.push(node.id);
+            return node;
+        }
+
+        function addBeam(n1, n2) {
+            if(n1 === n2) return;
+            const exists = beams.find(b => (b.n1 === n1 && b.n2 === n2) || (b.n1 === n2 && b.n2 === n1));
+            if(exists) return;
+            const dist = Math.hypot(n2.x - n1.x, n2.y - n1.y);
+            if(dist > MAX_BEAM_LENGTH + 1) return; 
+
+            const isHorizontal = Math.abs(n1.y - n2.y) < 5;
+            const isAtGroundHeight = Math.abs(n1.y - groundLevelY) < 5;
+            const isDeck = isHorizontal && isAtGroundHeight;
+
+            beams.push({ n1: n1, n2: n2, len: dist, stress: 0, broken: false, isDeck: isDeck });
+            AudioSys.playConnect();
+        }
+
+        function findNodeNear(x, y, radius=NODE_HIT_RADIUS) {
+            let closest = null; let minDist = radius;
+            for(let n of nodes) {
+                const d = Math.hypot(n.x - x, n.y - y);
+                if (d < minDist) { minDist = d; closest = n; }
+            }
+            return closest;
+        }
+        
+        function findBeamNear(x, y) {
+            for(let b of beams) {
+                const dist = distToSegment(x, y, b.n1.x, b.n1.y, b.n2.x, b.n2.y);
+                if(dist < 10) return b;
+            }
+            return null;
+        }
+
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            const l2 = (x1-x2)**2 + (y1-y2)**2;
+            if (l2 === 0) return Math.hypot(px-x1, py-y1);
+            let t = ((px-x1)*(x2-x1) + (py-y1)*(y2-y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t*(x2-x1)), py - (y1 + t*(y2-y1)));
+        }
+
+        // --- CONTROLS ---
+
+        function updateVehicleWeight() {
+            const val = parseInt(document.getElementById('weight-slider').value);
+            vehicle.weight = val * 0.1; 
+            if (val <= 20) {
+                vehicle.type = `SEDAN (${val} TONS)`;
+                vehicle.width = 40 * viewScale; vehicle.height = 20 * viewScale;
+            } else if (val <= 40) {
+                vehicle.type = `TRUCK (${val} TONS)`;
+                vehicle.width = 60 * viewScale; vehicle.height = 25 * viewScale;
+            } else {
+                vehicle.type = `TRAILER (${val} TONS)`;
+                vehicle.width = 90 * viewScale; vehicle.height = 30 * viewScale;
+            }
+            document.getElementById('val-weight').innerText = vehicle.type;
+            if(isSimulating) resetSim(); 
+        }
+
+        function setTool(t) {
+            AudioSys.init();
+            if(isSimulating) resetSim();
+            mode = t;
+            document.querySelectorAll('.cyber-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(t === 'BUILD' ? 'tool-build' : 'tool-erase').classList.add('active');
+        }
+
+        function toggleDataPanel() {
+            const panel = document.getElementById('engineering-data');
+            panel.classList.toggle('collapsed');
+            const icon = document.getElementById('toggle-icon');
+            icon.innerText = panel.classList.contains('collapsed') ? "[ + ]" : "[ - ]";
+        }
+
+        function toggleSim(direction = 1) {
+            AudioSys.init();
+            if(isSimulating) {
+                resetSim();
+            } else {
+                if(beams.length === 0) return;
+                savedNodesState = nodes.map(n => ({x: n.x, y: n.y, oldx: n.oldx, oldy: n.oldy, designY: n.designY}));
+                isSimulating = true;
+                isCollapsing = false; 
+                vehicle.active = true;
+                vehicle.dir = direction;
+                vehicle.vx = 0; 
+                vehicle.vy = 0;
+                vehicle.angle = 0;
+                vehicleTimer = 60; 
+                
+                // SAFE START: Start firmly on the bank
+                if (direction === 1) {
+                    vehicle.x = gapLeftX - vehicle.width - 40; 
+                    document.getElementById('btn-test-L').classList.add('active');
+                } else {
+                    vehicle.x = gapRightX + 40; 
+                    document.getElementById('btn-test-R').classList.add('active');
+                }
+                
+                vehicle.y = groundLevelY - vehicle.height - 1; 
+                document.getElementById('status-display').innerText = "STABILIZING...";
+                document.getElementById('status-display').style.color = COLORS.plasma_orange;
+            }
+        }
+
+        function triggerCollapse(reason) {
+            if(isCollapsing) return; 
+            isCollapsing = true;
+            AudioSys.playFail();
+            document.getElementById('status-display').innerText = "FAILED: " + reason;
+            document.getElementById('status-display').style.color = COLORS.alert_red;
+        }
+
+        function resetSim() {
+            isSimulating = false;
+            vehicle.active = false;
+            isCollapsing = false;
+            particles = [];
+            
+            if(savedNodesState.length === nodes.length) {
+                nodes.forEach((n, i) => {
+                    n.x = savedNodesState[i].x; n.y = savedNodesState[i].y;
+                    n.oldx = savedNodesState[i].oldx; n.oldy = savedNodesState[i].oldy;
+                });
+            }
+            beams.forEach(b => { b.broken = false; b.stress = 0; });
+            document.querySelectorAll('.test-btn').forEach(b => { b.classList.remove('active'); });
+            document.getElementById('status-display').innerText = "DESIGN PHASE";
+            document.getElementById('status-display').style.color = COLORS.green;
+            document.getElementById('val-stress').innerText = "0%";
+            document.getElementById('val-stress').style.color = '#fff';
+        }
+
+        function resetBridge() {
+            AudioSys.init();
+            resetSim();
+            initLevel();
+            AudioSys.playBreak(); 
+        }
+
+        // --- INPUT HANDLING ---
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let cx, cy;
+            if(e.touches && e.touches.length > 0) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+            else if (e.changedTouches && e.changedTouches.length > 0) { cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY; }
+            else { cx = e.clientX; cy = e.clientY; }
+            return { x: cx - rect.left, y: cy - rect.top };
+        }
+        function snapToGrid(x, y) { return { x: Math.round(x / GRID_SIZE) * GRID_SIZE, y: Math.round(y / GRID_SIZE) * GRID_SIZE }; }
+        canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('touchstart', handleStart, {passive:false});
+        canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('touchmove', handleMove, {passive:false});
+        canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('touchend', handleEnd, {passive:false});
+        
+        function handleStart(e) {
+            if(isSimulating) return;
+            if(e.target === canvas) e.preventDefault(); 
+            AudioSys.init();
+            const pos = getMousePos(e);
+            mousePos = pos;
+            let target = findNodeNear(pos.x, pos.y);
+            if (!target) {
+                const snapped = snapToGrid(pos.x, pos.y);
+                if (Math.hypot(pos.x - snapped.x, pos.y - snapped.y) < 25) target = addNode(snapped.x, snapped.y);
+            }
+            if (mode === 'BUILD' && target) { dragStartNode = target; AudioSys.playBuild(); }
+            else if (mode === 'ERASE') {
+                if(target && !target.fixed) { nodes = nodes.filter(x => x !== target); beams = beams.filter(b => b.n1 !== target && b.n2 !== target); AudioSys.playBreak(); }
+                else { const b = findBeamNear(pos.x, pos.y); if(b) { beams = beams.filter(x => x !== b); AudioSys.playBreak(); } }
+            }
+        }
+        function handleMove(e) {
+            if(e.target === canvas) e.preventDefault(); 
+            const pos = getMousePos(e);
+            mousePos = pos;
+            activeNode = findNodeNear(pos.x, pos.y);
+            if (!activeNode) {
+                const snapped = snapToGrid(pos.x, pos.y);
+                if (Math.hypot(pos.x - snapped.x, pos.y - snapped.y) < 25) activeNode = {x: snapped.x, y: snapped.y, ghost: true};
+            }
+        }
+        function handleEnd(e) {
+            if(isSimulating) return;
+            if(e.target === canvas) e.preventDefault();
+            if(mode === 'BUILD' && dragStartNode) {
+                const pos = getMousePos(e);
+                let target = findNodeNear(pos.x, pos.y);
+                if (!target) {
+                    const snapped = snapToGrid(pos.x, pos.y);
+                    if (Math.hypot(pos.x - snapped.x, pos.y - snapped.y) < 25) {
+                        if (Math.hypot(dragStartNode.x - snapped.x, dragStartNode.y - snapped.y) > 5) target = addNode(snapped.x, snapped.y);
+                    }
+                }
+                if(target && target !== dragStartNode) addBeam(dragStartNode, target);
+            }
+            dragStartNode = null;
+        }
+
+        // --- PHYSICS ENGINE (Verlet) ---
+
+        function updatePhysics() {
+            if(!isSimulating) return;
+
+            if(vehicle.active) {
+                if(!isCollapsing) {
+                    if (vehicleTimer > 0) {
+                        vehicleTimer--;
+                    } else {
+                        vehicle.vx = 1.0 * vehicle.dir; 
+                        vehicle.x += vehicle.vx;
+                    }
+                    
+                    const passedRight = (vehicle.dir === 1 && vehicle.x > canvas.width);
+                    const passedLeft = (vehicle.dir === -1 && vehicle.x + vehicle.width < 0);
+                    if(passedRight || passedLeft) {
+                        vehicle.active = false;
+                        document.getElementById('status-display').innerText = "SUCCESS: BRIDGE HELD!";
+                        AudioSys.playSuccess();
+                    }
+                } else {
+                    vehicle.vy += PHYSICS.gravity;
+                    vehicle.y += vehicle.vy;
+                    vehicle.x += vehicle.vx;
+                    vehicle.vx *= 0.99;
+                    vehicle.angle += (vehicle.vx * 0.05); 
+                    if(vehicle.y > canyonFloorY - vehicle.height) {
+                        vehicle.y = canyonFloorY - vehicle.height;
+                        vehicle.vy *= -0.3; vehicle.vx *= 0.8;
+                    }
+                }
+            }
+
+            for(let n of nodes) {
+                if(n.fixed) continue;
+                if(!isCollapsing && n.y > n.designY + PHYSICS.sagLimit) {
+                    triggerCollapse("STRUCTURAL SAG");
+                    beams.filter(b => b.n1 === n || b.n2 === n).forEach(b => {
+                        if(!b.broken) {
+                            b.broken = true;
+                            spawnBreakFX((b.n1.x + b.n2.x)/2, (b.n1.y + b.n2.y)/2);
+                        }
+                    });
+                }
+                const vx = (n.x - n.oldx) * PHYSICS.friction;
+                const vy = (n.y - n.oldy) * PHYSICS.friction;
+                n.oldx = n.x; n.oldy = n.y;
+                n.x += vx; n.y += vy; n.y += PHYSICS.gravity;
+
+                if (n.x < gapLeftX) { if(n.y > groundLevelY) { n.y = groundLevelY; n.x += (n.oldx - n.x) * 0.5; } }
+                else if (n.x > gapRightX) { if(n.y > groundLevelY) { n.y = groundLevelY; n.x += (n.oldx - n.x) * 0.5; } }
+                else { if(n.y > canyonFloorY) { n.y = canyonFloorY; n.x += (n.oldx - n.x) * 0.5; } }
+            }
+
+            if(vehicle.active && !isCollapsing) {
+                let supported = false;
+                const vehCenterX = vehicle.x + vehicle.width/2;
+                const vehBottomY = vehicle.y + vehicle.height;
+                
+                if (vehCenterX < gapLeftX || vehCenterX > gapRightX) {
+                    supported = true;
+                    vehicle.y = groundLevelY - vehicle.height - 1; 
+                } 
+                else {
+                    for(let b of beams) {
+                        if(b.broken) continue;
+                        const minX = Math.min(b.n1.x, b.n2.x); const maxX = Math.max(b.n1.x, b.n2.x);
+                        if (vehCenterX >= minX - 10 && vehCenterX <= maxX + 10) {
+                            const dx = b.n2.x - b.n1.x; const dy = b.n2.y - b.n1.y;
+                            const t = (vehCenterX - b.n1.x) / dx;
+                            if (!isFinite(t)) continue; 
+                            const beamY = b.n1.y + t * dy;
+                            if (Math.abs(beamY - (vehBottomY + 5)) < 60) {
+                                supported = true;
+                                const tClamped = Math.max(0, Math.min(1, t));
+                                if(!b.n1.fixed) b.n1.y += vehicle.weight * (1 - tClamped);
+                                if(!b.n2.fixed) b.n2.y += vehicle.weight * tClamped;
+                                vehicle.y = beamY - vehicle.height - 6.5; 
+                                let slopeAngle = Math.atan2(dy, dx);
+                                if (Math.abs(slopeAngle) > Math.PI/2) {
+                                    slopeAngle = slopeAngle > 0 ? slopeAngle - Math.PI : slopeAngle + Math.PI;
+                                }
+                                vehicle.angle = slopeAngle;
+                                break; 
+                            }
+                        }
+                    }
+                }
+                
+                if(!supported) {
+                    triggerCollapse("VEHICLE FELL");
+                }
+            }
+
+            const iterations = 10; 
+            for(let i=0; i<iterations; i++) {
+                let maxStress = 0;
+                for(let b of beams) {
+                    if(b.broken) continue; 
+                    const dx = b.n2.x - b.n1.x; const dy = b.n2.y - b.n1.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    const diff = dist - b.len;
+                    const percent = diff / b.len; 
+                    b.stress = Math.abs(percent);
+                    if(b.stress > maxStress) maxStress = b.stress;
+
+                    if(b.stress > PHYSICS.breakLimit) {
+                        b.broken = true; 
+                        spawnBreakFX((b.n1.x + b.n2.x)/2, (b.n1.y + b.n2.y)/2);
+                        triggerCollapse("TENSION SNAP");
+                    }
+
+                    const percentMove = diff / dist / 2 * PHYSICS.stiffness;
+                    const offsetX = dx * percentMove; const offsetY = dy * percentMove;
+                    if(!b.n1.fixed) { b.n1.x += offsetX; b.n1.y += offsetY; }
+                    if(!b.n2.fixed) { b.n2.x -= offsetX; b.n2.y -= offsetY; }
+                }
+                
+                const stressPct = Math.min(Math.round((maxStress / PHYSICS.breakLimit) * 100), 100);
+                document.getElementById('val-stress').innerText = stressPct + "%";
+                if(stressPct > 90) document.getElementById('val-stress').style.color = COLORS.alert_red;
+                else document.getElementById('val-stress').style.color = '#fff';
+            }
+            updateParticles();
+        }
+
+        // --- DRAWING ---
+        function drawGrid() {
+            ctx.strokeStyle = COLORS.grid; ctx.lineWidth = 1; ctx.beginPath();
+            for(let x=0; x<canvas.width; x+=GRID_SIZE) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+            for(let y=0; y<canvas.height; y+=GRID_SIZE) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+            ctx.stroke();
+            ctx.fillStyle = COLORS.ground;
+            ctx.fillRect(0, groundLevelY, gapLeftX, canvas.height - groundLevelY);
+            ctx.fillRect(gapRightX, groundLevelY, canvas.width - gapRightX, canvas.height - groundLevelY);
+            ctx.fillStyle = COLORS.anchor;
+            nodes.forEach(n => { if(n.fixed) { ctx.beginPath(); ctx.arc(n.x, n.y, 4*viewScale, 0, Math.PI*2); ctx.fill(); } });
+        }
+
+        function drawBridge() {
+            beams.forEach(b => {
+                if (!b.broken) {
+                    ctx.beginPath();
+                    ctx.moveTo(b.n1.x, b.n1.y); ctx.lineTo(b.n2.x, b.n2.y);
+                    const ratio = b.stress / PHYSICS.breakLimit;
+                    ctx.strokeStyle = getStressColor(ratio, b.isDeck);
+                    ctx.lineWidth = isSimulating ? 4*viewScale + (ratio * 4) : 3*viewScale;
+                    ctx.stroke();
+                }
+            });
+            nodes.forEach(n => {
+                if(n.fixed) return; 
+                ctx.fillStyle = COLORS.node;
+                ctx.beginPath(); ctx.arc(n.x, n.y, 4*viewScale, 0, Math.PI*2); ctx.fill();
+            });
+            if(activeNode && !isSimulating) {
+                ctx.strokeStyle = '#FFF'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(activeNode.x, activeNode.y, 8*viewScale, 0, Math.PI*2); ctx.stroke();
+            }
+        }
+
+        function drawBuilder() {
+            if(mode === 'BUILD' && dragStartNode) {
+                let endX = mousePos.x; let endY = mousePos.y;
+                if(activeNode) { endX = activeNode.x; endY = activeNode.y; }
+                const dist = Math.hypot(endX - dragStartNode.x, endY - dragStartNode.y);
+                ctx.beginPath(); ctx.moveTo(dragStartNode.x, dragStartNode.y); ctx.lineTo(endX, endY);
+                if (dist > MAX_BEAM_LENGTH) { ctx.strokeStyle = COLORS.alert_red; ctx.lineWidth = 3; } 
+                else { ctx.strokeStyle = 'rgba(149, 255, 119, 0.5)'; ctx.lineWidth = 2; }
+                ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+                if(activeNode) { ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; ctx.beginPath(); ctx.arc(activeNode.x, activeNode.y, 4*viewScale, 0, Math.PI*2); ctx.fill(); }
+            }
+        }
+
+        function drawVehicle() {
+            if(!vehicle.active && !isCollapsing) return;
+            ctx.save();
+            const cx = vehicle.x + vehicle.width/2;
+            const cy = vehicle.y + vehicle.height/2;
+            ctx.translate(cx, cy);
+            ctx.rotate(vehicle.angle); 
+            if(vehicle.dir === -1 && !isCollapsing) ctx.scale(-1, 1);
+            
+            ctx.translate(-cx, -cy);
+            ctx.fillStyle = COLORS.vehicle;
+            ctx.fillRect(vehicle.x, vehicle.y, vehicle.width, vehicle.height);
+            ctx.fillStyle = '#000';
+            const w = vehicle.width; const h = vehicle.height; const r = 5*viewScale;
+            ctx.beginPath(); ctx.arc(vehicle.x+10*viewScale, vehicle.y+h, r, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vehicle.x+w-10*viewScale, vehicle.y+h, r, 0, Math.PI*2); ctx.fill();
+            if(vehicle.weight > 2.0) { ctx.beginPath(); ctx.arc(vehicle.x+w/2, vehicle.y+h, r, 0, Math.PI*2); ctx.fill(); }
+            ctx.restore();
+        }
+
+        function loop() {
+            // Adaptive Resize
+            if(canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+                canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
+                // Only re-init if not simulating to avoid glitching
+                if(!isSimulating) initLevel();
+            }
+            updatePhysics();
+            ctx.fillStyle = COLORS.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawGrid(); drawBridge(); drawVehicle(); drawParticles(); drawBuilder();
+            document.getElementById('val-cost').innerText = (beams.length * 100) + (nodes.length * 50);
+            requestAnimationFrame(loop);
+        }
+
+        // DELAYED START FOR MOBILE
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                resetBridge(); 
+                loop();
+            }, 500); // 500ms safety delay
+        });
+
+        window.addEventListener('click', () => { AudioSys.init(); }, {once:true});
+        
+        // Input handlers
+        canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('touchstart', handleStart, {passive:false});
+        canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('touchmove', handleMove, {passive:false});
+        canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('touchend', handleEnd, {passive:false});
+
+    </script>
+</body>
+</html>

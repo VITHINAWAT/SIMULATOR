@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LOGIC_GATE_LAB v4.3 // COLOR FIX</title>
+    
+    <!-- Import Share Tech Mono Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #1A1C1B;
+            --terminal-green: #95FF77;     
+            --neon-red: #FF3333;           
+            --cyan-select: #00FFFF;        
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            --dim-grey: #444444;
+            --wire-off: #333333;
+            --challenge-gold: #FFD700;
+            --testing-blue: #00CCFF;
+            
+            --main-font: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- CUSTOM DARK SCROLLBAR --- */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--void-black); }
+        ::-webkit-scrollbar-thumb { background: var(--wire-off); border-radius: 4px; border: 1px solid var(--void-black); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--dim-grey); }
+        * { scrollbar-width: thin; scrollbar-color: var(--wire-off) var(--void-black); }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--void-black);
+            color: var(--terminal-green);
+            font-family: var(--main-font);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- LAYOUT GRID --- */
+        #app-container {
+            display: grid;
+            grid-template-columns: 1fr 280px; 
+            grid-template-rows: 1fr 280px; 
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- 1. MAIN BREADBOARD (CANVAS) --- */
+        #breadboard-area {
+            grid-column: 1;
+            grid-row: 1;
+            position: relative;
+            background-color: var(--void-black);
+            background-image: 
+                linear-gradient(rgba(149, 255, 119, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(149, 255, 119, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            overflow: hidden;
+            border-right: 1px solid var(--terminal-green);
+            border-bottom: 1px solid var(--terminal-green);
+            outline: none;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        /* --- 2. SIDEBAR --- */
+        #sidebar {
+            grid-column: 2;
+            grid-row: 1 / span 2; 
+            background-color: var(--graphite-grey);
+            border-left: 1px solid var(--terminal-green);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+
+        .panel-header {
+            font-size: 1rem;
+            color: var(--terminal-green);
+            border-bottom: 1px dashed var(--terminal-green);
+            padding-bottom: 5px;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Gate Icons */
+        .gate-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--dim-grey);
+            padding: 15px; 
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            min-height: 90px; 
+            justify-content: center;
+        }
+        .gate-item:hover, .gate-item:active {
+            border-color: var(--neon-red);
+            box-shadow: 0 0 15px rgba(255, 51, 51, 0.3);
+            background: rgba(255, 51, 51, 0.05);
+        }
+        .gate-item span {
+            font-size: 0.85rem; 
+            margin-top: 8px;
+            font-weight: bold;
+            color: var(--terminal-green);
+        }
+
+        /* Config Controls */
+        .config-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .config-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        .mini-btn {
+            background: transparent;
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            width: 20px;
+            height: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+        .mini-btn:hover { background: var(--terminal-green); color: #000; }
+        .mini-btn:disabled { border-color: #444; color: #444; cursor: not-allowed; background: transparent; }
+
+        /* --- 3. TRUTH TABLE (BOTTOM) --- */
+        #truth-table-panel {
+            grid-column: 1;
+            grid-row: 2;
+            background-color: rgba(26, 28, 27, 0.95);
+            border-top: 1px solid var(--terminal-green);
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid var(--dim-grey);
+            padding: 6px;
+            text-align: center;
+        }
+
+        th {
+            background-color: rgba(149, 255, 119, 0.1);
+            color: var(--terminal-green);
+        }
+
+        .row-active {
+            background-color: rgba(255, 51, 51, 0.15);
+            border: 2px solid var(--neon-red);
+        }
+        
+        .row-testing {
+            background-color: rgba(0, 204, 255, 0.2);
+            border: 2px solid var(--testing-blue);
+        }
+
+        .val-1 { color: var(--neon-red); font-weight: bold; }
+        .val-0 { color: var(--dim-grey); }
+        .val-target { color: var(--challenge-gold); font-weight: bold; border-left: 2px solid var(--challenge-gold); }
+
+        /* --- OVERLAY BUTTONS --- */
+        #overlay-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 5;
+            flex-wrap: wrap; 
+            max-width: 90%; 
+            pointer-events: none; 
+        }
+
+        .cyber-btn {
+            background: rgba(0,0,0,0.8);
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            padding: 8px 12px; 
+            font-family: var(--main-font);
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.75rem; 
+            transition: all 0.2s;
+            pointer-events: auto; 
+            margin-bottom: 5px; 
+        }
+        .cyber-btn:hover { background: var(--terminal-green); color: #000; }
+        
+        .btn-challenge { border-color: var(--challenge-gold); color: var(--challenge-gold); }
+        .btn-challenge:hover { background: var(--challenge-gold); color: #000; }
+        
+        .btn-clear { border-color: var(--neon-red); color: var(--neon-red); }
+        .btn-clear:hover { background: var(--neon-red); color: #000; }
+
+        .btn-gray { 
+            border-color: var(--dim-grey) !important; 
+            color: var(--dim-grey) !important; 
+            background: rgba(0,0,0,0.5) !important;
+        }
+
+        /* Helper for Selection */
+        .selected-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: var(--cyan-select);
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .selected-info.show { opacity: 1; }
+
+        /* Challenge Modal */
+        #challenge-modal {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            border: 2px solid var(--challenge-gold);
+            padding: 30px;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 100;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.4);
+            text-align: center;
+            min-width: 300px;
+        }
+
+        /* MOBILE ADJUSTMENTS */
+        @media (max-width: 768px) {
+            #app-container {
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            #breadboard-area { 
+                flex: 0 0 50vh;
+                order: 1;
+            }
+            #sidebar { 
+                flex: 0 0 auto; 
+                flex-direction: row; 
+                border-left: none; 
+                border-top: 1px solid var(--terminal-green);
+                padding: 10px;
+                gap: 10px;
+                overflow-x: auto;
+                order: 2;
+                max-height: 140px; 
+            }
+            #truth-table-panel { 
+                display: block; 
+                order: 3;
+                flex: 1 0 auto;
+                min-height: 250px;
+                border-top: 1px solid var(--terminal-green);
+            }
+            
+            .gate-item { min-width: 100px; padding: 10px; flex-shrink: 0; }
+            .panel-header { font-size: 0.8rem; flex-wrap: wrap; gap: 10px; }
+            .config-group { gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        
+        <!-- CANVAS AREA -->
+        <div id="breadboard-area" tabindex="0">
+            <div id="overlay-controls">
+                <button id="btn-mode" class="cyber-btn btn-challenge" onclick="toggleChallengeMode()">CHALLENGE MODE</button>
+                <button id="btn-sound" class="cyber-btn" onclick="AudioSys.toggleMute()">SOUND: ON</button>
+                <button id="btn-delete" class="cyber-btn btn-clear" onclick="deleteSelected()">DELETE ITEM</button>
+                <button class="cyber-btn btn-clear" onclick="clearBoard()">CLEAR ALL</button>
+            </div>
+            
+            <div id="selection-msg" class="selected-info">ITEM SELECTED [TAP DELETE]</div>
+            
+            <div id="challenge-modal">
+                <h1 id="modal-title" style="color:var(--challenge-gold); margin:0;">SYSTEM VERIFIED</h1>
+                <p id="modal-desc" style="color:#fff;">CIRCUIT LOGIC MATCHES TARGET SPECIFICATIONS.</p>
+                <button class="cyber-btn btn-challenge" onclick="closeChallengeModal()">CONTINUE</button>
+            </div>
+
+            <canvas id="logicCanvas"></canvas>
+        </div>
+
+        <!-- SIDEBAR TOOLS -->
+        <div id="sidebar">
+            <div class="panel-header">GATE_REPOSITORY</div>
+            
+            <div class="gate-item" onclick="spawnGate('AND')" draggable="true" ondragstart="drag(event)" data-type="AND">
+                <svg width="80" height="50" viewBox="0 0 60 40">
+                    <path d="M10,5 L30,5 C40,5 50,15 50,25 C50,35 40,45 30,45 L10,45 Z" transform="translate(0,-5)" fill="none" stroke="#FF3333" stroke-width="2"/>
+                </svg>
+                <span>AND</span>
+            </div>
+
+            <div class="gate-item" onclick="spawnGate('OR')" draggable="true" ondragstart="drag(event)" data-type="OR">
+                <svg width="80" height="50" viewBox="0 0 60 40">
+                    <path d="M10,5 Q30,5 50,25 Q30,45 10,45 Q20,25 10,5 Z" transform="translate(0,-5)" fill="none" stroke="#FF3333" stroke-width="2"/>
+                </svg>
+                <span>OR</span>
+            </div>
+
+            <div class="gate-item" onclick="spawnGate('NOT')" draggable="true" ondragstart="drag(event)" data-type="NOT">
+                 <svg width="80" height="50" viewBox="0 0 60 40">
+                    <path d="M15,5 L45,20 L15,35 Z" fill="none" stroke="#FF3333" stroke-width="2"/>
+                    <circle cx="48" cy="20" r="3" fill="none" stroke="#FF3333" stroke-width="2"/>
+                </svg>
+                <span>NOT</span>
+            </div>
+
+            <div class="gate-item" onclick="spawnGate('XOR')" draggable="true" ondragstart="drag(event)" data-type="XOR">
+                 <svg width="80" height="50" viewBox="0 0 60 40">
+                    <path d="M15,5 Q35,5 55,25 Q35,45 15,45 Q25,25 15,5 Z" transform="translate(0,-5)" fill="none" stroke="#FF3333" stroke-width="2"/>
+                    <path d="M5,5 Q15,25 5,45" transform="translate(0,-5)" fill="none" stroke="#FF3333" stroke-width="2"/>
+                </svg>
+                <span>XOR</span>
+            </div>
+            
+            <div id="challenge-status" style="display:none; padding:10px; border:1px solid var(--challenge-gold); background:rgba(255, 215, 0, 0.05); color:var(--challenge-gold); font-size:0.7rem; margin-top:5px;">
+                <strong>ARCHITECT MODE</strong><br>
+                MATCH TARGET TABLE<br>
+                <button id="btn-check" class="cyber-btn btn-challenge" style="width:100%; margin-top:5px;" onclick="runAutomatedCheck()">CHECK</button>
+            </div>
+        </div>
+
+        <!-- BOTTOM PANEL (Now contains Config) -->
+        <div id="truth-table-panel">
+            <div class="panel-header">
+                <span id="mode-indicator">SYSTEM ANALYSIS</span>
+                
+                <div class="config-group">
+                    <div class="config-item">
+                        <span>IN:</span>
+                        <button class="mini-btn" onclick="updateIO('IN', -1)" id="btn-in-dec">-</button>
+                        <span id="txt-in-count" style="color:var(--terminal-green); width:10px; text-align:center;">3</span>
+                        <button class="mini-btn" onclick="updateIO('IN', 1)" id="btn-in-inc">+</button>
+                    </div>
+                    <div class="config-item">
+                        <span>OUT:</span>
+                        <button class="mini-btn" onclick="updateIO('OUT', -1)" id="btn-out-dec">-</button>
+                        <span id="txt-out-count" style="color:var(--terminal-green); width:10px; text-align:center;">3</span>
+                        <button class="mini-btn" onclick="updateIO('OUT', 1)" id="btn-out-inc">+</button>
+                    </div>
+                </div>
+            </div>
+            <table id="truthTable">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * LOGIC_GATE_LAB v4.3
+         * - FIX: Logic Latch / Color State Sync
+         * - Separated Truth Table Calculation from Visual State
+         */
+
+        const canvas = document.getElementById('logicCanvas');
+        const container = document.getElementById('breadboard-area');
+        const ctx = canvas.getContext('2d');
+        
+        // --- CONFIG & COLORS ---
+        const COLORS = {
+            bg: '#1A1C1B',
+            green: '#95FF77',
+            red: '#FF3333',
+            dim: '#444444',
+            grid: 'rgba(149, 255, 119, 0.05)',
+            wireOff: '#333333',
+            select: '#00FFFF',
+            gold: '#FFD700',
+            blue: '#00CCFF'
+        };
+
+        const GATE_W = 70; 
+        const GATE_H = 50;
+        const PORT_RADIUS = 8;
+        const WIRE_HIT_WIDTH = 20;
+        
+        // --- AUDIO ENGINE ---
+        const AudioSys = {
+            ctx: null,
+            muted: false,
+            init: function() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            playTone: function(freq, type, duration, vol=0.2) { 
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) { console.warn("Audio error", e); }
+            },
+            toggleMute: function() { 
+                this.muted = !this.muted;
+                const btn = document.getElementById('btn-sound');
+                if(this.muted) {
+                    btn.classList.add('btn-gray');
+                    btn.innerText = "SOUND: OFF";
+                } else {
+                    btn.classList.remove('btn-gray');
+                    btn.innerText = "SOUND: ON";
+                }
+            }
+        };
+
+        // --- GLOBAL AUDIO UNLOCKER ---
+        function unlockAudio() {
+            AudioSys.init();
+            window.removeEventListener('click', unlockAudio);
+            window.removeEventListener('touchstart', unlockAudio);
+            window.removeEventListener('keydown', unlockAudio);
+        }
+        window.addEventListener('click', unlockAudio);
+        window.addEventListener('touchstart', unlockAudio);
+        window.addEventListener('keydown', unlockAudio);
+
+        // --- DATA STRUCTURES ---
+        
+        class Node {
+            constructor(parent, type, index = 0, x, y) {
+                this.parent = parent; 
+                this.type = type; 
+                this.index = index;
+                this.x = x;
+                this.y = y;
+                this.value = 0;
+            }
+        }
+
+        let components = []; 
+        let wires = [];      
+        let systemInputs = [
+            { id: 'A', val: 0, x: 80, y: 100 },
+            { id: 'B', val: 0, x: 80, y: 250 },
+            { id: 'C', val: 0, x: 80, y: 400 }
+        ];
+        
+        let systemOutputs = [
+            { id: 1, val: 0, x: 0, y: 0, active: true },
+            { id: 2, val: 0, x: 0, y: 0, active: true },
+            { id: 3, val: 0, x: 0, y: 0, active: true }
+        ];
+
+        let challengeActive = false;
+        let isTesting = false;
+        let testStep = -1;
+        let testResult = true;
+        let targetTable = [];  
+
+        let draggingComp = null;
+        let dragOffset = { x: 0, y: 0 };
+        let wiringStartNode = null;
+        let mousePos = { x: 0, y: 0 };
+        let selectedElement = null; 
+
+        // --- COMPONENT CLASS ---
+        let nextId = 1;
+        class Gate {
+            constructor(type, x, y) {
+                this.id = nextId++;
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.w = GATE_W;
+                this.h = (type === 'NOT') ? 40 : GATE_H;
+                
+                this.inputs = [];
+                this.output = new Node(this.id, 'OUTPUT', 0, 0, 0);
+
+                const inputCount = (type === 'NOT') ? 1 : 2;
+                for(let i=0; i<inputCount; i++) {
+                    this.inputs.push(new Node(this.id, 'INPUT', i, 0, 0));
+                }
+                
+                this.updateNodePositions();
+            }
+
+            updateNodePositions() {
+                const spacing = this.h / (this.inputs.length + 1);
+                const inX = this.x - this.w/2 - 2; 
+                this.inputs.forEach((node, i) => {
+                    node.x = inX;
+                    node.y = this.y - this.h/2 + spacing * (i+1);
+                });
+                const outX = this.x + this.w/2 + 2;
+                this.output.x = outX;
+                this.output.y = this.y;
+            }
+
+            compute() {
+                const vals = this.inputs.map(n => n.value);
+                let res = 0;
+                if (this.type === 'AND') res = vals[0] && vals[1];
+                if (this.type === 'OR')  res = vals[0] || vals[1];
+                if (this.type === 'XOR') res = vals[0] ^ vals[1];
+                if (this.type === 'NOT') res = !vals[0]; // JS: !0=true, !1=false
+                this.output.value = res ? 1 : 0;
+            }
+
+            isInside(mx, my) {
+                return mx > this.x - this.w/2 && mx < this.x + this.w/2 &&
+                       my > this.y - this.h/2 && my < this.y + this.h/2;
+            }
+        }
+
+        // --- CONFIG MANAGEMENT ---
+
+        function updateIO(type, delta) {
+            if (isTesting) return; // Locked during test
+            
+            if (type === 'IN') {
+                const currentCount = systemInputs.length;
+                const newCount = currentCount + delta;
+                if (newCount < 2 || newCount > 3) return;
+
+                if (delta > 0) {
+                    const id = String.fromCharCode(65 + currentCount); // A, B, C
+                    systemInputs.push({ id: id, val: 0, x: 80, y: 0 });
+                } else {
+                    const removed = systemInputs.pop();
+                    wires = wires.filter(w => !(w.from.parent === 'SYSTEM' && w.from.id === removed.id));
+                }
+                document.getElementById('txt-in-count').innerText = systemInputs.length;
+            } 
+            else if (type === 'OUT') {
+                const activeCount = systemOutputs.filter(o => o.active).length;
+                const newCount = activeCount + delta;
+                if (newCount < 2 || newCount > 3) return;
+
+                if (delta > 0) {
+                    const next = systemOutputs.find(o => !o.active);
+                    if(next) next.active = true;
+                } else {
+                    const last = [...systemOutputs].reverse().find(o => o.active);
+                    if(last) {
+                        last.active = false;
+                        last.val = 0;
+                        wires = wires.filter(w => !(w.to.parent === 'SYSTEM_OUT' && w.to.index === last.id));
+                    }
+                }
+                document.getElementById('txt-out-count').innerText = newCount;
+            }
+
+            document.getElementById('btn-in-dec').disabled = systemInputs.length <= 2;
+            document.getElementById('btn-in-inc').disabled = systemInputs.length >= 3;
+            const outCount = systemOutputs.filter(o => o.active).length;
+            document.getElementById('btn-out-dec').disabled = outCount <= 2;
+            document.getElementById('btn-out-inc').disabled = outCount >= 3;
+
+            resize(); 
+            if (challengeActive) generateChallenge();
+        }
+
+        function spawnGate(type) {
+            const spawnX = canvas.width / 2;
+            const spawnY = canvas.height / 2;
+            components.push(new Gate(type, spawnX, spawnY));
+            AudioSys.playTone(300, 'square', 0.1);
+        }
+
+        // --- CORE LOGIC ---
+
+        function resize() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            const inSpaceY = canvas.height / (systemInputs.length + 1);
+            systemInputs.forEach((inp, i) => {
+                inp.y = inSpaceY * (i+1);
+            });
+
+            const activeOutputs = systemOutputs.filter(o => o.active);
+            const outSpaceY = canvas.height / (activeOutputs.length + 1);
+            let activeIdx = 0;
+            systemOutputs.forEach((out) => {
+                if (out.active) {
+                    out.x = canvas.width - 80;
+                    out.y = outSpaceY * (activeIdx + 1);
+                    activeIdx++;
+                } else {
+                    out.x = -100; 
+                }
+            });
+        }
+        window.addEventListener('resize', resize);
+
+        // This runs the logic ONCE based on CURRENT systemInputs
+        function updateVisualState() {
+            // 1. Reset Internal States (Important for no-latch)
+            components.forEach(c => c.inputs.forEach(n => n.value = 0));
+            systemOutputs.forEach(o => o.val = 0);
+
+            // 2. Propagate
+            for(let pass=0; pass < components.length + 5; pass++) {
+                wires.forEach(wire => {
+                    let sourceVal = 0;
+                    if (wire.from.parent === 'SYSTEM') {
+                        const inp = systemInputs.find(i => i.id === wire.from.id);
+                        if (inp) sourceVal = inp.val;
+                    } else {
+                        const gate = components.find(c => c.id === wire.from.parent);
+                        if (gate) sourceVal = gate.output.value;
+                    }
+                    
+                    if (wire.to.parent === 'SYSTEM_OUT') {
+                        const out = systemOutputs.find(o => o.id === wire.to.index);
+                        if(out && out.active) out.val = sourceVal;
+                    } else {
+                        const targetGate = components.find(c => c.id === wire.to.parent);
+                        if (targetGate) {
+                            targetGate.inputs[wire.to.index].value = sourceVal;
+                        }
+                    }
+                });
+                components.forEach(c => c.compute());
+            }
+        }
+
+        function toggleChallengeMode() {
+            if (challengeActive) {
+                challengeActive = false;
+                isTesting = false;
+                document.getElementById('btn-mode').innerText = "CHALLENGE MODE";
+                document.getElementById('btn-mode').classList.remove('btn-clear');
+                document.getElementById('btn-mode').classList.add('btn-challenge');
+                document.getElementById('challenge-status').style.display = 'none';
+                document.getElementById('mode-indicator').innerText = "SYSTEM ANALYSIS";
+                document.getElementById('mode-indicator').style.color = COLORS.green;
+                document.getElementById('btn-in-dec').disabled = systemInputs.length <= 2;
+                document.getElementById('btn-in-inc').disabled = systemInputs.length >= 3;
+                clearBoard();
+            } else {
+                challengeActive = true;
+                document.getElementById('btn-mode').innerText = "EXIT CHALLENGE";
+                document.getElementById('btn-mode').classList.remove('btn-challenge');
+                document.getElementById('btn-mode').classList.add('btn-clear');
+                document.getElementById('challenge-status').style.display = 'block';
+                document.getElementById('mode-indicator').innerText = "[ ARCHITECT MODE ]";
+                document.getElementById('mode-indicator').style.color = COLORS.gold;
+                generateChallenge();
+            }
+        }
+
+        function generateChallenge() {
+            clearBoard();
+            targetTable = [];
+            const rows = Math.pow(2, systemInputs.length);
+            const activeOutputsCount = systemOutputs.filter(o => o.active).length;
+            
+            for(let i=0; i<rows; i++) {
+                let rowTargets = [];
+                for(let j=0; j<activeOutputsCount; j++) {
+                    rowTargets.push(Math.round(Math.random()));
+                }
+                targetTable.push(rowTargets);
+            }
+            AudioSys.playTone(600, 'sine', 0.5);
+        }
+
+        function runAutomatedCheck() {
+            if (isTesting) return;
+            isTesting = true;
+            testStep = -1;
+            testResult = true;
+            document.getElementById('btn-check').disabled = true;
+            document.getElementById('btn-check').innerText = "DIAGNOSING...";
+            nextTestStep();
+        }
+
+        function nextTestStep() {
+            testStep++;
+            const rows = Math.pow(2, systemInputs.length);
+            
+            if (testStep >= rows) {
+                finishTest();
+                return;
+            }
+
+            const a = (testStep >> (systemInputs.length - 1)) & 1;
+            const b = (systemInputs.length > 1) ? ((testStep >> (systemInputs.length - 2)) & 1) : 0;
+            const c = (systemInputs.length > 2) ? ((testStep >> 0) & 1) : 0;
+            
+            if(systemInputs[0]) systemInputs[0].val = a;
+            if(systemInputs[1]) systemInputs[1].val = b;
+            if(systemInputs[2]) systemInputs[2].val = c;
+            
+            AudioSys.playTone(400 + (testStep*50), 'square', 0.05);
+            
+            setTimeout(() => {
+                updateVisualState(); 
+                
+                const rowTarget = targetTable[testStep];
+                const activeOuts = systemOutputs.filter(o => o.active);
+                
+                for(let i=0; i<activeOuts.length; i++) {
+                    if(activeOuts[i].val !== rowTarget[i]) {
+                        testResult = false;
+                        AudioSys.playTone(150, 'sawtooth', 0.2); 
+                    }
+                }
+                nextTestStep(); 
+            }, 300); 
+        }
+
+        function finishTest() {
+            isTesting = false;
+            testStep = -1;
+            document.getElementById('btn-check').disabled = false;
+            document.getElementById('btn-check').innerText = "CHECK SOLUTION";
+            
+            if (testResult) {
+                AudioSys.playTone(800, 'sine', 0.1);
+                setTimeout(() => AudioSys.playTone(1200, 'sine', 0.2), 150);
+                document.getElementById('challenge-modal').style.display = 'flex';
+                document.getElementById('modal-title').innerText = "SYSTEM VERIFIED";
+                document.getElementById('modal-title').style.color = COLORS.green;
+                document.getElementById('modal-desc').innerText = "ALL TEST CASES PASSED SUCCESSFULLY.";
+            } else {
+                document.getElementById('challenge-modal').style.display = 'flex';
+                document.getElementById('modal-title').innerText = "VERIFICATION FAILED";
+                document.getElementById('modal-title').style.color = COLORS.red;
+                document.getElementById('modal-desc').innerText = "CIRCUIT LOGIC DOES NOT MATCH TARGET SPECS.";
+            }
+        }
+
+        function closeChallengeModal() {
+            document.getElementById('challenge-modal').style.display = 'none';
+        }
+
+        function clearBoard() {
+            components = [];
+            wires = [];
+            systemInputs.forEach(i => i.val = 0);
+            systemOutputs.forEach(o => o.val = 0);
+            selectedElement = null;
+            updateSelectionUI();
+        }
+
+        function deleteSelected() {
+            if (!selectedElement || isTesting) return;
+            if (selectedElement.type === 'GATE') {
+                const gate = selectedElement.ref;
+                wires = wires.filter(w => w.from.parent !== gate.id && w.to.parent !== gate.id);
+                components = components.filter(c => c !== gate);
+            } else if (selectedElement.type === 'WIRE') {
+                wires = wires.filter(w => w !== selectedElement.ref);
+            }
+            selectedElement = null;
+            updateSelectionUI();
+            AudioSys.playTone(150, 'square', 0.1);
+        }
+
+        function updateSelectionUI() {
+            const msg = document.getElementById('selection-msg');
+            if (selectedElement) msg.classList.add('show');
+            else msg.classList.remove('show');
+        }
+
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            const l2 = (x1-x2)**2 + (y1-y2)**2;
+            if (l2 === 0) return Math.hypot(px-x1, py-y1);
+            let t = ((px-x1)*(x2-x1) + (py-y1)*(y2-y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t*(x2-x1)), py - (y1 + t*(y2-y1)));
+        }
+
+        // --- INPUT HANDLING ---
+
+        function handleInputStart(e) {
+            if (isTesting) return; 
+            
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+
+            AudioSys.init();
+            
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            if (e.changedTouches) {
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
+                e.preventDefault(); 
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            
+            let newSelection = null;
+
+            // 1. Inputs
+            for(let inp of systemInputs) {
+                if (Math.hypot(x - inp.x, y - inp.y) < 30) {
+                    if (!challengeActive || !isTesting) {
+                        inp.val = inp.val ? 0 : 1;
+                        AudioSys.playTone(inp.val ? 600 : 400, 'square', 0.1);
+                    }
+                    selectedElement = null; updateSelectionUI();
+                    return;
+                }
+            }
+
+            // 2. Wiring
+            for(let inp of systemInputs) {
+                if (Math.hypot(x - (inp.x + 30), y - inp.y) < 30) {
+                    wiringStartNode = { parent: 'SYSTEM', id: inp.id, x: inp.x+30, y: inp.y };
+                    selectedElement = null; updateSelectionUI();
+                    return;
+                }
+            }
+            for(let c of components) {
+                if (Math.hypot(x - c.output.x, y - c.output.y) < 30) {
+                    wiringStartNode = c.output;
+                    selectedElement = null; updateSelectionUI();
+                    return;
+                }
+            }
+
+            // 3. Components
+            for(let i = components.length - 1; i >= 0; i--) {
+                const c = components[i];
+                if (c.isInside(x, y)) {
+                    draggingComp = c;
+                    dragOffset = { x: x - c.x, y: y - c.y };
+                    newSelection = { type: 'GATE', ref: c };
+                    selectedElement = newSelection; updateSelectionUI();
+                    return;
+                }
+            }
+
+            // 4. Wires
+            for(let w of wires) {
+                let startX, startY, endX, endY;
+                if (w.from.parent === 'SYSTEM') {
+                    const inp = systemInputs.find(i => i.id === w.from.id);
+                    if(inp) { startX = inp.x + 30; startY = inp.y; }
+                } else {
+                    const gate = components.find(c => c.id === w.from.parent);
+                    if(gate) { startX = gate.output.x; startY = gate.output.y; }
+                }
+                if (w.to.parent === 'SYSTEM_OUT') {
+                    const out = systemOutputs.find(o => o.id === w.to.index);
+                    if(out) { endX = out.x - 30; endY = out.y; }
+                } else {
+                    endX = w.to.x; endY = w.to.y; 
+                }
+                if (startX !== undefined && endX !== undefined) {
+                    const points = getOrthogonalPath(startX, startY, endX, endY);
+                    let hit = false;
+                    for(let i=0; i<points.length-1; i++) {
+                        const d = distToSegment(x, y, points[i].x, points[i].y, points[i+1].x, points[i+1].y);
+                        if (d < WIRE_HIT_WIDTH) { hit = true; break; }
+                    }
+                    if (hit) { newSelection = { type: 'WIRE', ref: w }; break; }
+                }
+            }
+
+            selectedElement = newSelection;
+            updateSelectionUI();
+        }
+
+        function handleInputMove(e) {
+            if (isTesting) return;
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            if (e.changedTouches) {
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
+                e.preventDefault(); 
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            mousePos = { x, y };
+            if (draggingComp) {
+                draggingComp.x = x - dragOffset.x;
+                draggingComp.y = y - dragOffset.y;
+                draggingComp.updateNodePositions();
+            }
+        }
+
+        function handleInputEnd(e) {
+            if (isTesting) return;
+            const x = mousePos.x;
+            const y = mousePos.y;
+            if (wiringStartNode) {
+                let bestTarget = null;
+                let minDist = 40; 
+                for(let c of components) {
+                    for(let n of c.inputs) {
+                        const d = Math.hypot(x - n.x, y - n.y);
+                        if (d < minDist) { minDist = d; bestTarget = n; }
+                    }
+                }
+                systemOutputs.forEach(out => {
+                    if (out.active) {
+                        const d = Math.hypot(x - (out.x - 30), y - out.y);
+                        if (d < minDist) { minDist = d; bestTarget = { parent: 'SYSTEM_OUT', index: out.id }; }
+                    }
+                });
+                if (bestTarget) {
+                    if (bestTarget.parent !== 'SYSTEM_OUT') { wires = wires.filter(w => w.to !== bestTarget); }
+                    wires.push({ from: wiringStartNode, to: bestTarget });
+                    AudioSys.playTone(800, 'sine', 0.1);
+                }
+                wiringStartNode = null;
+            }
+            draggingComp = null;
+        }
+
+        container.addEventListener('mousedown', handleInputStart);
+        container.addEventListener('touchstart', handleInputStart, {passive: false});
+        container.addEventListener('mousemove', handleInputMove);
+        container.addEventListener('touchmove', handleInputMove, {passive: false});
+        container.addEventListener('mouseup', handleInputEnd);
+        container.addEventListener('touchend', handleInputEnd, {passive: false});
+        window.addEventListener('keydown', e => { if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected(); });
+
+        function drag(ev) { ev.dataTransfer.setData("type", ev.target.dataset.type); }
+        container.addEventListener('dragover', e => e.preventDefault());
+        container.addEventListener('drop', e => {
+            if (isTesting) return;
+            e.preventDefault();
+            const type = e.dataTransfer.getData("type");
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            if (type) {
+                components.push(new Gate(type, x, y));
+                AudioSys.playTone(200, 'triangle', 0.1);
+            }
+        });
+
+        // --- RENDERING ---
+
+        function getOrthogonalPath(x1, y1, x2, y2) {
+            const midX = (x1 + x2) / 2;
+            return [{x:x1,y:y1}, {x:midX,y:y1}, {x:midX,y:y2}, {x:x2,y:y2}];
+        }
+
+        function drawOrthogonalWire(x1, y1, x2, y2, color, active, selected) {
+            const points = getOrthogonalPath(x1, y1, x2, y2);
+            const radius = 10;
+            ctx.beginPath();
+            ctx.strokeStyle = selected ? COLORS.select : color;
+            ctx.lineWidth = selected ? 4 : 3;
+            ctx.moveTo(points[0].x, points[0].y);
+            ctx.lineTo(points[1].x - (points[1].x > points[0].x ? radius : -radius), points[1].y);
+            ctx.arcTo(points[1].x, points[1].y, points[2].x, points[2].y, radius);
+            ctx.arcTo(points[2].x, points[2].y, points[3].x, points[3].y, radius);
+            ctx.lineTo(points[3].x, points[3].y);
+            
+            if (active && !selected) { ctx.shadowBlur = 10; ctx.shadowColor = color; }
+            else { ctx.shadowBlur = 0; }
+            ctx.stroke(); ctx.shadowBlur = 0;
+        }
+
+        function drawGate(c) {
+            ctx.save();
+            ctx.translate(c.x, c.y);
+            const isActive = (c.output.value === 1);
+            const isSelected = (selectedElement && selectedElement.ref === c);
+            const color = isSelected ? COLORS.select : (isActive ? COLORS.red : COLORS.green);
+            const fill = isActive ? 'rgba(255, 51, 51, 0.2)' : 'rgba(149, 255, 119, 0.1)';
+            
+            ctx.fillStyle = fill; ctx.strokeStyle = color; ctx.lineWidth = isSelected ? 3 : 2;
+            ctx.shadowBlur = (isActive||isSelected) ? 10 : 0; ctx.shadowColor = color;
+            ctx.beginPath();
+
+            if (c.type === 'AND') {
+                const w = 50, h = 40;
+                ctx.moveTo(-w/2, -h/2); ctx.lineTo(0, -h/2);
+                ctx.arc(0, 0, h/2, -Math.PI/2, Math.PI/2); ctx.lineTo(-w/2, h/2); ctx.closePath();
+            } else if (c.type === 'OR') {
+                const w = 50, h = 40;
+                ctx.moveTo(-w/2, -h/2); ctx.quadraticCurveTo(w/4, -h/2, w/2, 0);
+                ctx.quadraticCurveTo(w/4, h/2, -w/2, h/2); ctx.quadraticCurveTo(-w/4, 0, -w/2, -h/2); ctx.closePath();
+            } else if (c.type === 'XOR') {
+                const w = 50, h = 40;
+                ctx.moveTo(-w/2 + 5, -h/2); ctx.quadraticCurveTo(w/4 + 5, -h/2, w/2 + 5, 0);
+                ctx.quadraticCurveTo(w/4 + 5, h/2, -w/2 + 5, h/2); ctx.quadraticCurveTo(-w/4 + 5, 0, -w/2 + 5, -h/2); ctx.closePath();
+            } else if (c.type === 'NOT') {
+                const s = 15;
+                ctx.moveTo(-s, -s); ctx.lineTo(s, 0); ctx.lineTo(-s, s); ctx.closePath();
+            }
+            ctx.fill(); ctx.stroke();
+
+            if (c.type === 'XOR') {
+                ctx.beginPath(); ctx.moveTo(-30, -20); ctx.quadraticCurveTo(-20, 0, -30, 20); ctx.stroke();
+            }
+            if (c.type === 'NOT') {
+                ctx.beginPath(); ctx.fillStyle = COLORS.bg; ctx.arc(19, 0, 4, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = color;
+            c.inputs.forEach(n => {
+                const localX = n.x - c.x; const localY = n.y - c.y;
+                ctx.beginPath(); ctx.arc(localX, localY, 4, 0, Math.PI*2); ctx.fill();
+            });
+            
+            // Output Port with Visual LED
+            ctx.beginPath(); ctx.arc(c.output.x - c.x, c.output.y - c.y, 4, 0, Math.PI*2); ctx.fill();
+            if(isActive) {
+                ctx.fillStyle = "#FFF"; 
+                ctx.beginPath(); ctx.arc(c.output.x - c.x, c.output.y - c.y, 2, 0, Math.PI*2); ctx.fill();
+            }
+            
+            ctx.fillStyle = color; ctx.font = '10px Share Tech Mono'; ctx.textAlign = 'center';
+            ctx.fillText(c.type, 0, 4);
+            ctx.restore();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            wires.forEach(w => {
+                let startX, startY, val = 0;
+                if (w.from.parent === 'SYSTEM') {
+                    const inp = systemInputs.find(i => i.id === w.from.id);
+                    if(inp) { startX = inp.x + 30; startY = inp.y; val = inp.val; }
+                    else return;
+                } else {
+                    const gate = components.find(c => c.id === w.from.parent);
+                    if(gate) { startX = gate.output.x; startY = gate.output.y; val = gate.output.value; }
+                    else return;
+                }
+                
+                let endX, endY;
+                if (w.to.parent === 'SYSTEM_OUT') {
+                    const out = systemOutputs.find(o => o.id === w.to.index);
+                    if (out && out.active) { endX = out.x - 30; endY = out.y; }
+                    else return; 
+                } else {
+                    endX = w.to.x; endY = w.to.y;
+                }
+                
+                const isSel = (selectedElement && selectedElement.ref === w);
+                const isActive = (val === 1);
+                drawOrthogonalWire(startX, startY, endX, endY, isActive ? COLORS.red : COLORS.dim, isActive, isSel);
+            });
+
+            if (wiringStartNode) {
+                let startX, startY;
+                if (wiringStartNode.parent === 'SYSTEM') { 
+                    const inp = systemInputs.find(i => i.id === wiringStartNode.id);
+                    if(inp) { startX = inp.x + 30; startY = inp.y; }
+                }
+                else { const gate = components.find(c => c.id === wiringStartNode.parent); if(gate) { startX = gate.output.x; startY = gate.output.y; } }
+                
+                if (startX !== undefined) drawOrthogonalWire(startX, startY, mousePos.x, mousePos.y, COLORS.green, true, false);
+            }
+
+            systemInputs.forEach(inp => {
+                const color = inp.val ? COLORS.red : COLORS.dim;
+                ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.strokeStyle = color; ctx.lineWidth = 2;
+                ctx.fillRect(inp.x - 30, inp.y - 20, 60, 40); ctx.strokeRect(inp.x - 30, inp.y - 20, 60, 40);
+                ctx.fillStyle = color; ctx.font = '14px Share Tech Mono'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(`IN ${inp.id}`, inp.x - 5, inp.y); ctx.fillText(inp.val, inp.x + 20, inp.y);
+                ctx.beginPath(); ctx.arc(inp.x + 30, inp.y, PORT_RADIUS, 0, Math.PI*2); ctx.fillStyle = COLORS.bg; ctx.fill(); ctx.stroke();
+            });
+
+            components.forEach(c => drawGate(c));
+
+            systemOutputs.forEach((out, i) => {
+                if(!out.active) return;
+                const outColor = out.val ? COLORS.red : COLORS.dim;
+                ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.strokeStyle = outColor; ctx.lineWidth = 2;
+                ctx.fillRect(out.x - 30, out.y - 40, 80, 80); ctx.strokeRect(out.x - 30, out.y - 40, 80, 80);
+                
+                if (challengeActive && targetTable[0]) {
+                    ctx.fillStyle = COLORS.gold; ctx.font = '10px Share Tech Mono'; ctx.textAlign = 'right';
+                    ctx.fillText(`GOAL`, out.x + 45, out.y - 45);
+                }
+
+                ctx.fillStyle = outColor; ctx.font = '12px Share Tech Mono'; ctx.textAlign = 'center';
+                ctx.fillText(out.val ? "HIGH" : "LOW", out.x + 10, out.y + 30);
+                ctx.beginPath(); ctx.arc(out.x + 10, out.y - 5, 15, 0, Math.PI*2);
+                if(out.val) { ctx.shadowBlur = 20; ctx.shadowColor = COLORS.red; ctx.fill(); ctx.shadowBlur = 0; } else { ctx.stroke(); }
+                ctx.beginPath(); ctx.arc(out.x - 30, out.y, PORT_RADIUS, 0, Math.PI*2);
+                ctx.fillStyle = COLORS.bg; ctx.strokeStyle = outColor; ctx.fill(); ctx.stroke();
+                ctx.fillStyle = COLORS.green; ctx.font = '10px Share Tech Mono'; ctx.textAlign = 'left';
+                ctx.fillText(`OUT ${out.id}`, out.x - 20, out.y - 45);
+            });
+        }
+
+        function updateTruthTable() {
+            // Dry run for Truth Table without affecting visuals
+            const savedVals = systemInputs.map(inp => inp.val);
+            const savedGateOutputs = components.map(c => c.output.value);
+            // We can't easily save all internal wire states, but since logic is combinational,
+            // restoring inputs and running updateVisualState at the end of loop() fixes it.
+            
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+            
+            let headers = `<tr>`;
+            systemInputs.forEach(i => headers += `<th>IN ${i.id}</th>`);
+            
+            const activeOuts = systemOutputs.filter(o => o.active);
+            if (challengeActive) {
+                activeOuts.forEach((o, i) => headers += `<th style="color:${COLORS.gold}">GOAL ${i+1}</th>`);
+            } else {
+                activeOuts.forEach((o, i) => headers += `<th>OUT ${i+1}</th>`);
+            }
+            headers += `</tr>`;
+            tableHead.innerHTML = headers;
+
+            let html = '';
+            const rows = Math.pow(2, systemInputs.length);
+            
+            for(let i=0; i<rows; i++) {
+                let currentInputVals = [];
+                let isRowActive = true;
+                
+                for(let j=0; j<systemInputs.length; j++) {
+                    const bit = (i >> (systemInputs.length - 1 - j)) & 1;
+                    currentInputVals.push(bit);
+                    if (!isTesting && systemInputs[j].val !== bit) isRowActive = false;
+                }
+                
+                if (isTesting && i === testStep) isRowActive = true;
+                else if (isTesting) isRowActive = false;
+
+                const rowStyle = isRowActive ? (isTesting ? 'row-testing' : 'row-active') : '';
+                let cells = '';
+                currentInputVals.forEach(val => cells += `<td class="${val?'val-1':'val-0'}">${val}</td>`);
+                
+                if (challengeActive) {
+                    const rowTarget = targetTable[i] || [];
+                    for(let k=0; k<activeOuts.length; k++) {
+                        cells += `<td class="val-target">${rowTarget[k] !== undefined ? rowTarget[k] : '?'}</td>`;
+                    }
+                } else {
+                    // DRY RUN SIMULATION
+                    systemInputs.forEach((inp, idx) => inp.val = currentInputVals[idx]);
+                    components.forEach(c => c.inputs.forEach(n => n.value = 0)); // Reset
+                    
+                    // Propagate
+                    for(let pass=0; pass < components.length + 2; pass++) {
+                        wires.forEach(wire => {
+                            let sv = 0;
+                            if (wire.from.parent === 'SYSTEM') { const inp = systemInputs.find(xi => xi.id === wire.from.id); if(inp) sv = inp.val; }
+                            else { const g = components.find(xc => xc.id === wire.from.parent); if(g) sv = g.output.value; }
+                            if (wire.to.parent === 'SYSTEM_OUT') { /* skip main output for table calc optimization */ }
+                            else { const tg = components.find(xc => xc.id === wire.to.parent); if(tg) tg.inputs[wire.to.index].value = sv; }
+                        });
+                        components.forEach(xc => xc.compute());
+                    }
+                    
+                    // Harvest Outputs
+                    activeOuts.forEach(o => {
+                        // Find value driven to this output
+                        let val = 0;
+                        // Search wires to this output
+                        const feedingWire = wires.find(w => w.to.parent === 'SYSTEM_OUT' && w.to.index === o.id);
+                        if (feedingWire) {
+                             if (feedingWire.from.parent === 'SYSTEM') { const inp = systemInputs.find(xi => xi.id === feedingWire.from.id); if(inp) val = inp.val; }
+                             else { const g = components.find(xc => xc.id === feedingWire.from.parent); if(g) val = g.output.value; }
+                        }
+                        cells += `<td class="${val?'val-1':'val-0'}">${val}</td>`;
+                    });
+                }
+                html += `<tr class="${rowStyle}">${cells}</tr>`;
+            }
+            tableBody.innerHTML = html;
+
+            // RESTORE STATE for Visuals
+            systemInputs.forEach((inp, idx) => inp.val = savedVals[idx]);
+            // Re-run visual state update immediately after this in loop()
+        }
+
+        function loop() {
+            if (!isTesting) {
+                // 1. Calc Table (Modifies gate states internally during dry run)
+                updateTruthTable();
+                // 2. Calc Visuals (Restores correct gate states based on switches)
+                updateVisualState();
+            }
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        resize();
+        loop();
+
+    </script>
+</body>
+</html>

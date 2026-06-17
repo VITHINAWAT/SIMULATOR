@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CHAOS_LAB_GALTON // M1 [VITHINAWAT v2.4]</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #121212;
+            --terminal-green: #95FF77;     /* Reality (Balls) */
+            --neon-pink: #FF0055;          /* Theory (Math) */
+            --dim-grey: #444444;           /* Pegs */
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            --ui-border: #95FF77;
+            
+            --font-main: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--void-black);
+            font-family: var(--font-main);
+        }
+
+        body {
+            /* Background Grid */
+            background-image: 
+                linear-gradient(rgba(149, 255, 119, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(149, 255, 119, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            color: var(--terminal-green);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- UNIFIED DASHBOARD --- */
+        #dashboard {
+            height: 80px; 
+            min-height: 80px;
+            background-color: var(--graphite-grey);
+            border-bottom: 2px solid var(--terminal-green);
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 10;
+            gap: 15px;
+            flex-shrink: 0; 
+            overflow: hidden; 
+        }
+
+        .title-block {
+            display: flex;
+            flex-direction: column;
+            min-width: 120px;
+        }
+        .title-block h1 {
+            font-size: 1.2rem;
+            margin: 0;
+            letter-spacing: 2px;
+            color: var(--terminal-green);
+            white-space: nowrap;
+        }
+        .title-block span {
+            font-size: 0.7rem;
+            color: var(--neon-pink);
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .controls-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+            justify-content: center;
+            height: 100%; 
+        }
+
+        .cyber-btn {
+            background: transparent;
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            font-family: var(--font-main);
+            font-weight: bold;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            min-width: 70px;
+            height: 36px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cyber-btn:hover {
+            background: var(--terminal-green);
+            color: #000;
+            box-shadow: 0 0 10px var(--terminal-green);
+        }
+        .cyber-btn:active { transform: scale(0.95); }
+        
+        .cyber-btn.pink { border-color: var(--neon-pink); color: var(--neon-pink); }
+        .cyber-btn.pink:hover { background: var(--neon-pink); color: #fff; box-shadow: 0 0 10px var(--neon-pink); }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            width: 90px; /* Reduced slightly to fit 4 sliders */
+            gap: 2px;
+            justify-content: center;
+        }
+        .slider-label { font-size: 0.65rem; color: #aaa; display: flex; justify-content: space-between; }
+        
+        input[type=range] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: transparent;
+            margin: 5px 0;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: #444;
+            border-radius: 2px;
+            border: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 8px;
+            background: #000;
+            border: 1px solid var(--terminal-green);
+            margin-top: -4px;
+            cursor: pointer;
+        }
+
+        .stats-display {
+            font-size: 0.8rem;
+            color: #fff;
+            text-align: right;
+            min-width: 100px;
+        }
+        .stats-val { font-size: 1.1rem; font-weight: bold; color: var(--terminal-green); }
+
+        /* --- SIMULATION AREA --- */
+        #sim-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #legend {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .line { width: 20px; height: 3px; }
+        .bg-green { background: var(--terminal-green); }
+        .bg-pink { background: var(--neon-pink); }
+
+        @media (max-width: 850px) {
+            #dashboard { 
+                height: auto; 
+                flex-wrap: wrap; 
+                padding: 10px; 
+                gap: 10px; 
+                justify-content: center;
+            }
+            .title-block { width: 100%; text-align: center; margin-bottom: 5px; }
+            .controls-container { width: 100%; justify-content: space-around; gap: 8px; flex-wrap: wrap; }
+            .stats-display { width: 100%; text-align: center; border-top: 1px solid #333; padding-top: 5px; }
+            .slider-group { width: 40%; min-width: 80px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="dashboard">
+        <div class="title-block">
+            <h1>CHAOS LAB</h1>
+            <span>M3 // PROBABILITY</span>
+        </div>
+        
+        <div class="controls-container">
+            <button class="cyber-btn" id="btn-toggle" onclick="toggleSim()">START</button>
+            <button class="cyber-btn pink" onclick="resetSim()">RESET</button>
+            
+            <div class="slider-group">
+                <div class="slider-label"><span style="color:var(--terminal-green);">TARGET</span><span id="target-display">3,000</span></div>
+                <input type="range" min="100" max="10000" step="100" value="3000" oninput="updateTargetBalls(this.value)">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label"><span>SPEED</span><span id="speed-display">1.0x</span></div>
+                <input type="range" min="0.1" max="10" step="0.1" value="1" oninput="updateSpeed(this.value)">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label"><span>SIZE</span><span id="size-display">3px</span></div>
+                <input type="range" id="size-slider" min="2" max="10" step="0.5" value="3" oninput="updateSize(this.value)">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label"><span>CHAOS</span><span id="chaos-display">0.5</span></div>
+                <input type="range" min="0.1" max="1.0" step="0.1" value="0.5" oninput="updateChaos(this.value)">
+            </div>
+        </div>
+
+        <div class="stats-display">
+            <span style="color:#aaa;">TOTAL BALLS</span><br>
+            <span class="stats-val" id="count-val">0</span> / <span id="max-count-val">3,000</span>
+        </div>
+    </div>
+
+    <div id="sim-container">
+        <canvas id="simCanvas"></canvas>
+        <div id="legend">
+            <div class="legend-item"><div class="dot bg-green"></div> REALITY (CHAOS)</div>
+            <div class="legend-item"><div class="line bg-pink"></div> THEORY (ORDER)</div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * CHAOS LAB ENGINE (M1) - VITHINAWAT v2.4
+         * Fixes: Accurate Physics, Real-time Size Update, True Chaos, Dynamic Target Balls
+         */
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const simContainer = document.getElementById('sim-container');
+        
+        // --- CONFIG ---
+        const COLORS = {
+            bg: '#121212',
+            peg: '#444444',
+            ballFill: 'rgba(57, 255, 20, 0.3)',
+            ballStroke: '#39ff14',              
+            theory: '#FF0055',
+            bin: 'rgba(149, 255, 119, 0.15)'
+        };
+
+        let width = 0, height = 0;
+        let ROWS = 12;
+        let PEG_SPACING_X = 40;
+        let PEG_SPACING_Y = 35;
+        let PEG_RADIUS = 3;
+        let ballRadius = 3;
+        let START_Y = 80;
+
+        // State
+        let balls = [];
+        let bins = []; 
+        let pegs = [];
+        let isPlaying = false; 
+        let totalBalls = 0;
+        
+        // Parameters
+        let maxBallsTarget = 3000; // NEW: Dynamic variable for target balls
+        let timeScale = 1;
+        let chaosLevel = 0.5; 
+        let spawnRate = 2; 
+        let spawnAccumulator = 0; 
+
+        // --- MATH THEORY ---
+        function getBinomialProb(n, k, p) {
+            const factorial = (num) => {
+                if (num <= 1) return 1;
+                let r = 1; for (let i=2; i<=num; i++) r*=i; return r;
+            };
+            const nCr = factorial(n) / (factorial(k) * factorial(n-k));
+            return nCr * Math.pow(p, k) * Math.pow(1-p, n-k);
+        }
+
+        // --- PHYSICS ---
+        class Ball {
+            constructor() {
+                const topX = width / 2;
+                const jitter = (Math.random() - 0.5) * 1.0; 
+                this.x = topX + jitter;
+                this.y = START_Y - ballRadius - 20; 
+                this.vx = (Math.random() - 0.5) * 0.5; 
+                this.vy = 0;
+                this.r = ballRadius;
+                this.active = true;
+            }
+
+           update() {
+                if(!this.active) return;
+
+                this.vy += 0.25 * timeScale;
+                this.x += this.vx * timeScale;
+                this.y += this.vy * timeScale;
+
+                this.vx *= Math.pow(0.99, timeScale);
+                
+                // --- 1. ระบบชนหมุด (Peg Collision) ---
+                for(let p of pegs) {
+                    const dx = this.x - p.x;
+                    const dy = this.y - p.y;
+                    const distSq = dx*dx + dy*dy;
+                    const minD = this.r + p.r;
+                    
+                    if(distSq < minD*minD) {
+                        let angle = Math.atan2(dy, dx);
+                        
+                        // กันลูกบอลติดแหง็กตรงกลางหมุด
+                        if (Math.abs(dx) < 0.1 && dy < 0) {
+                            angle += (Math.random() - 0.5) * 0.1;
+                        }
+                        
+                        const dist = Math.sqrt(distSq);
+                        const push = minD - dist;
+                        this.x += Math.cos(angle) * push;
+                        this.y += Math.sin(angle) * push;
+
+                        // FIX 1: เบรกโมเมนตัมแนวนอน (ไม่ให้ Surf ออกข้าง)
+                        this.vx *= 0.3; 
+                        
+                        // FIX 2: คำนวณแรงสะท้อนให้สัมพันธ์กับขนาดลูกบอล (ลูกใหญ่สะท้อนเบาลง)
+                        const sizeFactor = 3.0 / this.r; 
+                        const horizontalForce = Math.cos(angle) * 1.5 * sizeFactor;
+                        const randomChaos = (Math.random() - 0.5) * chaosLevel * 4.0 * sizeFactor;
+                        
+                        this.vx += horizontalForce + randomChaos;
+                        this.vy *= 0.5; 
+                    }
+                }
+
+                // --- 3. ตกถึงพื้น (Binning Logic) ---
+                const floorY = START_Y + ROWS * PEG_SPACING_Y + 30;
+                
+                // FIX 3: สร้างกำแพงกั้นซ้าย-ขวา (Glass Walls) ไม่ให้หลุดสเกล
+                const boardW = ROWS * PEG_SPACING_X;
+                const startX = (width - boardW) / 2;
+                const endX = startX + boardW;
+                
+                if (this.x < startX) { this.x = startX; this.vx *= -0.5; }
+                if (this.x > endX) { this.x = endX; this.vx *= -0.5; }
+
+                if(this.y > floorY) {
+                    this.active = false;
+                    this.y = floorY; 
+                    
+                    let idx = Math.floor((this.x - startX) / PEG_SPACING_X);
+                    
+                    if(idx < 0) idx = 0;
+                    if(idx > ROWS) idx = ROWS;
+                    
+                    bins[idx]++;
+                    totalBalls++;
+                    updateUI();
+                }
+            }
+
+            draw() {
+                if(!this.active) return; 
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+                ctx.fillStyle = COLORS.ballFill;
+                ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = COLORS.ballStroke;
+                ctx.stroke();
+            }
+        }
+
+        // --- RENDER ---
+        function draw() {
+            if(width===0 || height===0) return;
+            
+            ctx.clearRect(0, 0, width, height);
+
+            ctx.fillStyle = COLORS.peg;
+            pegs.forEach(p => {
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+            });
+
+            balls.forEach(b => b.draw());
+
+            // DRAW HISTOGRAM & THEORY
+            const floorY = height - 20;
+            const maxGraphH = height * 0.35;
+            
+            let maxCount = 0;
+            for(let c of bins) if(c > maxCount) maxCount = c;
+            
+            const n = ROWS;
+            const p = 0.5;
+            const maxProb = getBinomialProb(n, Math.floor(n/2), p);
+            const ballsLanded = bins.reduce((a, b) => a + b, 0);
+            const maxTheoryCount = ballsLanded * maxProb;
+
+            const ceiling = Math.max(maxCount, maxTheoryCount, 10);
+            const scaleY = maxGraphH / ceiling;
+
+            const boardW = ROWS * PEG_SPACING_X;
+            const startX = (width - boardW) / 2;
+            const binW = PEG_SPACING_X - 2;
+
+            for(let i=0; i<=ROWS; i++) {
+                const count = bins[i];
+                if(count > 0) {
+                    const h = count * scaleY;
+                    const x = startX + i * PEG_SPACING_X + 1;
+                    ctx.fillStyle = COLORS.bin;
+                    ctx.fillRect(x, floorY - h, binW, h);
+                    ctx.fillStyle = COLORS.ballStroke;
+                    ctx.fillRect(x, floorY - h, binW, 2);
+                }
+            }
+
+            if(ballsLanded > 10) {
+                ctx.beginPath();
+                ctx.strokeStyle = COLORS.theory;
+                ctx.lineWidth = 3;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = COLORS.theory;
+
+                for(let k=0; k<=n; k++) {
+                    const prob = getBinomialProb(n, k, p);
+                    const expectedCount = ballsLanded * prob;
+                    const h = expectedCount * scaleY;
+                    const x = startX + k * PEG_SPACING_X + PEG_SPACING_X/2;
+                    const y = floorY - h;
+
+                    if(k===0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(0, floorY); ctx.lineTo(width, floorY); ctx.stroke();
+        }
+
+        // --- INIT & LOGIC ---
+        function createBoard() {
+            pegs = [];
+            const centerX = width / 2;
+            for(let r=0; r<ROWS; r++) {
+                for(let c=0; c<=r; c++) {
+                    const x = centerX + (c - r/2) * PEG_SPACING_X;
+                    const y = START_Y + r * PEG_SPACING_Y;
+                    pegs.push({x, y, r: PEG_RADIUS});
+                }
+            }
+            bins = new Array(ROWS + 1).fill(0);
+        }
+
+        function resize() {
+            const newW = simContainer.clientWidth || window.innerWidth;
+            const newH = simContainer.clientHeight || window.innerHeight;
+            
+            if(newW === 0 || newH === 0) return;
+
+            if (Math.abs(width - newW) > 5 || Math.abs(height - newH) > 5) {
+                width = newW;
+                height = newH;
+                canvas.width = width;
+                canvas.height = height;
+
+                if(width < 600) {
+                    PEG_SPACING_X = 25; PEG_SPACING_Y = 22; ROWS = 10; START_Y = 60;
+                } else {
+                    PEG_SPACING_X = 40; PEG_SPACING_Y = 35; ROWS = 12; START_Y = 80;
+                }
+                
+                const maxSafeRadius = (PEG_SPACING_X / 2) - PEG_RADIUS - 1; 
+                const slider = document.getElementById('size-slider');
+                if(slider) {
+                    slider.max = maxSafeRadius;
+                    if(ballRadius > maxSafeRadius) {
+                        updateSize(maxSafeRadius);
+                        slider.value = maxSafeRadius;
+                    }
+                }
+                createBoard();
+                resetSim(); 
+            }
+        }
+
+        function resetSim() {
+            balls = [];
+            bins.fill(0);
+            totalBalls = 0;
+            spawnAccumulator = 0;
+            updateUI();
+            
+            // Check if it was "DONE", reset button to "START" if needed
+            if (!isPlaying && document.getElementById('btn-toggle').innerText === "DONE") {
+                document.getElementById('btn-toggle').innerText = "START";
+            }
+        }
+
+        function update() {
+            if(isPlaying) {
+                // Check against dynamic target
+                if (totalBalls < maxBallsTarget) {
+                    spawnAccumulator += spawnRate * timeScale;
+                    let spawnCount = Math.floor(spawnAccumulator);
+                    spawnAccumulator -= spawnCount;
+
+                    for(let i=0; i<spawnCount; i++) {
+                        // Double check before spawning to not exceed target
+                        if (totalBalls + balls.length < maxBallsTarget) {
+                            balls.push(new Ball());
+                        }
+                    }
+                } else if (balls.length === 0) {
+                     // All balls have landed and we reached the target
+                     isPlaying = false;
+                     document.getElementById('btn-toggle').innerText = "DONE";
+                }
+
+                balls.forEach(b => b.update());
+                balls = balls.filter(b => b.active);
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // --- CONTROLS ---
+        function toggleSim() {
+            if(totalBalls >= maxBallsTarget) { resetSim(); }
+            isPlaying = !isPlaying;
+            document.getElementById('btn-toggle').innerText = isPlaying ? "PAUSE" : "START";
+        }
+        
+        // NEW: Update Target Balls
+        function updateTargetBalls(val) {
+            maxBallsTarget = parseInt(val);
+            document.getElementById('target-display').innerText = maxBallsTarget.toLocaleString();
+            document.getElementById('max-count-val').innerText = maxBallsTarget.toLocaleString();
+            
+            // If user lowers target below current total, stop spawning and change button to PAUSE/DONE gracefully
+            if (totalBalls >= maxBallsTarget && isPlaying && balls.length === 0) {
+                isPlaying = false;
+                document.getElementById('btn-toggle').innerText = "DONE";
+            }
+        }
+
+        function updateSpeed(val) {
+            timeScale = parseFloat(val);
+            document.getElementById('speed-display').innerText = val + "x";
+        }
+        
+        function updateChaos(val) {
+            chaosLevel = parseFloat(val);
+            document.getElementById('chaos-display').innerText = val;
+        }
+
+        function updateSize(val) {
+            ballRadius = parseFloat(val);
+            document.getElementById('size-display').innerText = ballRadius.toFixed(1) + "px";
+            balls.forEach(b => b.r = ballRadius);
+        }
+
+        function updateUI() {
+            document.getElementById('count-val').innerText = totalBalls.toLocaleString();
+        }
+
+        function init() {
+            resize();
+            resetSim();
+            loop();
+            
+            window.addEventListener('resize', resize);
+            if(window.ResizeObserver) {
+                new ResizeObserver(resize).observe(simContainer);
+            }
+        }
+
+        window.addEventListener('load', init);
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+            setTimeout(init, 50);
+        }
+
+    </script>
+</body>
+</html>

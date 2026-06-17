@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CHROMA_LAB // A3 [VITHINAWAT v2.9]</title>
+    
+    <!-- Import Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #121212;         /* RGB Mode BG */
+            --paper-white: #F0F0F0;        /* CMYK Mode BG */
+            --terminal-green: #95FF77;     /* UI Accent */
+            --neon-pink: #FF0055;          /* Selection Accent */
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            
+            --font-main: 'Share Tech Mono', monospace;
+            
+            /* Transitions */
+            --trans-speed: 0.3s;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-main);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: background-color var(--trans-speed);
+        }
+
+        /* Mode Specific Styles */
+        body.mode-rgb {
+            background-color: var(--void-black);
+            color: var(--terminal-green);
+        }
+        body.mode-cmyk {
+            background-color: var(--paper-white);
+            color: #333; /* Dark text for light bg */
+        }
+
+        /* --- UI CONTAINER --- */
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Let clicks pass to canvas */
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        /* --- TOP BAR --- */
+        #top-bar {
+            height: 80px;
+            background: var(--graphite-grey);
+            border-bottom: 2px solid var(--terminal-green);
+            pointer-events: auto;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr; /* Left Center Right */
+            align-items: center;
+            padding: 0 20px;
+            backdrop-filter: blur(5px);
+            flex-shrink: 0;
+        }
+
+        /* Left Section: Title & Mode */
+        .top-left {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: flex-start;
+        }
+
+        .app-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--terminal-green);
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .mode-toggle-container {
+            display: flex;
+            gap: 5px;
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: 1px solid #555;
+            color: #888;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 0.7rem;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+        .mode-btn.active {
+            background: var(--terminal-green);
+            border-color: var(--terminal-green);
+            color: #000;
+            font-weight: bold;
+            box-shadow: 0 0 5px var(--terminal-green);
+        }
+
+        /* Center Section: Challenge Bar */
+        #challenge-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 20px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+
+        .target-swatch {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+            margin: 2px 0;
+        }
+        
+        .target-text {
+            color: var(--terminal-green);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        
+        /* Right Section: Score */
+        .score-box {
+            text-align: right;
+            font-size: 1.2rem;
+            color: #fff;
+        }
+        .score-label { font-size: 0.7rem; color: #aaa; }
+
+        /* --- RESET BUTTON (Sim Area Top Left - Moved to avoid slider) --- */
+        #sim-controls {
+            position: absolute;
+            top: 100px; /* Below Top Bar */
+            left: 20px; /* Left side */
+            pointer-events: auto;
+            z-index: 20;
+        }
+
+        .mini-btn {
+            background: rgba(26, 28, 27, 0.8);
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            font-family: var(--font-main);
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .mini-btn:hover {
+            background: var(--terminal-green);
+            color: #000;
+        }
+
+        /* --- VERTICAL SLIDER CONTAINER (Right Side) --- */
+        .slider-container {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-40%); /* Slightly offset up to account for top bar visual balance */
+            
+            width: 70px;
+            height: 300px;
+            
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            
+            background: rgba(26, 28, 27, 0.9);
+            padding: 20px 10px;
+            border-radius: 35px;
+            border: 1px solid var(--terminal-green);
+            transition: border-color 0.3s;
+            pointer-events: auto;
+        }
+        
+        .slider-container.active {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.2);
+        }
+        
+        .slider-label {
+            color: var(--terminal-green);
+            font-size: 0.7rem;
+            text-align: center;
+            writing-mode: horizontal-tb;
+        }
+        
+        .slider-sub {
+            font-size: 0.5rem; color: #888; text-align: center; margin-top: 5px;
+        }
+
+        /* Vertical Range Input Styling */
+        input[type=range] {
+            -webkit-appearance: none; /* Override default CSS styles */
+            appearance: none;
+            width: 200px; /* Length of slider */
+            height: 8px; /* Thickness */
+            background: #444;
+            outline: none;
+            border-radius: 4px;
+            
+            /* Rotate to make vertical */
+            transform: rotate(-90deg);
+            transform-origin: center;
+            
+            /* Margin adjustments due to rotation */
+            margin: 100px 0; 
+            cursor: pointer;
+        }
+        
+        /* Thumb */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--terminal-green);
+            cursor: pointer;
+            border: 2px solid #000;
+        }
+
+        /* --- CANVAS --- */
+        #sim-stage {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* --- SUCCESS EFFECT --- */
+        @keyframes success-pop {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.0); opacity: 0; }
+        }
+        
+        #success-msg {
+            position: absolute;
+            top: 55%; /* Adjusted for visual center below top bar */
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--terminal-green);
+            text-shadow: 0 0 20px var(--terminal-green);
+            pointer-events: none;
+            opacity: 0;
+            white-space: nowrap;
+            transition: opacity 0.2s;
+            text-align: center;
+            z-index: 20;
+        }
+        .animate-success {
+            animation: success-pop 1s ease-out forwards;
+        }
+        
+        /* Reticle */
+        #reticle {
+            position: absolute;
+            top: 50%; left: 50%; /* JS will adjust this to match playable center */
+            transform: translate(-50%, -50%);
+            width: 40px; height: 40px;
+            border: 2px dashed rgba(255,255,255,0.5); 
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+            transition: border-color 0.3s;
+        }
+        #reticle::after {
+            content: '+';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255,255,255,0.5);
+            font-size: 20px;
+            transition: color 0.3s;
+        }
+
+        /* CMYK Specific Reticle */
+        body.mode-cmyk #reticle {
+            border-color: rgba(0,0,0,0.4);
+        }
+        body.mode-cmyk #reticle::after {
+            color: rgba(0,0,0,0.4);
+        }
+        
+        /* Mobile adjust */
+        @media (max-width: 600px) {
+            .app-title { font-size: 0.9rem; }
+            #challenge-bar { padding: 2px 10px; }
+            .target-text { font-size: 0.8rem; }
+            .target-swatch { width: 20px; height: 20px; }
+            #top-bar { padding: 0 10px; height: 90px; }
+            
+            .slider-container { 
+                right: 10px; 
+                width: 50px; 
+                height: 250px; 
+                padding: 10px 5px;
+            }
+            input[type=range] { width: 160px; margin: 80px 0; } /* Adjust size for mobile box */
+            #sim-controls { top: 110px; left: 10px; }
+        }
+
+    </style>
+</head>
+<body class="mode-rgb">
+
+    <!-- UI LAYER -->
+    <div id="ui-layer">
+        <div id="top-bar">
+            <div class="top-left">
+                <div class="app-title">CHROMA LAB</div>
+                <div class="mode-toggle-container">
+                    <button class="mode-btn active" onclick="setMode('rgb')">RGB</button>
+                    <button class="mode-btn" onclick="setMode('cmyk')">CMYK</button>
+                </div>
+            </div>
+
+            <div id="challenge-bar">
+                <span style="color:#888; font-size:0.6rem; letter-spacing: 1px;">MAKE THIS</span>
+                <div class="target-swatch" id="target-color"></div>
+                <span class="target-text" id="target-name">...</span>
+            </div>
+
+            <div class="score-box">
+                <span class="score-label">SCORE</span><br>
+                <span id="score-val">0</span>
+            </div>
+        </div>
+
+        <div id="sim-controls">
+            <button class="mini-btn" onclick="resetPositions()">RESET</button>
+        </div>
+
+        <div id="success-msg">MATCHED!</div>
+        <div id="reticle"></div>
+
+        <!-- Vertical Slider on Right -->
+        <div id="slider-box" class="slider-container">
+            <span class="slider-label">MAX</span>
+            <input type="range" min="10" max="100" value="100" id="intensity-slider" oninput="updateIntensity(this.value)" disabled>
+            <div style="display:flex; flex-direction:column; align-items:center;">
+                <span class="slider-label" id="intensity-val">--%</span>
+                <span class="slider-sub" id="selected-label">SELECT</span>
+            </div>
+            <span class="slider-label">MIN</span>
+        </div>
+    </div>
+
+    <!-- CANVAS LAYER -->
+    <div id="sim-stage">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <!-- HIDDEN CANVAS FOR TARGET GENERATION -->
+    <canvas id="genCanvas" width="200" height="200" style="display:none;"></canvas>
+
+    <script>
+        /**
+         * CHROMA LAB ENGINE (A3) v2.9
+         * Updates: 
+         * - Perfect Centering Logic (Playable Area)
+         * - Vertical Intensity Slider
+         * - Responsive Layout Tweaks
+         */
+
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d'); 
+        const genCanvas = document.getElementById('genCanvas');
+        const genCtx = genCanvas.getContext('2d');
+        
+        // --- CONSTANTS ---
+        const CIRCLE_RADIUS = 55; 
+        const COLOR_TOLERANCE = 50; 
+        const HOLD_DURATION_FRAMES = 120; 
+        const TOP_BAR_HEIGHT = 80;
+        
+        // --- STATE ---
+        let mode = 'rgb'; 
+        let score = 0;
+        let width, height;
+        let centerX, centerY; // Calculated playable center
+        let circles = [];
+        let draggingCircle = null;
+        let selectedCircle = null; 
+        let targetColor = { r: 0, g: 0, b: 0, name: "" }; 
+        let checkTimer = 0;
+        let isProcessingSuccess = false;
+        
+        // --- BASE COLORS ---
+        const RGB_SOURCES = [
+            { r: 255, g: 0, b: 0 },   
+            { r: 0, g: 255, b: 0 },   
+            { r: 0, g: 0, b: 255 },   
+            { r: 255, g: 255, b: 255 }
+        ];
+        const CMYK_SOURCES = [
+            { r: 0, g: 255, b: 255 }, 
+            { r: 255, g: 0, b: 255 }, 
+            { r: 255, g: 255, b: 0 }, 
+            { r: 0, g: 0, b: 0 }      
+        ];
+
+        // --- AUDIO ---
+        const AudioSys = {
+            ctx: null,
+            init: function() {
+                if(!this.ctx) { const AC = window.AudioContext || window.webkitAudioContext; this.ctx = new AC(); }
+                if(this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            playSuccess: function() {
+                if(!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.5);
+            },
+            playClick: function() {
+                if(!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+            }
+        };
+
+        // --- INIT & RESIZE ---
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            // Calculate PLAYABLE CENTER (Available space below top bar)
+            // Center X is screen middle
+            centerX = width / 2;
+            // Center Y is middle of remaining space: TopBar + (H - TopBar)/2
+            centerY = TOP_BAR_HEIGHT + (height - TOP_BAR_HEIGHT) / 2;
+
+            // Update Reticle DOM position
+            const ret = document.getElementById('reticle');
+            ret.style.left = centerX + 'px';
+            ret.style.top = centerY + 'px';
+
+            resetPositions();
+        }
+        window.addEventListener('resize', resize);
+
+        // --- LOGIC ---
+        function setMode(m) {
+            mode = m;
+            document.body.className = `mode-${m}`;
+            
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            resetPositions();
+            validateCurrentTarget(); 
+        }
+
+        function resetPositions() {
+            // Place circles around the CALCULATED centerY
+            const cx = centerX;
+            const cy = centerY;
+            const dist = 100; 
+            
+            if (mode === 'rgb') {
+                circles = [
+                    { x: cx, y: cy - dist, r: 255, g: 0, b: 0, label: 'R', alpha: 1.0 },       
+                    { x: cx - dist, y: cy, r: 0, g: 255, b: 0, label: 'G', alpha: 1.0 },       
+                    { x: cx + dist, y: cy, r: 0, g: 0, b: 255, label: 'B', alpha: 1.0 },       
+                    { x: cx, y: cy + dist, r: 255, g: 255, b: 255, label: 'W', alpha: 1.0 }    
+                ];
+            } else {
+                circles = [
+                    { x: cx, y: cy - dist, r: 0, g: 255, b: 255, label: 'C', alpha: 1.0 },     
+                    { x: cx - dist, y: cy, r: 255, g: 0, b: 255, label: 'M', alpha: 1.0 },     
+                    { x: cx + dist, y: cy, r: 255, g: 255, b: 0, label: 'Y', alpha: 1.0 },     
+                    { x: cx, y: cy + dist, r: 0, g: 0, b: 0, label: 'K', alpha: 1.0 }          
+                ];
+            }
+            deselectCircle(); 
+        }
+
+        function selectCircle(c) {
+            selectedCircle = c;
+            AudioSys.playClick();
+            
+            const slider = document.getElementById('intensity-slider');
+            const valLabel = document.getElementById('intensity-val');
+            const box = document.getElementById('slider-box');
+            const nameLabel = document.getElementById('selected-label');
+            
+            slider.disabled = false;
+            slider.value = c.alpha * 100;
+            valLabel.innerText = Math.round(c.alpha * 100) + "%";
+            nameLabel.innerText = c.label;
+            nameLabel.style.color = `rgb(${c.r},${c.g},${c.b})`;
+            if(c.label === 'W') nameLabel.style.color = '#ccc';
+            if(c.label === 'K') nameLabel.style.color = '#888';
+            
+            box.classList.add('active');
+        }
+
+        function deselectCircle() {
+            selectedCircle = null;
+            const slider = document.getElementById('intensity-slider');
+            const valLabel = document.getElementById('intensity-val');
+            const box = document.getElementById('slider-box');
+            const nameLabel = document.getElementById('selected-label');
+            
+            slider.disabled = true;
+            slider.value = 100;
+            valLabel.innerText = "--%";
+            nameLabel.innerText = "SELECT";
+            nameLabel.style.color = "#888";
+            
+            box.classList.remove('active');
+        }
+
+        function updateIntensity(val) {
+            if(selectedCircle) {
+                selectedCircle.alpha = val / 100;
+                document.getElementById('intensity-val').innerText = val + "%";
+            }
+        }
+
+        function isColorCloseToBackground(r, g, b, checkMode) {
+            if (checkMode === 'rgb') {
+                return (r < 60 && g < 60 && b < 60); 
+            } else {
+                return (r > 200 && g > 200 && b > 200); 
+            }
+        }
+
+        // --- PROCEDURAL GENERATOR ---
+        function generateComplexTarget() {
+            const genMode = Math.random() > 0.5 ? 'rgb' : 'cmyk';
+            const sources = genMode === 'rgb' ? RGB_SOURCES : CMYK_SOURCES;
+            
+            genCtx.clearRect(0,0,200,200);
+            
+            if (genMode === 'rgb') {
+                genCtx.fillStyle = '#121212';
+                genCtx.fillRect(0,0,200,200);
+                genCtx.globalCompositeOperation = 'screen';
+            } else {
+                genCtx.fillStyle = '#F0F0F0';
+                genCtx.fillRect(0,0,200,200);
+                genCtx.globalCompositeOperation = 'multiply';
+            }
+
+            const mixCount = Math.floor(Math.random() * 2) + 2; 
+            const shuffled = [...sources].sort(() => 0.5 - Math.random());
+            
+            for(let i=0; i<mixCount; i++) {
+                const c = shuffled[i];
+                const alpha = (Math.floor(Math.random() * 5) + 6) / 10; 
+                genCtx.globalAlpha = alpha;
+                genCtx.beginPath();
+                genCtx.arc(100, 100, 50, 0, Math.PI*2);
+                genCtx.fillStyle = `rgb(${c.r}, ${c.g}, ${c.b})`;
+                genCtx.fill();
+            }
+
+            const p = genCtx.getImageData(100, 100, 1, 1).data;
+            return {
+                r: p[0], g: p[1], b: p[2],
+                name: "MYSTERY MIX"
+            };
+        }
+
+        function pickNewTarget() {
+            let newTarget = null;
+            let attempts = 0;
+            
+            while(attempts < 20) { 
+                newTarget = generateComplexTarget();
+                if (!isColorCloseToBackground(newTarget.r, newTarget.g, newTarget.b, mode)) {
+                    break;
+                }
+                attempts++;
+            }
+            
+            if (!newTarget) newTarget = {r:128, g:128, b:128, name:"GREY FALLBACK"};
+
+            targetColor = newTarget;
+            
+            document.getElementById('target-name').innerText = targetColor.name;
+            const el = document.getElementById('target-color');
+            el.style.backgroundColor = `rgb(${targetColor.r}, ${targetColor.g}, ${targetColor.b})`;
+            
+            checkTimer = 0;
+            isProcessingSuccess = false; 
+            hideSuccessMsg();
+        }
+
+        function validateCurrentTarget() {
+            if (isColorCloseToBackground(targetColor.r, targetColor.g, targetColor.b, mode)) {
+                pickNewTarget();
+            }
+        }
+
+        function hideSuccessMsg() {
+             document.getElementById('success-msg').style.opacity = 0;
+             document.getElementById('success-msg').classList.remove('animate-success');
+        }
+
+        function checkMatch() {
+            if (isProcessingSuccess) return; 
+
+            // Use calculated center
+            const cx = Math.floor(centerX);
+            const cy = Math.floor(centerY);
+
+            const isCenterCovered = circles.some(c => Math.hypot(c.x - cx, c.y - cy) < CIRCLE_RADIUS);
+            
+            if (!isCenterCovered) {
+                checkTimer = 0;
+                hideSuccessMsg();
+                return; 
+            }
+            
+            const p = ctx.getImageData(cx, cy, 1, 1).data; 
+            
+            const rMatch = Math.abs(p[0] - targetColor.r) < COLOR_TOLERANCE;
+            const gMatch = Math.abs(p[1] - targetColor.g) < COLOR_TOLERANCE;
+            const bMatch = Math.abs(p[2] - targetColor.b) < COLOR_TOLERANCE;
+
+            const msg = document.getElementById('success-msg');
+
+            if (rMatch && gMatch && bMatch) {
+                checkTimer++;
+                
+                if (checkTimer > 10 && checkTimer < HOLD_DURATION_FRAMES) {
+                    msg.innerText = "HOLD...";
+                    msg.style.opacity = 0.5 + (checkTimer/HOLD_DURATION_FRAMES)*0.5;
+                    msg.style.fontSize = "2rem";
+                }
+
+                if (checkTimer > HOLD_DURATION_FRAMES) { 
+                    triggerSuccess();
+                    checkTimer = 0;
+                }
+            } else {
+                checkTimer = 0;
+                if (!isProcessingSuccess) hideSuccessMsg();
+            }
+        }
+
+        function triggerSuccess() {
+            isProcessingSuccess = true; 
+            AudioSys.playSuccess();
+            score += 100;
+            document.getElementById('score-val').innerText = score;
+            
+            const msg = document.getElementById('success-msg');
+            msg.innerText = "MATCHED!";
+            msg.style.opacity = 1;
+            msg.style.fontSize = "3rem";
+            msg.classList.add('animate-success');
+            
+            setTimeout(() => {
+                pickNewTarget();
+                resetPositions();
+            }, 1500);
+        }
+
+        // --- RENDER LOOP ---
+        function loop() {
+            ctx.clearRect(0, 0, width, height);
+            
+            if (mode === 'rgb') {
+                ctx.fillStyle = '#121212';
+                ctx.fillRect(0, 0, width, height);
+                ctx.globalCompositeOperation = 'screen'; 
+            } else {
+                ctx.fillStyle = '#F0F0F0';
+                ctx.fillRect(0, 0, width, height);
+                ctx.globalCompositeOperation = 'multiply'; 
+            }
+
+            circles.forEach(c => {
+                ctx.globalAlpha = c.alpha; 
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, CIRCLE_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = `rgb(${c.r}, ${c.g}, ${c.b})`;
+                ctx.fill();
+
+                if (c === selectedCircle) {
+                    ctx.globalAlpha = 1.0;
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#FF0055'; 
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+
+            ctx.globalAlpha = 1.0;
+            ctx.globalCompositeOperation = 'source-over';
+
+            checkMatch();
+
+            requestAnimationFrame(loop);
+        }
+
+        // --- INTERACTION ---
+        function getTouchPos(e) {
+            const t = e.touches ? e.touches[0] : e;
+            return { x: t.clientX, y: t.clientY };
+        }
+
+        function handleStart(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.closest('.slider-container')) return;
+
+            e.preventDefault();
+            const p = getTouchPos(e);
+            let hit = false;
+            
+            // Check Hit Top-down
+            for (let i = circles.length - 1; i >= 0; i--) {
+                const c = circles[i];
+                const dist = Math.hypot(p.x - c.x, p.y - c.y);
+                if (dist < CIRCLE_RADIUS) {
+                    draggingCircle = c;
+                    selectCircle(c); 
+                    hit = true;
+                    return;
+                }
+            }
+
+            if(!hit && e.target.tagName === 'CANVAS') {
+                deselectCircle();
+            }
+        }
+
+        function handleMove(e) {
+            if (e.target.tagName === 'INPUT') return;
+
+            if (draggingCircle) {
+                e.preventDefault();
+                const p = getTouchPos(e);
+                draggingCircle.x = p.x;
+                draggingCircle.y = p.y;
+            }
+        }
+
+        function handleEnd(e) {
+            draggingCircle = null;
+        }
+
+        window.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+        
+        window.addEventListener('touchstart', handleStart, {passive: false});
+        window.addEventListener('touchmove', handleMove, {passive: false});
+        window.addEventListener('touchend', handleEnd);
+
+        // Start
+        resize();
+        pickNewTarget(); 
+        loop();
+
+    </script>
+</body>
+</html>

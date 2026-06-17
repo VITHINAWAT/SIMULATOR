@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TITRATION_LOGIC // V.6.5_LANDSCAPE_READY</title>
+    <style>
+        :root {
+            --bg-color: #1A1C1B;
+            --grid-color: #333333;
+            --accent-color: #95FF77;
+            --text-color: #95FF77;
+            --glass-border: rgba(149, 255, 119, 0.3);
+            --warning-color: #D400FF;
+            --danger-color: #FF4444;
+            --ui-bg: rgba(26, 28, 27, 0.95);
+            --off-color: #555;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        body::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 5;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        header {
+            padding: 0.5rem 1.5rem;
+            border-bottom: 2px solid var(--accent-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            background: var(--ui-bg);
+            flex-shrink: 0;
+            height: 60px;
+            transition: height 0.3s;
+        }
+
+        h1 {
+            font-size: 1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .status-badge {
+            font-size: 0.7rem;
+            border: 1px solid var(--accent-color);
+            padding: 4px 8px;
+            background: rgba(149, 255, 119, 0.1);
+            letter-spacing: 1px;
+        }
+
+        .audio-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 4px 10px;
+            background: rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--off-color);
+            color: var(--off-color);
+        }
+
+        .audio-switch.active {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            text-shadow: 0 0 5px rgba(149, 255, 119, 0.5);
+        }
+
+        .audio-indicator {
+            width: 8px;
+            height: 8px;
+            background-color: var(--off-color);
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .audio-switch.active .audio-indicator {
+            background-color: var(--accent-color);
+            box-shadow: 0 0 8px var(--accent-color);
+        }
+
+        .audio-label {
+            font-size: 0.8rem;
+            font-weight: bold;
+            user-select: none;
+            letter-spacing: 1px;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            position: relative;
+            z-index: 3;
+            height: 100%;
+            overflow-y: auto; 
+            overflow-x: hidden;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        main::-webkit-scrollbar { display: none; }
+
+        #sim-container {
+            flex: 1.8;
+            position: relative;
+            border-right: 1px dashed var(--grid-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .ph-scale-legend {
+            position: absolute;
+            bottom: 8px; 
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(149, 255, 119, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 6;
+            backdrop-filter: blur(2px);
+        }
+
+        .scale-bar {
+            height: 8px;
+            width: 100%;
+            background: linear-gradient(to right, 
+                #ff0000 0%,    /* pH 0 */
+                #ff8c00 20%,   /* pH 3 */
+                #95FF77 50%,   /* pH 7 */
+                #00bfff 80%,   /* pH 11 */
+                #800080 100%   /* pH 14 */
+            );
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.6rem;
+            color: var(--accent-color);
+            opacity: 0.7;
+            font-weight: bold;
+        }
+
+        .scale-title {
+            text-align: center;
+            font-size: 0.5rem;
+            letter-spacing: 2px;
+            opacity: 0.4;
+            text-transform: uppercase;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        #controls-container {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 0.8rem;
+            background: rgba(26, 28, 27, 0.85);
+            backdrop-filter: blur(4px);
+            min-width: 320px;
+            border-left: 1px solid rgba(149, 255, 119, 0.1);
+            padding-bottom: 2rem;
+        }
+
+        .panel {
+            border: 1px solid var(--accent-color);
+            padding: 1rem;
+            position: relative;
+            background: rgba(0,0,0,0.2);
+            margin-top: 0.5rem;
+        }
+
+        .panel::before {
+            content: attr(data-label);
+            position: absolute;
+            top: -0.6rem;
+            left: 0.8rem;
+            background: var(--bg-color);
+            padding: 0 0.5rem;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            border: 1px solid var(--bg-color);
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.4rem;
+            border-bottom: 1px dotted var(--grid-color);
+            padding-bottom: 0.2rem;
+            font-size: 0.8rem;
+        }
+        .data-value { font-weight: bold; }
+
+        .titrant-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .select-btn {
+            flex: 1;
+            background: transparent;
+            border: 1px solid var(--grid-color);
+            color: #666;
+            padding: 0.6rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.75rem;
+        }
+
+        .select-btn:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .select-btn.selected {
+            background: rgba(149, 255, 119, 0.15);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            box-shadow: 0 0 10px rgba(149, 255, 119, 0.2);
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-bottom: 0.8rem;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 2px; cursor: pointer; background: var(--grid-color);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 14px; width: 8px; border: 1px solid var(--accent-color); background: var(--bg-color); cursor: pointer; -webkit-appearance: none; margin-top: -6px; box-shadow: 0 0 10px var(--accent-color);
+        }
+
+        .cyber-btn {
+            background: transparent;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 0.8rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .cyber-btn:hover {
+            background: var(--accent-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--accent-color);
+        }
+
+        .cyber-btn:disabled { border-color: #444; color: #444; cursor: not-allowed; }
+
+        .cyber-btn.active-flow {
+            border-color: var(--danger-color);
+            color: var(--danger-color);
+            background: rgba(255, 68, 68, 0.1);
+            animation: pulse-red 1s infinite;
+        }
+
+        .secondary-btn { font-size: 0.7rem; padding: 0.6rem; opacity: 0.8; border-style: dashed; }
+
+        .corner { position: absolute; width: 8px; height: 8px; border: 2px solid var(--accent-color); }
+        .tl { top: -2px; left: -2px; border-bottom: none; border-right: none; }
+        .tr { top: -2px; right: -2px; border-bottom: none; border-left: none; }
+        .bl { bottom: -2px; left: -2px; border-top: none; border-right: none; }
+        .br { bottom: -2px; right: -2px; border-top: none; border-left: none; }
+
+        /* --- RESPONSIVE LOGIC UPDATES --- */
+
+        /* 1. Portrait Mode (Vertical Stack) - For Phones held vertically */
+        @media (max-width: 768px) and (orientation: portrait) {
+            main { flex-direction: column; }
+            #sim-container { flex: 1; min-height: 45vh; border-right: none; border-bottom: 1px dashed var(--grid-color); }
+            #controls-container { flex: 1.5; padding: 1rem; gap: 0.8rem; }
+            .ph-scale-legend { width: 240px; bottom: 5px; }
+        }
+
+        /* 2. Landscape Mode (Side-by-Side) - For Phones held horizontally */
+        @media (max-height: 600px) and (orientation: landscape) {
+            header { height: 40px; padding: 0 1rem; }
+            h1 { font-size: 0.9rem; }
+            
+            main { flex-direction: row; } /* Force row */
+            
+            #sim-container { 
+                flex: 1.2; 
+                border-right: 1px dashed var(--grid-color); 
+                border-bottom: none; 
+            }
+            
+            #controls-container { 
+                flex: 1; 
+                padding: 0.5rem 1rem; 
+                gap: 0.5rem; 
+                overflow-y: auto; /* Scroll if too short */
+                min-width: 250px; /* Allow narrower width */
+                padding-bottom: 1rem;
+            }
+
+            /* Compact UI for Landscape */
+            .panel { padding: 0.6rem; margin-top: 0.4rem; }
+            .panel::before { top: -0.5rem; font-size: 0.6rem; }
+            .data-row { font-size: 0.7rem; margin-bottom: 0.2rem; }
+            .titrant-selector { margin-bottom: 0.5rem; }
+            .select-btn { padding: 0.4rem; font-size: 0.7rem; }
+            .slider-group { margin-bottom: 0.5rem; gap: 0.2rem; }
+            .cyber-btn { padding: 0.5rem; font-size: 0.75rem; margin-bottom: 0.3rem; }
+            
+            /* Legend Adjustment */
+            .ph-scale-legend { bottom: 2px; padding: 4px; width: 200px; }
+            .scale-bar { height: 6px; }
+            .scale-labels { font-size: 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Titration_Logic <span style="font-size:0.5em; opacity:0.7;">// V.6.5</span></h1>
+        <div class="header-controls">
+            <div class="status-badge" id="mission-status">MISSION_ACTIVE</div>
+            <div id="audio-toggle" class="audio-switch active" title="Toggle Sound System">
+                <div class="audio-indicator"></div>
+                <div class="audio-label">SOUND ON</div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section id="sim-container">
+            <canvas id="simCanvas"></canvas>
+            
+            <!-- Reference Bar -->
+            <div class="ph-scale-legend">
+                <div class="scale-labels">
+                    <span>ACIDIC (0)</span>
+                    <span>NEUTRAL (7)</span>
+                    <span>BASIC (14)</span>
+                </div>
+                <div class="scale-bar"></div>
+                <div class="scale-title">PH_CHROMATIC_SCALE_REFERENCE</div>
+            </div>
+        </section>
+
+        <section id="controls-container">
+            <div class="panel" data-label="REALTIME_METRICS">
+                <div class="corner tl"></div><div class="corner tr"></div>
+                <div class="corner bl"></div><div class="corner br"></div>
+                <div class="data-row"><span>INITIAL_PH</span><span id="init-ph-display" class="data-value">--.-</span></div>
+                <div class="data-row"><span>CURRENT_PH</span><span id="ph-display" class="data-value">--.-</span></div>
+                <div class="data-row"><span>TITRANT_ADDED</span><span id="vol-display" class="data-value">0.0 mL</span></div>
+                <div class="data-row" style="border:none; margin:0;"><span>REACTION_STATE</span><span id="state-display" class="data-value">STABLE</span></div>
+            </div>
+
+            <div class="panel" data-label="TITRANT_SELECTION">
+                <div class="corner tl"></div><div class="corner tr"></div>
+                <div class="corner bl"></div><div class="corner br"></div>
+                <div class="titrant-selector">
+                    <button id="btn-acid" class="select-btn">[ ADD ACID ]</button>
+                    <button id="btn-base" class="select-btn">[ ADD BASE ]</button>
+                </div>
+            </div>
+
+            <div class="panel" data-label="FLOW_CONTROL_SYS">
+                <div class="corner tl"></div><div class="corner tr"></div>
+                <div class="corner bl"></div><div class="corner br"></div>
+                <div class="slider-group">
+                    <label for="flow-rate-slider">VALVE_APERTURE [mL/s]</label>
+                    <div style="display:flex; justify-content:space-between; font-size:0.6rem; opacity:0.7; margin-bottom:5px;"><span>SLOW</span><span>FAST</span></div>
+                    <input type="range" id="flow-rate-slider" min="0.1" max="5.0" step="0.1" value="1.0">
+                    <div id="flow-val-display" style="text-align:right; font-size:0.7rem;">RATE: 1.0 mL/s</div>
+                </div>
+                <button id="flow-toggle-btn" class="cyber-btn" disabled>[ SELECT_TITRANT_FIRST ]</button>
+                <button id="reset-btn" class="cyber-btn secondary-btn">[ NEW_MISSION_RESET ]</button>
+            </div>
+            <div style="font-size: 0.6rem; opacity: 0.5; margin-top: auto; text-align: center;">MISSION: ADJUST FLOW TO REACH EXACTLY pH 7.00.</div>
+        </section>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const flowSlider = document.getElementById('flow-rate-slider');
+        const flowValDisplay = document.getElementById('flow-val-display');
+        const flowBtn = document.getElementById('flow-toggle-btn');
+        const phDisplay = document.getElementById('ph-display');
+        const initPhDisplay = document.getElementById('init-ph-display');
+        const volDisplay = document.getElementById('vol-display');
+        const stateDisplay = document.getElementById('state-display');
+        const resetBtn = document.getElementById('reset-btn');
+        const missionBadge = document.getElementById('mission-status');
+        const audioToggleBtn = document.getElementById('audio-toggle');
+        const audioLabel = document.querySelector('.audio-label');
+        const btnAcid = document.getElementById('btn-acid');
+        const btnBase = document.getElementById('btn-base');
+
+        const AudioSys = {
+            ctx: null, masterGain: null, isMuted: false, dripTimeout: null,
+            init: function() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.value = 0.3;
+                    this.masterGain.connect(this.ctx.destination);
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            toggleMute: function() {
+                this.isMuted = !this.isMuted;
+                if (this.masterGain) this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.3, this.ctx.currentTime);
+                if(!this.isMuted) { audioToggleBtn.classList.add('active'); audioLabel.innerText = "SOUND ON"; }
+                else { audioToggleBtn.classList.remove('active'); audioLabel.innerText = "SOUND OFF"; }
+            },
+            playOscillator: function(type, freqStart, freqEnd, duration, vol = 1) {
+                if (!this.ctx || this.isMuted) return;
+                const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                osc.type = type; osc.frequency.setValueAtTime(freqStart, this.ctx.currentTime);
+                if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, this.ctx.currentTime + duration);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(this.masterGain); osc.start(); osc.stop(this.ctx.currentTime + duration);
+            },
+            playClick: function() { this.playOscillator('square', 800, 100, 0.05, 0.5); },
+            playDrip: function() { this.playOscillator('sine', 600, 300, 0.1, 0.8); },
+            playSuccess: function() {
+                if (!this.ctx || this.isMuted) return;
+                const now = this.ctx.currentTime; [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                    osc.type = 'triangle'; osc.frequency.value = freq; gain.gain.setValueAtTime(0, now + i*0.1);
+                    gain.gain.linearRampToValueAtTime(0.4, now + i*0.1 + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, now + i*0.1 + 1.0);
+                    osc.connect(gain); gain.connect(this.masterGain); osc.start(now + i*0.1); osc.stop(now + i*0.1 + 1.0);
+                });
+            },
+            playError: function() {
+                if (!this.ctx || this.isMuted) return;
+                const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, this.ctx.currentTime + 0.3); gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3); osc.connect(gain); gain.connect(this.masterGain);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.3);
+            },
+            startDripLoop: function() {
+                if (this.dripTimeout) clearTimeout(this.dripTimeout);
+                const loop = () => { if (!state.isFlowing) return; this.playDrip(); let delay = 600 / state.flowRate; if (delay < 40) delay = 40; this.dripTimeout = setTimeout(loop, delay); };
+                loop();
+            },
+            stopDripLoop: function() { if (this.dripTimeout) clearTimeout(this.dripTimeout); }
+        };
+
+        let state = {
+            netBalance: 0, beakerType: 'ACID', initialPh: 1.0, currentPh: 1.0, titrantType: null, totalAddedVolume: 0, maxVolume: 300, color: { r: 255, g: 0, b: 0 }, drops: [], isFlowing: false, flowRate: 1.0, frameCount: 0, winState: false, wrongDirection: false, lastTime: 0
+        };
+
+        const THEME = { accent: '#95FF77', danger: '#FF4444', warning: '#D400FF', bg: '#1A1C1B', strokeWidth: 2, font: '14px "Courier New", monospace' };
+
+        function resizeCanvas() {
+            const container = document.getElementById('sim-container'); const dpr = window.devicePixelRatio || 1;
+            canvas.width = container.clientWidth * dpr; canvas.height = container.clientHeight * dpr;
+            ctx.scale(dpr, dpr); canvas.logicalWidth = container.clientWidth; canvas.logicalHeight = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function initGame() {
+            AudioSys.init(); 
+            const isAcidStart = Math.random() > 0.5; 
+            state.beakerType = isAcidStart ? 'ACID' : 'BASE';
+            
+            // Randomization Range: 15 to 150 (pH ~4.0 to ~0.1 or ~10.0 to ~13.9)
+            const randomStrength = 15 + Math.random() * 135; 
+            state.netBalance = isAcidStart ? -randomStrength : randomStrength;
+            
+            state.totalAddedVolume = 0; state.titrantType = null; state.isFlowing = false; state.winState = false; state.wrongDirection = false; state.drops = []; state.lastTime = 0;
+            AudioSys.stopDripLoop(); flowBtn.innerText = "[ SELECT_TITRANT_FIRST ]"; flowBtn.disabled = true; flowBtn.classList.remove('active-flow');
+            btnAcid.classList.remove('selected'); btnBase.classList.remove('selected');
+            updatePhysics(); state.initialPh = state.currentPh; initPhDisplay.innerText = state.initialPh.toFixed(2);
+            missionBadge.innerText = "MISSION_ACTIVE"; missionBadge.style.color = THEME.accent; missionBadge.style.borderColor = THEME.accent;
+        }
+
+        function selectTitrant(type) {
+            AudioSys.init(); AudioSys.playClick(); if(state.isFlowing) return;
+            state.titrantType = type; if (type === 'ACID') { btnAcid.classList.add('selected'); btnBase.classList.remove('selected'); }
+            else { btnBase.classList.add('selected'); btnAcid.classList.remove('selected'); }
+            flowBtn.disabled = false; flowBtn.innerText = "[ INITIATE_FLOW ]";
+        }
+
+        btnAcid.addEventListener('click', () => selectTitrant('ACID'));
+        btnBase.addEventListener('click', () => selectTitrant('BASE'));
+
+        function calculateColor(ph) {
+            const stops = [ { ph: 0, r: 255, g: 0, b: 0 }, { ph: 4, r: 255, g: 165, b: 0 }, { ph: 7, r: 0, g: 255, b: 0 }, { ph: 10, r: 0, g: 0, b: 255 }, { ph: 14, r: 128, g: 0, b: 128 } ];
+            let start = stops[0], end = stops[stops.length - 1];
+            for (let i = 0; i < stops.length - 1; i++) { if (ph >= stops[i].ph && ph <= stops[i+1].ph) { start = stops[i]; end = stops[i+1]; break; } }
+            const range = end.ph - start.ph, t = (ph - start.ph) / range;
+            return { r: Math.round(start.r * (1 - t) + end.r * t), g: Math.round(start.g * (1 - t) + end.g * t), b: Math.round(start.b * (1 - t) + end.b * t) };
+        }
+
+        function calculatePhFromBalance(balance) {
+            const k = 0.04; let ph = 7 + 7 * Math.tanh(k * balance);
+            if(ph < 0) ph = 0; if(ph > 14) ph = 14; return ph;
+        }
+
+        function updatePhysics() {
+            state.currentPh = calculatePhFromBalance(state.netBalance);
+            if (state.isFlowing) {
+                if (state.netBalance < -1 && state.titrantType === 'ACID') state.wrongDirection = true;
+                else if (state.netBalance > 1 && state.titrantType === 'BASE') state.wrongDirection = true;
+                else state.wrongDirection = false;
+            } else state.wrongDirection = false;
+            state.color = calculateColor(state.currentPh);
+            phDisplay.innerText = state.currentPh.toFixed(2); volDisplay.innerText = state.totalAddedVolume.toFixed(2) + " mL";
+            phDisplay.style.color = `rgb(${state.color.r}, ${state.color.g}, ${state.color.b})`;
+            if (state.wrongDirection) { stateDisplay.innerText = "WARNING: INTENSIFYING"; stateDisplay.style.color = THEME.warning; }
+            else if (state.currentPh >= 6.95 && state.currentPh <= 7.05) { state.winState = true; stateDisplay.innerText = "NEUTRAL [SUCCESS]"; stateDisplay.style.color = THEME.accent; missionBadge.innerText = "TARGET_NEUTRALIZED"; }
+            else if (state.currentPh < 6.95) { state.winState = false; stateDisplay.innerText = "ACIDIC"; stateDisplay.style.color = THEME.accent; missionBadge.innerText = "MISSION_ACTIVE"; }
+            else { state.winState = false; stateDisplay.innerText = "ALKALINE"; stateDisplay.style.color = THEME.danger; missionBadge.innerText = "OVERSHOT_TARGET"; }
+        }
+
+        audioToggleBtn.addEventListener('click', () => { AudioSys.init(); AudioSys.toggleMute(); });
+        flowSlider.addEventListener('input', (e) => { AudioSys.init(); AudioSys.playClick(); state.flowRate = parseFloat(e.target.value); flowValDisplay.innerText = `RATE: ${state.flowRate.toFixed(1)} mL/s`; });
+        flowBtn.addEventListener('click', () => {
+            AudioSys.init(); AudioSys.playClick(); state.isFlowing = !state.isFlowing;
+            if (state.isFlowing) { flowBtn.innerText = "[ HALT_PROCESS ]"; flowBtn.classList.add('active-flow'); state.lastTime = performance.now(); AudioSys.startDripLoop(); }
+            else { flowBtn.innerText = "[ INITIATE_FLOW ]"; flowBtn.classList.remove('active-flow'); AudioSys.stopDripLoop(); if (state.winState) AudioSys.playSuccess(); else if (state.totalAddedVolume > 0 && !state.winState && !state.wrongDirection) AudioSys.playError(); }
+        });
+        resetBtn.addEventListener('click', initGame);
+
+        function animate(timestamp) {
+            state.frameCount++; if (!state.lastTime) state.lastTime = timestamp;
+            const dt = (timestamp - state.lastTime) / 1000; state.lastTime = timestamp;
+            if (state.isFlowing) {
+                const addedVol = state.flowRate * dt; state.totalAddedVolume += addedVol;
+                if (state.titrantType === 'ACID') state.netBalance -= addedVol;
+                else if (state.titrantType === 'BASE') state.netBalance += addedVol;
+                if (state.totalAddedVolume > state.maxVolume) { state.isFlowing = false; flowBtn.innerText = "[ CAPACITY_LIMIT ]"; flowBtn.classList.remove('active-flow'); AudioSys.stopDripLoop(); AudioSys.playError(); }
+                updatePhysics();
+                if (state.flowRate < 2.5) { const spawnChance = state.flowRate * 0.2; if (Math.random() < spawnChance) state.drops.push({ y: 0, speed: 3 + Math.random() * 2 }); }
+            }
+            draw(); requestAnimationFrame(animate);
+        }
+
+        function draw() {
+            const w = canvas.logicalWidth; const h = canvas.logicalHeight; const cx = w / 2; const cy = h / 2;
+            ctx.clearRect(0, 0, w, h); ctx.strokeStyle = THEME.accent; ctx.lineWidth = THEME.strokeWidth; ctx.fillStyle = THEME.accent; ctx.textAlign = 'center'; ctx.font = '14px "Courier New", monospace';
+            const beakerWidth = 120, beakerHeight = 180, buretteWidth = 30, buretteHeight = 180, standBaseY = h - 60, beakerY = standBaseY - 10, buretteY = beakerY - beakerHeight - 30;
+            ctx.save(); ctx.strokeStyle = '#333333'; ctx.beginPath(); ctx.moveTo(cx + 80, standBaseY); ctx.lineTo(cx + 80, standBaseY - 400); ctx.lineTo(cx + 20, standBaseY - 400); ctx.moveTo(cx + 40, standBaseY); ctx.lineTo(cx + 120, standBaseY); ctx.stroke(); ctx.restore();
+            ctx.beginPath(); ctx.moveTo(cx - beakerWidth/2, beakerY - beakerHeight); ctx.lineTo(cx - beakerWidth/2, beakerY); ctx.lineTo(cx + beakerWidth/2, beakerY); ctx.lineTo(cx + beakerWidth/2, beakerY - beakerHeight); ctx.stroke();
+            ctx.beginPath(); for(let i=1; i<6; i++) { let y = beakerY - (i * (beakerHeight/6)); ctx.moveTo(cx - beakerWidth/2, y); ctx.lineTo(cx - beakerWidth/2 + 10, y); } ctx.stroke();
+            const initialHeightPx = 45, addedHeightPx = state.totalAddedVolume * 0.4, totalLiquidHeight = Math.min(initialHeightPx + addedHeightPx, beakerHeight - 5), liquidTopY = beakerY - totalLiquidHeight;
+            ctx.fillStyle = `rgba(${state.color.r}, ${state.color.g}, ${state.color.b}, 0.8)`;
+            if (state.winState || state.wrongDirection) { const pulse = Math.sin(state.frameCount * 0.1) * 15; ctx.shadowBlur = 20 + pulse; ctx.shadowColor = state.wrongDirection ? THEME.warning : `rgb(${state.color.r}, ${state.color.g}, ${state.color.b})`; }
+            else { ctx.shadowBlur = 10; ctx.shadowColor = `rgb(${state.color.r}, ${state.color.g}, ${state.color.b})`; }
+            ctx.fillRect(cx - beakerWidth/2 + 2, liquidTopY, beakerWidth - 4, totalLiquidHeight - 2); ctx.shadowBlur = 0;
+            ctx.strokeStyle = THEME.accent; ctx.beginPath(); ctx.rect(cx - buretteWidth/2, buretteY - buretteHeight, buretteWidth, buretteHeight); ctx.moveTo(cx - buretteWidth/2, buretteY); ctx.lineTo(cx, buretteY + 20); ctx.lineTo(cx + buretteWidth/2, buretteY); ctx.stroke();
+            const buretteMaxPx = buretteHeight - 10, buretteDrain = (state.frameCount % 200) / 200 * 10;
+            ctx.fillStyle = "rgba(149, 255, 119, 0.2)"; ctx.fillRect(cx - buretteWidth/2 + 2, buretteY - buretteMaxPx + buretteDrain, buretteWidth - 4, buretteMaxPx - buretteDrain);
+            const dropTipY = buretteY + 20;
+            if (state.isFlowing && state.flowRate >= 2.5) { ctx.fillStyle = `rgba(${THEME.accent}, 0.6)`; const streamWidth = Math.min(6, state.flowRate); ctx.fillRect(cx - streamWidth/2, dropTipY, streamWidth, liquidTopY - dropTipY); }
+            ctx.fillStyle = THEME.accent; for (let i = state.drops.length - 1; i >= 0; i--) { const d = state.drops[i]; d.y += d.speed; const currentY = dropTipY + d.y; ctx.fillRect(cx - 1, currentY, 3, 3); if (currentY >= liquidTopY) state.drops.splice(i, 1); }
+            ctx.fillStyle = THEME.accent; let titrantLabel = "TITRANT [SELECT]"; if(state.titrantType === 'ACID') titrantLabel = "TITRANT [HCL]"; if(state.titrantType === 'BASE') titrantLabel = "TITRANT [NAOH]"; ctx.fillText(titrantLabel, cx, buretteY - buretteHeight - 15);
+            if (state.wrongDirection) {
+                if (Math.floor(state.frameCount / 10) % 2 === 0) { ctx.save(); ctx.font = 'bold 20px "Courier New", monospace'; ctx.fillStyle = THEME.warning; ctx.shadowColor = THEME.warning; ctx.shadowBlur = 10; ctx.fillText("WARNING: REACTION INTENSIFYING", cx, cy - 50); ctx.restore(); }
+            } else if (state.winState) {
+                if (Math.floor(state.frameCount / 20) % 2 === 0) { ctx.save(); ctx.font = 'bold 24px "Courier New", monospace'; ctx.fillStyle = THEME.accent; ctx.shadowColor = THEME.accent; ctx.shadowBlur = 20; ctx.fillText(">> TARGET NEUTRALIZED <<", cx, cy - 50); ctx.restore(); ctx.strokeStyle = THEME.accent; ctx.lineWidth = 2; ctx.strokeRect(cx - 160, cy - 75, 320, 35); }
+            }
+        }
+
+        resizeCanvas(); initGame(); requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

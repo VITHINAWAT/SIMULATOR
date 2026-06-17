@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PNEUMATIC_CIRCUIT_LAB // VITHINAWAT v6.9</title>
+    
+    <!-- Import Share Tech Mono Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #1A1C1B;
+            --terminal-green: #95FF77;     /* Active / Highlight */
+            --plasma-orange: #FF8800;      /* Warning / Load */
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            --track-grey: #2A2C2B;
+            --inactive-grey: #444444;      /* Inactive Lines */
+            --electric-cyan: #00F3FF;      /* Active Air */
+            --alert-red: #FF3300;
+            
+            --main-font: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--void-black);
+            background-image: radial-gradient(#2A2E2E 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: var(--terminal-green);
+            font-family: var(--main-font);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 1. TOP DASHBOARD --- */
+        #dashboard {
+            height: 50px;
+            background-color: var(--graphite-grey);
+            border-bottom: 1px solid var(--terminal-green);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+        }
+
+        .title-block {
+            display: flex;
+            flex-direction: column;
+        }
+        .app-title {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--terminal-green);
+            letter-spacing: 1px;
+        }
+        .app-subtitle {
+            font-size: 0.6rem;
+            color: var(--plasma-orange);
+            letter-spacing: 1px;
+            display: none;
+        }
+        @media (min-width: 600px) {
+            .app-title { font-size: 1.2rem; letter-spacing: 2px; }
+            .app-subtitle { display: block; }
+        }
+
+        .mode-switch {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        /* --- 2. MAIN CANVAS --- */
+        #sim-stage {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Instructions Overlay */
+        #overlay-instructions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            pointer-events: none;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.7rem;
+            line-height: 1.4;
+        }
+
+        /* Challenge UI - TRUTH TABLE STYLE */
+        #challenge-panel {
+            position: absolute;
+            top: 40px;
+            right: 10px;
+            width: 240px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid var(--plasma-orange);
+            padding: 8px;
+            display: none; 
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 0 15px rgba(255, 136, 0, 0.2);
+            transition: all 0.3s ease;
+            overflow: hidden;
+            max-height: 400px;
+            z-index: 20;
+        }
+        
+        #challenge-panel.minimized {
+            max-height: 40px;
+            gap: 0;
+            padding-bottom: 0;
+            width: 160px; 
+        }
+
+        .ch-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #555; 
+            padding-bottom: 4px; 
+            margin-bottom: 4px;
+            height: 25px;
+        }
+
+        .ch-header { 
+            color: var(--plasma-orange); 
+            font-weight: bold; 
+            text-align: left;
+            flex-grow: 1;
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+
+        .ch-toggle-btn {
+            color: var(--terminal-green);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.2rem;
+            line-height: 1;
+            padding: 0 10px;
+            user-select: none;
+            white-space: nowrap;
+            flex-shrink: 0; 
+        }
+        .ch-toggle-btn:hover { color: #fff; }
+        
+        #ch-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            opacity: 1;
+            transition: opacity 0.2s;
+        }
+        
+        #challenge-panel.minimized #ch-content-wrapper {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .truth-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            color: #ccc;
+            text-align: center;
+        }
+        .truth-table th { border-bottom: 1px solid #555; padding: 3px; color: var(--terminal-green); }
+        .truth-table td { border-bottom: 1px solid #333; padding: 3px; }
+        .truth-table tr.active-row { background: rgba(255, 136, 0, 0.3); color: #fff; font-weight: bold; }
+        .truth-table tr.pass { background: rgba(0, 255, 0, 0.2); }
+        .truth-table tr.fail { background: rgba(255, 0, 0, 0.2); }
+
+        .ch-status { text-align: center; font-size: 0.8rem; min-height: 18px; margin-top: 4px;}
+        .ch-note { font-size: 0.6rem; color: #888; text-align: center; margin-top: 4px; font-style: italic; }
+
+        /* Toast Notification */
+        #toast {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 51, 0, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+            border: 1px solid var(--plasma-orange);
+            white-space: nowrap;
+        }
+
+        /* --- 3. BOTTOM TOOLBOX --- */
+        #toolbox {
+            height: 90px;
+            background-color: var(--graphite-grey);
+            border-top: 1px solid var(--terminal-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 5px 10px;
+            z-index: 10;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tool-item {
+            min-width: 60px;
+            height: 70px;
+            border: 1px solid #444;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            border-radius: 4px;
+            flex-shrink: 0;
+            touch-action: manipulation;
+        }
+        .tool-item:hover {
+            border-color: var(--terminal-green);
+            background: rgba(149, 255, 119, 0.1);
+            transform: translateY(-2px);
+        }
+        .tool-item:active { transform: scale(0.95); border-color: var(--terminal-green); }
+        
+        .tool-item.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: #333;
+        }
+        
+        .tool-icon {
+            width: 35px;
+            height: 35px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            margin-bottom: 4px;
+        }
+        .tool-label { font-size: 0.5rem; color: #aaa; text-transform: uppercase; text-align: center; line-height: 1.1;}
+
+        /* Buttons */
+        .cyber-btn {
+            background: transparent;
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            padding: 4px 8px;
+            font-family: var(--main-font);
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .cyber-btn:hover { background: var(--terminal-green); color: #000; box-shadow: 0 0 10px var(--terminal-green); }
+        .cyber-btn.active { background: var(--terminal-green); color: #000; }
+        
+        .btn-challenge { border-color: var(--plasma-orange); color: var(--plasma-orange); }
+        .btn-challenge:hover { background: var(--plasma-orange); color: #000; box-shadow: 0 0 10px var(--plasma-orange); }
+        .btn-challenge.active { background: var(--plasma-orange); color: #000; }
+
+        .btn-delete { border-color: var(--alert-red); color: var(--alert-red); }
+        .btn-delete:hover { background: var(--alert-red); color: #fff; box-shadow: 0 0 10px var(--alert-red); }
+        .btn-delete.active { background: var(--alert-red); color: #fff; }
+
+        .btn-clear { border-color: #888; color: #888; }
+        .btn-clear:hover { background: #888; color: #000; }
+
+    </style>
+</head>
+<body>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard">
+        <div class="title-block">
+            <div class="app-title">PNEUMATIC LAB</div>
+            <div class="app-subtitle">VITHINAWAT v6.9 (Bug Fix)</div>
+        </div>
+        
+        <div class="mode-switch">
+            <button id="btn-mode-free" class="cyber-btn active" onclick="setMode('free')">FREE</button>
+            <button id="btn-mode-chal" class="cyber-btn btn-challenge" onclick="setMode('challenge')">CHALLENGE</button>
+            <div style="width:1px; height:20px; background:#444; margin:0 5px;"></div>
+            <button id="btn-delete-mode" class="cyber-btn btn-delete" onclick="toggleDeleteMode()">DEL</button>
+            <button class="cyber-btn btn-clear" onclick="clearBoard()">CLR</button>
+        </div>
+    </div>
+
+    <!-- MAIN STAGE -->
+    <div id="sim-stage">
+        <canvas id="simCanvas"></canvas>
+        <div id="overlay-instructions">
+            TAP TOOLS TO SPAWN AT CENTER<br>DRAG COMPONENTS TO MOVE<br>DRAG RED PORTS TO CONNECT
+        </div>
+
+        <!-- CHALLENGE PANEL -->
+        <div id="challenge-panel">
+            <div class="ch-header-row">
+                <div class="ch-header">LOGIC CHALLENGE</div>
+                <div class="ch-toggle-btn" onclick="toggleChallengePanel()" id="ch-toggle-icon">[ - ]</div>
+            </div>
+            
+            <div id="ch-content-wrapper">
+                <table class="truth-table" id="truth-table-ui">
+                    <thead>
+                        <tr>
+                            <th>IN 1</th>
+                            <th>IN 2</th>
+                            <th>CYL A</th>
+                            <th>CYL B</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Generated via JS -->
+                    </tbody>
+                </table>
+
+                <button id="btn-start-seq" class="cyber-btn" onclick="runTruthTableTest()" style="width:100%; margin-top:8px; border-color:var(--plasma-orange); color:var(--plasma-orange);">RUN TEST</button>
+                <div id="seq-status" class="ch-status">READY</div>
+                <div class="ch-note">*AUTO-INPUT ACTIVE</div>
+            </div>
+        </div>
+        
+        <div id="toast">TOOLBOX LOCKED</div>
+    </div>
+
+    <!-- TOOLBOX -->
+    <div id="toolbox">
+        <div id="tool-compressor" class="tool-item" onclick="spawnTool('compressor')">
+            <div class="tool-icon" style="border: 2px solid var(--terminal-green); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--terminal-green);">P</div>
+            <span class="tool-label">AIR<br>SOURCE</span>
+        </div>
+        <div id="tool-cross" class="tool-item" onclick="spawnTool('cross')">
+            <div class="tool-icon" style="display:flex; align-items:center; justify-content:center;">
+                 <div style="width:30px; height:6px; background:#888; position:absolute;"></div>
+                 <div style="width:6px; height:30px; background:#888; position:absolute;"></div>
+            </div>
+            <span class="tool-label">CROSS<br>JOINT</span>
+        </div>
+        <div id="tool-valve32" class="tool-item" onclick="spawnTool('valve32')">
+            <div class="tool-icon" style="border: 1px solid #888; background:#333; display:flex; align-items:center; justify-content:center;">
+                <div style="width:10px; height:10px; background:#555; border:1px solid #fff; border-radius:50%;"></div>
+            </div>
+            <span class="tool-label">3/2 VALVE<br>(BTN)</span>
+        </div>
+        <div id="tool-valve52" class="tool-item" onclick="spawnTool('valve52')">
+            <div class="tool-icon" style="border: 1px solid #888; background:#333; width:50px; display:flex; justify-content:space-between; align-items:center; padding:2px;">
+                <div style="width:4px; height:4px; background:#fff; border-radius:50%;"></div>
+                <div style="width:4px; height:4px; background:#fff; border-radius:50%;"></div>
+            </div>
+            <span class="tool-label">5/2 VALVE<br>(PILOT)</span>
+        </div>
+        <div id="tool-cyl-s" class="tool-item" onclick="spawnTool('cyl-s')">
+            <div class="tool-icon" style="border: 1px solid #888; width:50px; height:15px; position:relative; background:#222;">
+                <div style="width:10px; height:100%; background:#888; position:absolute; right:0;"></div>
+            </div>
+            <span class="tool-label">CYLINDER<br>SINGLE</span>
+        </div>
+        <div id="tool-cyl-d" class="tool-item" onclick="spawnTool('cyl-d')">
+            <div class="tool-icon" style="border: 1px solid #888; width:50px; height:15px; position:relative; background:#222;">
+                <div style="width:10px; height:100%; background:#888; position:absolute; right:0;"></div>
+                <div style="width:2px; height:5px; background:#f00; position:absolute; bottom:-3px; left:5px;"></div>
+                <div style="width:2px; height:5px; background:#f00; position:absolute; bottom:-3px; right:15px;"></div>
+            </div>
+            <span class="tool-label">CYLINDER<br>DOUBLE</span>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * PNEUMATIC LAB ENGINE v6.9 - VITHINAWAT
+         * Bug Fix: Fixed Truth Table evaluation referencing .ext instead of .extension
+         */
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- AUDIO ENGINE ---
+        const AudioSys = {
+            ctx: null,
+            init: function() {
+                if(!this.ctx) {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AC();
+                }
+                if(this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            playHiss: function(duration = 0.1, pitch = 1000) { 
+                if(!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+
+                osc.type = 'sawtooth';
+                osc.frequency.value = 60; 
+                
+                filter.type = 'highpass';
+                filter.frequency.value = pitch;
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                const now = this.ctx.currentTime;
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+                osc.start(now);
+                osc.stop(now + duration + 0.05);
+            },
+            playClick: function() {
+                if(!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.value = 300;
+                gain.gain.value = 0.05;
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            }
+        };
+
+        // --- CONSTANTS ---
+        const COLORS = {
+            active: '#00F3FF', // Electric Cyan
+            inactive: '#444444',
+            port: '#FF3300',   
+            component: '#666666',
+            bodyBg: '#2A2C2B',
+            highlight: '#95FF77',
+            alert: '#FF3300',
+            bg: '#1A1C1B'
+        };
+
+        // --- STATE ---
+        let components = [];
+        let wires = [];
+        let dragging = null; 
+        let wiring = null;   
+        let deleteMode = false;
+        let mouse = { x: 0, y: 0 };
+        let mode = 'free'; 
+        let animationOffset = 0; 
+        
+        // Challenge State
+        let challengeTarget = []; 
+        let isTesting = false;
+
+        // --- HELPER ---
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.opacity = 1;
+            setTimeout(() => t.style.opacity = 0, 2000);
+        }
+
+        window.toggleChallengePanel = function() {
+            const p = document.getElementById('challenge-panel');
+            const icon = document.getElementById('ch-toggle-icon');
+            p.classList.toggle('minimized');
+            if(p.classList.contains('minimized')) {
+                icon.innerText = "[ + ]";
+            } else {
+                icon.innerText = "[ - ]";
+            }
+        };
+
+        function isPointNearBezier(px, py, p0, p1, p2, p3, tolerance = 10) {
+            for(let t=0; t<=1; t+=0.1) {
+                const mt = 1-t;
+                const mt2 = mt*mt;
+                const mt3 = mt*mt*mt;
+                const t2 = t*t;
+                const t3 = t*t*t;
+                
+                const x = mt3*p0.x + 3*mt2*t*p1.x + 3*mt*t2*p2.x + t3*p3.x;
+                const y = mt3*p0.y + 3*mt2*t*p1.y + 3*mt*t2*p2.y + t3*p3.y;
+                
+                if (Math.hypot(px-x, py-y) < tolerance) return true;
+            }
+            return false;
+        }
+
+        function ensureInBounds() {
+            const W = canvas.width; const H = canvas.height;
+            const padding = 20; 
+            components.forEach(c => {
+                if (c.x < padding) c.x = padding;
+                if (c.x + c.w > W - padding) c.x = W - c.w - padding;
+                if (c.y < padding) c.y = padding;
+                if (c.y + c.h > H - padding) c.y = H - c.h - padding;
+            });
+        }
+
+        // --- CLASSES ---
+
+        class Port {
+            constructor(parent, id, x, y, type = 'io') {
+                this.parent = parent;
+                this.id = id;
+                this.relX = x;
+                this.relY = y;
+                this.type = type; 
+                this.pressure = 0.0;
+                this.ventTimer = 0; 
+                this.isVenting = false; 
+            }
+            get absX() { return this.parent.x + this.relX; }
+            get absY() { return this.parent.y + this.relY; }
+            
+            reset() { 
+                this.pressure = 0.0; 
+                this.isVenting = false; 
+            }
+            
+            triggerVent() {
+                this.ventTimer = 20; 
+            }
+        }
+
+        class Component {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.w = 60;
+                this.h = 60;
+                this.type = type;
+                this.ports = [];
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.label = "";
+                this.isPressurized = false; 
+                this.isLocked = false; 
+            }
+
+            addPort(id, x, y, type) {
+                this.ports.push(new Port(this, id, x, y, type));
+            }
+
+            isMouseOver(mx, my) {
+                return mx >= this.x && mx <= this.x + this.w && my >= this.y && my <= this.y + this.h;
+            }
+
+            getPortAt(mx, my) {
+                const dist = 12; 
+                return this.ports.find(p => Math.hypot(p.absX - mx, p.absY - my) < dist);
+            }
+
+            getInteractionType(mx, my) { return 'drag'; }
+
+            updateState() { 
+            }
+
+            updatePressure() {
+                this.isPressurized = this.ports.some(p => p.pressure > 0.5);
+            }
+
+            drawBase(ctx) {
+                if(this.isPressurized) {
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = COLORS.active;
+                    ctx.strokeStyle = COLORS.active;
+                } else {
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = COLORS.component;
+                }
+
+                ctx.fillStyle = COLORS.bodyBg;
+                ctx.lineWidth = 2;
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                ctx.strokeRect(this.x, this.y, this.w, this.h);
+                ctx.shadowBlur = 0; 
+                
+                // Screws
+                ctx.fillStyle = '#555';
+                ctx.beginPath();
+                ctx.arc(this.x + 4, this.y + 4, 2, 0, Math.PI*2);
+                ctx.arc(this.x + this.w - 4, this.y + 4, 2, 0, Math.PI*2);
+                ctx.arc(this.x + 4, this.y + this.h - 4, 2, 0, Math.PI*2);
+                ctx.arc(this.x + this.w - 4, this.y + this.h - 4, 2, 0, Math.PI*2);
+                ctx.fill();
+
+                if(this.label) {
+                    ctx.fillStyle = '#95FF77'; 
+                    ctx.font = 'bold 12px Share Tech Mono'; 
+                    ctx.fillText(this.label, this.x, this.y - 8);
+                }
+            }
+
+            drawPorts(ctx) {
+                this.ports.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.absX, p.absY, 5, 0, Math.PI*2);
+                    ctx.fillStyle = p.pressure > 0.5 ? COLORS.active : COLORS.port;
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    if (p.ventTimer > 0) {
+                        p.ventTimer--;
+                        ctx.strokeStyle = `rgba(255,255,255,${p.ventTimer/20})`;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        const vx = (Math.random()-0.5)*10;
+                        ctx.moveTo(p.absX, p.absY);
+                        ctx.lineTo(p.absX + vx, p.absY + 20); 
+                        
+                        const dx = p.absX - (this.x + this.w/2);
+                        const dy = p.absY - (this.y + this.h/2);
+                        const len = Math.hypot(dx, dy);
+                        const nx = dx/len; const ny = dy/len;
+                        
+                        ctx.moveTo(p.absX, p.absY);
+                        ctx.lineTo(p.absX + nx*20 + vx, p.absY + ny*20);
+                        ctx.stroke();
+                    }
+                });
+            }
+        }
+
+        class Compressor extends Component {
+            constructor(x, y) {
+                super(x, y, 'compressor');
+                this.w = 50; this.h = 50;
+                this.addPort('out', 25, 0, 'out');
+            }
+            updatePressure() { this.ports[0].pressure = 1.0; this.isPressurized = true; }
+            draw(ctx) {
+                this.drawBase(ctx);
+                ctx.strokeStyle = '#aaa';
+                ctx.beginPath(); ctx.arc(this.x + 25, this.y + 25, 18, 0, Math.PI*2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(this.x + 25, this.y + 15); ctx.lineTo(this.x + 15, this.y + 35); ctx.lineTo(this.x + 35, this.y + 35); ctx.closePath(); ctx.stroke();
+                
+                ctx.fillStyle = '#95FF77'; 
+                ctx.font = 'bold 12px Share Tech Mono'; 
+                ctx.textAlign = "center";
+                ctx.fillText("AIR SOURCE", this.x + 25, this.y + 65);
+                ctx.textAlign = "start"; 
+
+                this.drawPorts(ctx);
+            }
+        }
+
+        class CrossJunction extends Component {
+             constructor(x, y) {
+                super(x, y, 'cross');
+                this.w = 40; this.h = 40;
+                this.addPort('l', 0, 20, 'io'); this.addPort('r', 40, 20, 'io'); 
+                this.addPort('t', 20, 0, 'io'); this.addPort('b', 20, 40, 'io'); 
+            }
+            updatePressure() {
+                const anyVenting = this.ports.some(p => p.isVenting);
+                if (anyVenting) {
+                    this.ports.forEach(p => { p.pressure = 0; p.isVenting = true; });
+                    this.isPressurized = false;
+                } else {
+                    const maxP = Math.max(...this.ports.map(p => p.pressure));
+                    this.ports.forEach(p => p.pressure = maxP);
+                    this.isPressurized = maxP > 0.5;
+                }
+            }
+            draw(ctx) {
+                if(this.isPressurized) { ctx.shadowBlur = 10; ctx.shadowColor = COLORS.active; }
+                ctx.fillStyle = COLORS.bodyBg;
+                ctx.fillRect(this.x, this.y+15, 40, 10); ctx.fillRect(this.x+15, this.y, 10, 40);
+                ctx.strokeStyle = this.isPressurized ? COLORS.active : '#888'; ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.moveTo(this.x, this.y+20); ctx.lineTo(this.x+40, this.y+20);
+                ctx.moveTo(this.x+20, this.y); ctx.lineTo(this.x+20, this.y+40); ctx.stroke();
+                ctx.shadowBlur = 0; 
+
+                if(this.label) {
+                    ctx.fillStyle = '#95FF77'; 
+                    ctx.font = 'bold 12px Share Tech Mono'; 
+                    ctx.fillText(this.label, this.x, this.y - 8);
+                }
+
+                this.drawPorts(ctx);
+            }
+        }
+
+        class Valve32 extends Component {
+            constructor(x, y) {
+                super(x, y, 'valve32');
+                this.w = 50; this.h = 80; 
+                this.addPort('in', 10, 80, 'in'); 
+                this.addPort('out', 10, 30, 'out'); 
+                this.state = 0; 
+                this.isPressed = false;
+            }
+            getInteractionType(mx, my) { return (my < this.y + 30) ? 'action' : 'drag'; }
+            
+            updateState() {
+            }
+
+            updatePressure() {
+                if (this.isPressed) {
+                    if (this.ports[0].pressure > 0.5) this.ports[1].pressure = 1.0;
+                } else { 
+                    this.ports[1].pressure = 0.0; 
+                    this.ports[1].isVenting = true; 
+                }
+                this.isPressurized = this.ports[0].pressure > 0.5;
+            }
+            draw(ctx) {
+                ctx.fillStyle = COLORS.bodyBg;
+                ctx.strokeStyle = this.isPressurized ? COLORS.active : COLORS.component;
+                if(this.isPressurized) { ctx.shadowBlur = 10; ctx.shadowColor = COLORS.active; }
+                ctx.fillRect(this.x, this.y+30, this.w, this.h-30); ctx.strokeRect(this.x, this.y+30, this.w, this.h-30);
+                ctx.shadowBlur = 0;
+                const btnH = this.isPressed ? 15 : 25; const btnY = this.y + (30 - btnH);
+                ctx.fillStyle = this.isPressed ? COLORS.active : '#333';
+                ctx.strokeStyle = COLORS.highlight; ctx.fillRect(this.x+10, btnY, 30, btnH); ctx.strokeRect(this.x+10, btnY, 30, btnH);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(this.x+10, this.y+45, 30, 25);
+                ctx.beginPath();
+                if(this.isPressed) { ctx.moveTo(this.x+15, this.y+65); ctx.lineTo(this.x+15, this.y+50); ctx.lineTo(this.x+12, this.y+53); ctx.moveTo(this.x+15, this.y+50); ctx.lineTo(this.x+18, this.y+53); }
+                else { ctx.moveTo(this.x+15, this.y+65); ctx.lineTo(this.x+20, this.y+65); ctx.moveTo(this.x+15, this.y+50); ctx.lineTo(this.x+15, this.y+55); }
+                ctx.stroke(); 
+
+                if(this.label) {
+                    ctx.fillStyle = '#95FF77'; 
+                    ctx.font = 'bold 12px Share Tech Mono'; 
+                    ctx.fillText(this.label, this.x, this.y - 8);
+                }
+
+                this.drawPorts(ctx);
+            }
+        }
+
+        class Valve52 extends Component {
+            constructor(x, y) {
+                super(x, y, 'valve52');
+                this.w = 100; this.h = 50;
+                this.addPort('p1', 50, 50, 'in'); this.addPort('p2', 25, 0, 'out'); this.addPort('p4', 75, 0, 'out');  
+                this.addPort('p12', 0, 25, 'pilot'); this.addPort('p14', 100, 25, 'pilot'); 
+                this.state = 0; 
+                this.leftType = 'pilot'; 
+                this.rightType = 'pilot';
+                this.exhLeftTimer = 0;
+                this.exhRightTimer = 0;
+                
+                this.pilotLeftActive = false;
+                this.pilotRightActive = false;
+            }
+            
+            updateState() {
+                const pLeft = this.ports[3].pressure;
+                const pRight = this.ports[4].pressure;
+
+                if (this.leftType === 'pilot') {
+                    if (!this.pilotLeftActive && pLeft > 0.7) this.pilotLeftActive = true;
+                    else if (this.pilotLeftActive && pLeft < 0.3) this.pilotLeftActive = false;
+                } else { this.pilotLeftActive = false; }
+
+                if (this.rightType === 'pilot') {
+                    if (!this.pilotRightActive && pRight > 0.7) this.pilotRightActive = true;
+                    else if (this.pilotRightActive && pRight < 0.3) this.pilotRightActive = false;
+                } else { this.pilotRightActive = false; }
+
+                let signalLeft = this.pilotLeftActive ? 1 : 0;
+                let signalRight = this.pilotRightActive ? 1 : 0;
+
+                let newState = this.state;
+                if (this.leftType === 'pilot' && this.rightType === 'pilot') {
+                    if (signalLeft) newState = 0;
+                    if (signalRight) newState = 1;
+                } 
+                else if (this.leftType === 'spring' && this.rightType === 'pilot') {
+                    if (signalRight) newState = 1; else newState = 0; 
+                }
+                else if (this.leftType === 'pilot' && this.rightType === 'spring') {
+                    if (signalLeft) newState = 0; else newState = 1; 
+                }
+                
+                if(newState !== this.state) {
+                    AudioSys.playHiss(0.1); 
+                    if (this.state === 0 && newState === 1) {
+                        this.exhLeftTimer = 20; this.exhRightTimer = 0; 
+                    }
+                    if (this.state === 1 && newState === 0) {
+                        this.exhRightTimer = 20; this.exhLeftTimer = 0; 
+                    }
+                    this.state = newState; 
+                }
+            }
+
+            updatePressure() {
+                const pSupply = this.ports[0].pressure;
+                
+                if (this.state === 0) { 
+                    this.ports[1].pressure = pSupply; 
+                    this.ports[2].pressure = 0; 
+                    this.ports[2].isVenting = true; 
+                    this.ports[1].isVenting = false;
+                } 
+                else { 
+                    this.ports[1].pressure = 0; 
+                    this.ports[1].isVenting = true; 
+                    this.ports[2].pressure = pSupply; 
+                    this.ports[2].isVenting = false;
+                }
+                this.isPressurized = pSupply > 0.5;
+            }
+            
+            toggleSide(side) {
+                if (side === 'left') {
+                    this.leftType = (this.leftType === 'pilot') ? 'spring' : 'pilot';
+                    this.pilotLeftActive = false; 
+                    if (this.leftType === 'spring') removeWiresConnectedTo(this.ports[3]);
+                } else {
+                    this.rightType = (this.rightType === 'pilot') ? 'spring' : 'pilot';
+                    this.pilotRightActive = false; 
+                    if (this.rightType === 'spring') removeWiresConnectedTo(this.ports[4]);
+                }
+                AudioSys.playClick();
+            }
+
+            getToggleHover(mx, my) {
+                if (mx >= this.x && mx <= this.x + 20 && my >= this.y + 55 && my <= this.y + 75) return 'left';
+                if (mx >= this.x + 80 && mx <= this.x + 100 && my >= this.y + 55 && my <= this.y + 75) return 'right';
+                return null;
+            }
+
+            isMouseOver(mx, my) {
+                if (mx >= this.x && mx <= this.x + this.w && my >= this.y && my <= this.y + this.h) return true;
+                if (this.getToggleHover(mx, my)) return true;
+                return false;
+            }
+
+            checkSideToggle(mx, my) {
+                const side = this.getToggleHover(mx, my);
+                if (side) {
+                    this.toggleSide(side);
+                    return true;
+                }
+                return false;
+            }
+
+            getPortAt(mx, my) {
+                const p = super.getPortAt(mx, my); 
+                if (!p) return undefined;
+                if (p === this.ports[3] && this.leftType === 'spring') return undefined;
+                if (p === this.ports[4] && this.rightType === 'spring') return undefined;
+                return p;
+            }
+
+            draw(ctx) {
+                this.drawBase(ctx);
+                const spoolX = this.state === 0 ? this.x + 10 : this.x + 60;
+                ctx.fillStyle = COLORS.active; ctx.globalAlpha = 0.4; ctx.fillRect(spoolX, this.y + 10, 30, 30); ctx.globalAlpha = 1.0;
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(this.x+20, this.y+10, 20, 30); ctx.strokeRect(this.x+60, this.y+10, 20, 30); 
+                
+                const hoverSide = this.getToggleHover(mouse.x, mouse.y);
+
+                ctx.strokeRect(this.x, this.y+10, 20, 30);
+                if (this.leftType === 'spring') {
+                    ctx.beginPath(); ctx.strokeStyle = '#aaa';
+                    ctx.moveTo(this.x+5, this.y+12); ctx.lineTo(this.x+15, this.y+15); ctx.lineTo(this.x+5, this.y+18); ctx.lineTo(this.x+15, this.y+21); ctx.lineTo(this.x+5, this.y+24); ctx.stroke();
+                }
+
+                ctx.strokeRect(this.x+80, this.y+10, 20, 30);
+                if (this.rightType === 'spring') {
+                    ctx.beginPath(); ctx.strokeStyle = '#aaa';
+                    ctx.moveTo(this.x+95, this.y+12); ctx.lineTo(this.x+85, this.y+15); ctx.lineTo(this.x+95, this.y+18); ctx.lineTo(this.x+85, this.y+21); ctx.lineTo(this.x+95, this.y+24); ctx.stroke();
+                }
+
+                const isHoverL = hoverSide === 'left';
+                ctx.fillStyle = isHoverL ? '#444' : '#222';
+                ctx.fillRect(this.x, this.y+55, 20, 20);
+                ctx.strokeStyle = isHoverL ? COLORS.highlight : '#555';
+                ctx.strokeRect(this.x, this.y+55, 20, 20);
+                ctx.fillStyle = COLORS.highlight; ctx.font = '10px Arial';
+                ctx.fillText(this.leftType === 'spring' ? "S" : "P", this.x + 7, this.y + 69);
+
+                const isHoverR = hoverSide === 'right';
+                ctx.fillStyle = isHoverR ? '#444' : '#222';
+                ctx.fillRect(this.x+80, this.y+55, 20, 20);
+                ctx.strokeStyle = isHoverR ? COLORS.highlight : '#555';
+                ctx.strokeRect(this.x+80, this.y+55, 20, 20);
+                ctx.fillStyle = COLORS.highlight;
+                ctx.fillText(this.rightType === 'spring' ? "S" : "P", this.x + 87, this.y + 69);
+
+                this.ports.forEach((p, i) => {
+                    if (i === 3 && this.leftType === 'spring') return;
+                    if (i === 4 && this.rightType === 'spring') return;
+                    
+                    ctx.beginPath();
+                    ctx.arc(p.absX, p.absY, 5, 0, Math.PI*2);
+                    ctx.fillStyle = p.pressure > 0.5 ? COLORS.active : COLORS.port;
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+                });
+
+                if (this.exhLeftTimer > 0) {
+                    this.drawSteam(ctx, this.x + 20, this.y + 50, this.exhLeftTimer);
+                    this.exhLeftTimer--;
+                }
+                if (this.exhRightTimer > 0) {
+                    this.drawSteam(ctx, this.x + 80, this.y + 50, this.exhRightTimer);
+                    this.exhRightTimer--;
+                }
+            }
+
+            drawSteam(ctx, x, y, timer) {
+                ctx.save();
+                ctx.strokeStyle = `rgba(255,255,255,${timer/20})`;
+                ctx.lineWidth = 2;
+                for(let k=0; k<8; k++) { 
+                    ctx.beginPath();
+                    const angle = Math.PI/2 + (Math.random()-0.5)*1.5; 
+                    const dist = 10 + Math.random() * 30; 
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + Math.cos(angle)*dist, y + Math.sin(angle)*dist);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+
+        class Cylinder extends Component {
+            constructor(x, y, type) {
+                super(x, y, type);
+                this.w = 120; this.h = 40;
+                this.extension = 0; this.targetExt = 0; this.lastExtension = 0;
+                this.maxStroke = 95; 
+            }
+            
+            updateState() {
+                const diff = this.targetExt - this.extension;
+                this.extension += diff * 0.15; 
+                
+                if (Math.abs(this.extension - this.lastExtension) > 2) { 
+                     if (Math.random() < 0.2) AudioSys.playHiss(0.1, 600); 
+                }
+                this.lastExtension = this.extension; 
+            }
+
+            updatePressure() {
+                 this.isPressurized = this.ports.some(p => p.pressure > 0.5);
+            }
+
+            draw(ctx) {
+                const extPx = (this.extension / 100) * this.maxStroke;
+                ctx.fillStyle = '#bbb'; ctx.fillRect(this.x + this.w, this.y + 15, extPx, 10);
+                ctx.fillStyle = '#eee'; ctx.fillRect(this.x + this.w + extPx, this.y + 5, 8, 30); ctx.strokeRect(this.x + this.w + extPx, this.y + 5, 8, 30);
+                this.drawBase(ctx);
+                const internalPistonX = this.x + 10 + (this.extension/100) * 95;
+                ctx.fillStyle = COLORS.active; ctx.globalAlpha = 0.3; ctx.fillRect(this.x+5, this.y+5, internalPistonX - (this.x+5), 30); ctx.globalAlpha = 1.0;
+                ctx.fillStyle = '#fff'; ctx.fillRect(internalPistonX, this.y+5, 5, 30);
+                this.drawPorts(ctx);
+            }
+        }
+
+        class CylinderSingle extends Cylinder {
+            constructor(x, y) { super(x, y, 'cyl-s'); this.addPort('in', 10, 40, 'in'); this.w = 120; this.maxStroke = 95; }
+            
+            updateState() {
+                 const p = this.ports[0].pressure;
+                 this.targetExt = p > 0.5 ? 100 : 0;
+                 super.updateState();
+                 if (this.lastExtension > 50 && this.extension < 50) { this.ports[0].triggerVent(); }
+            }
+            
+            updatePressure() { this.isPressurized = this.ports[0].pressure > 0.5; }
+        }
+
+        class CylinderDouble extends Cylinder {
+            constructor(x, y) { super(x, y, 'cyl-d'); this.addPort('ext', 10, 40, 'in'); this.addPort('ret', 110, 40, 'in'); }
+            
+            updateState() {
+                const pExt = this.ports[0].pressure; const pRet = this.ports[1].pressure;
+                if (pExt > 0.5 && pRet < 0.5) this.targetExt = 100; else if (pRet > 0.5 && pExt < 0.5) this.targetExt = 0;
+                super.updateState();
+            }
+
+            updatePressure() {
+                const pExt = this.ports[0].pressure; const pRet = this.ports[1].pressure;
+                this.isPressurized = pExt > 0.5 || pRet > 0.5;
+            }
+        }
+
+        // --- CORE FUNCTIONS ---
+        window.spawnTool = function(type) {
+            if(mode==='challenge' && type!=='cross' && type!=='valve52') { showToast("LOCKED"); return; }
+            
+            const W = canvas.width;
+            const H = canvas.height;
+            const rx = (Math.random() - 0.5) * 40;
+            const ry = (Math.random() - 0.5) * 40;
+            
+            createComponent(type, W/2 + rx, H/2 + ry);
+            AudioSys.playClick();
+        }
+
+        function createComponent(type, x, y) {
+            let c;
+            switch(type) {
+                case 'compressor': c = new Compressor(x, y); break;
+                case 'valve32': c = new Valve32(x, y); break;
+                case 'valve52': c = new Valve52(x, y); break;
+                case 'cyl-s': c = new CylinderSingle(x, y); break;
+                case 'cyl-d': c = new CylinderDouble(x, y); break;
+                case 'cross': c = new CrossJunction(x, y); break;
+            }
+            if(c) {
+                const W = canvas.width; const H = canvas.height;
+                if (x + c.w > W) c.x = W - c.w - 10;
+                if (y + c.h > H) c.y = H - c.h - 10;
+                if (c.x < 10) c.x = 10;
+                if (c.y < 10) c.y = 10;
+
+                if (type.startsWith('cyl')) {
+                    const count = components.filter(z => z.type.startsWith('cyl')).length;
+                    c.label = String.fromCharCode(65 + count); 
+                }
+                components.push(c); 
+            }
+            return c;
+        }
+        
+        function removeComponent(index) {
+            const c = components[index]; wires = wires.filter(w => w.start.parent !== c && w.end.parent !== c);
+            components.splice(index, 1); AudioSys.playClick();
+        }
+        
+        function removeWiresConnectedTo(port) {
+            wires = wires.filter(w => w.start !== port && w.end !== port);
+        }
+
+        function updatePhysics() {
+            components.forEach(c => c.updateState());
+
+            components.forEach(c => { c.ports.forEach(p => p.reset()); });
+            
+            for(let iter=0; iter<10; iter++) { 
+                components.forEach(c => c.updatePressure()); 
+                wires.forEach(w => {
+                    if (w.start.isVenting || w.end.isVenting) { w.start.pressure = 0; w.end.pressure = 0; } 
+                    else { const maxP = Math.max(w.start.pressure, w.end.pressure); w.start.pressure = maxP; w.end.pressure = maxP; }
+                });
+            }
+            
+            const W = canvas.width; const H = canvas.height;
+            components.forEach(c => {
+                 if(c.x < 0) c.x = 0;
+                 if(c.y < 0) c.y = 0;
+                 if(c.x + c.w > W) c.x = W - c.w;
+                 if(c.y + c.h > H) c.y = H - c.h;
+            });
+        }
+
+        function drawLoop() {
+            animationOffset--;
+            if(canvas.width !== canvas.clientWidth) { canvas.width=canvas.clientWidth; canvas.height=canvas.clientHeight; }
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            components.forEach(c=>c.draw(ctx));
+            ctx.lineCap='round'; ctx.lineJoin='round';
+            wires.forEach(w => {
+                const p1=w.start, p2=w.end, on=w.start.pressure>0.5;
+                ctx.beginPath(); ctx.strokeStyle=on?COLORS.active:COLORS.inactive; ctx.lineWidth=4; if(on) ctx.shadowBlur=10; ctx.shadowColor=COLORS.active;
+                ctx.moveTo(p1.absX,p1.absY); ctx.bezierCurveTo(p1.absX,p1.absY+50, p2.absX,p2.absY+50, p2.absX,p2.absY); ctx.stroke();
+                if(on) { ctx.strokeStyle='rgba(255,255,255,0.7)'; ctx.lineWidth=2; ctx.setLineDash([5,15]); ctx.lineDashOffset=animationOffset; ctx.stroke(); ctx.setLineDash([]); }
+                ctx.shadowBlur=0;
+            });
+            if(wiring) { ctx.beginPath(); ctx.strokeStyle='#fff'; ctx.setLineDash([5,5]); ctx.moveTo(wiring.startPort.absX, wiring.startPort.absY); ctx.lineTo(wiring.currentX, wiring.currentY); ctx.stroke(); ctx.setLineDash([]); }
+        }
+        function loop() { updatePhysics(); drawLoop(); requestAnimationFrame(loop); }
+
+        function getMousePos(e) {
+            const r = canvas.getBoundingClientRect();
+            let cx, cy;
+            if (e.touches && e.touches.length > 0) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+            else if (e.changedTouches && e.changedTouches.length > 0) { cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY; }
+            else { cx = e.clientX; cy = e.clientY; }
+            return { x: cx-r.left, y: cy-r.top };
+        }
+        
+        function handleStart(e) {
+            if(e.target.closest('#toolbox') || e.target.closest('.cyber-btn') || e.target.closest('.ch-toggle-btn')) return;
+            
+            e.preventDefault(); 
+            const p = getMousePos(e); mouse=p;
+            if(deleteMode) { tryDeleteAt(p); return; }
+            for(let c of components) { const port = c.getPortAt(p.x, p.y); if(port) { wiring={startPort:port, currentX:p.x, currentY:p.y}; return; } }
+            for(let i=components.length-1; i>=0; i--) {
+                const c = components[i];
+                if(c.isMouseOver(p.x, p.y)) {
+                    if(c instanceof Valve52 && c.checkSideToggle(p.x, p.y)) return;
+                    if(c.getInteractionType(p.x, p.y)==='action') { c.isPressed=!c.isPressed; AudioSys.playClick(); }
+                    else { dragging={item:c, offsetX:p.x-c.x, offsetY:p.y-c.y, isNew:false}; }
+                    return;
+                }
+            }
+        }
+        function handleMove(e) {
+            const p = getMousePos(e); mouse=p;
+            if(wiring) { wiring.currentX=p.x; wiring.currentY=p.y; }
+            if(dragging) { dragging.item.x=p.x-dragging.offsetX; dragging.item.y=p.y-dragging.offsetY; }
+        }
+        function handleEnd(e) {
+            const p = getMousePos(e);
+            if(wiring) {
+                for(let c of components) { const port=c.getPortAt(p.x,p.y); if(port && port!==wiring.startPort) { wires.push({start:wiring.startPort, end:port}); AudioSys.playClick(); } }
+                wiring=null;
+            }
+            dragging=null;
+        }
+        
+        function tryDeleteAt(pos) {
+            const idx = components.findIndex(c => c.isMouseOver(pos.x, pos.y));
+            if(idx>=0) {
+                 if(mode==='challenge') { const l=components[idx].label; if(l==='IN 1'||l==='IN 2'||l==='CYL A'||l==='CYL B'||components[idx].type==='compressor') { showToast("CANNOT DELETE"); return; } }
+                 const c = components[idx]; wires=wires.filter(w=>w.start.parent!==c && w.end.parent!==c); components.splice(idx,1); AudioSys.playClick(); return;
+            }
+            const widx = wires.findIndex(w => isPointNearBezier(pos.x,pos.y, {x:w.start.absX,y:w.start.absY}, {x:w.start.absX,y:w.start.absY+50}, {x:w.end.absX,y:w.end.absY+50}, {x:w.end.absX,y:w.end.absY}));
+            if(widx>=0) { wires.splice(widx,1); AudioSys.playClick(); }
+        }
+
+        canvas.addEventListener('mousedown', handleStart); window.addEventListener('mousemove', handleMove); window.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('touchstart', handleStart, {passive:false}); window.addEventListener('touchmove', handleMove, {passive:false}); window.addEventListener('touchend', handleEnd);
+
+        // --- SETUP ---
+        window.toggleDeleteMode = () => { deleteMode=!deleteMode; document.getElementById('btn-delete-mode').classList.toggle('active', deleteMode); };
+        
+        window.clearBoard = () => { 
+            components=[]; 
+            wires=[]; 
+            showToast("BOARD CLEARED");
+            AudioSys.playClick();
+        };
+        
+        window.setMode = (m) => {
+            mode = m;
+            document.getElementById('btn-mode-free').classList.toggle('active', m === 'free');
+            document.getElementById('btn-mode-chal').classList.toggle('active', m === 'challenge');
+            document.getElementById('challenge-panel').style.display = m === 'challenge' ? 'flex' : 'none';
+            document.querySelectorAll('.tool-item').forEach(el => {
+                 if (m === 'challenge' && el.id !== 'tool-cross' && el.id !== 'tool-valve52') el.classList.add('locked');
+                 else el.classList.remove('locked');
+            });
+
+            if (m === 'challenge') {
+                components = []; wires = [];
+                const W = canvas.width; const H = canvas.height;
+                
+                const safeH = H - 100; 
+                const topRow = H * 0.15; 
+                const midRow = H * 0.45; 
+                const botRow = H * 0.70; 
+
+                const src = createComponent('compressor', W*0.1, botRow); 
+                const v1 = createComponent('valve32', W*0.3, midRow + 20); v1.label="IN 1";
+                const v2 = createComponent('valve32', W*0.5, midRow + 20); v2.label="IN 2";
+                
+                createComponent('valve52', W*0.35, midRow - 60); 
+                createComponent('valve52', W*0.55, midRow - 60);
+                
+                const cA = createComponent('cyl-d', W*0.4, topRow); cA.label="CYL A";
+                const cB = createComponent('cyl-d', W*0.6, topRow); cB.label="CYL B";
+                
+                challengeTarget = [];
+                for(let i=0; i<4; i++) challengeTarget.push({in1:(i>>1)&1, in2:i&1, outA:Math.random()>0.5?1:0, outB:Math.random()>0.5?1:0});
+                
+                const tbody = document.querySelector('#truth-table-ui tbody'); tbody.innerHTML='';
+                challengeTarget.forEach((r,i) => {
+                    const tr=document.createElement('tr'); tr.id=`tt-row-${i}`;
+                    tr.innerHTML=`<td>${r.in1}</td><td>${r.in2}</td><td style="color:#95FF77">${r.outA}</td><td style="color:#95FF77">${r.outB}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+        };
+
+        window.runTruthTableTest = async () => {
+            if(isTesting) return; isTesting=true;
+            const btn = document.getElementById('btn-start-seq'); btn.innerText="TESTING...";
+            const v1=components.find(c=>c.label==="IN 1"), v2=components.find(c=>c.label==="IN 2");
+            const cA=components.find(c=>c.label==="CYL A"), cB=components.find(c=>c.label==="CYL B");
+            
+            for(let i=0; i<4; i++) {
+                document.querySelectorAll('tr').forEach(r=>r.classList.remove('active-row'));
+                document.getElementById(`tt-row-${i}`).classList.add('active-row');
+                const t = challengeTarget[i];
+                v1.isPressed = !!t.in1; v2.isPressed = !!t.in2;
+                AudioSys.playClick();
+                await new Promise(r=>setTimeout(r, 1500));
+                
+                // BUG FIX: Changed from cA.ext to cA.extension
+                const sA = cA.extension > 50 ? 1 : 0; 
+                const sB = cB.extension > 50 ? 1 : 0;
+                
+                const row = document.getElementById(`tt-row-${i}`);
+                if(sA===t.outA && sB===t.outB) row.classList.add('pass');
+                else { row.classList.add('fail'); isTesting=false; btn.innerText="RETRY"; return; }
+            }
+            btn.innerText="SUCCESS!"; isTesting=false;
+        };
+
+        loop();
+        // Initial setup
+        setTimeout(() => { createComponent('compressor', 50, 300); createComponent('valve32', 150, 250); createComponent('cyl-s', 250, 100); }, 100);
+
+    </script>
+</body>
+</html>

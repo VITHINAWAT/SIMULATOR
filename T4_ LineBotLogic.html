@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LINEBOT_LOGIC_LAB // VITHINAWAT v2.9</title>
+    
+    <!-- Import Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <!-- Blockly Core (CDN) -->
+    <script src="https://unpkg.com/blockly/blockly_compressed.js"></script>
+    <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
+    <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
+    <script src="https://unpkg.com/blockly/msg/en.js"></script>
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #121212;
+            --terminal-green: #95FF77;
+            --neon-pink: #FF0055;
+            --graphite-grey: #222222;
+            --graphite-light: #333333;
+            
+            --font-main: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Apply sharp edges ONLY to Vithinawat UI components. */
+        .cyber-btn, .color-btn-wrapper, #toolbar, #config-modal, .prompt-box, input[type=range]::-webkit-slider-thumb {
+            border-radius: 0 !important;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--void-black);
+            font-family: var(--font-main);
+            color: var(--terminal-green);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 1. TOP TOOLBAR --- */
+        #toolbar {
+            display: flex;
+            align-items: center;
+            background-color: var(--graphite-grey);
+            border-bottom: 2px solid var(--terminal-green);
+            padding: 10px 15px;
+            gap: 15px;
+            z-index: 50;
+            flex-wrap: wrap;
+            overflow-x: auto;
+        }
+
+        .tb-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border-right: 1px solid #444;
+            padding-right: 15px;
+        }
+        .tb-group:last-child { border-right: none; padding-right: 0; }
+
+        /* Unified Button Heights */
+        .cyber-btn, .color-btn-wrapper {
+            height: 36px;
+            box-sizing: border-box;
+        }
+
+        .cyber-btn {
+            background: transparent;
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            font-family: var(--font-main);
+            font-size: 0.85rem;
+            padding: 0 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+        .cyber-btn:hover, .cyber-btn.active {
+            background: var(--terminal-green);
+            color: var(--void-black);
+            box-shadow: 0 0 10px var(--terminal-green);
+        }
+
+        .btn-code {
+            background: var(--terminal-green);
+            color: var(--void-black);
+            font-weight: bold;
+            font-size: 1rem;
+            border: 2px solid var(--terminal-green);
+        }
+        .btn-code:hover { background: transparent; color: var(--terminal-green); }
+
+        .btn-danger { border-color: var(--neon-pink); color: var(--neon-pink); }
+        .btn-danger:hover, .btn-danger.active {
+            background: var(--neon-pink); color: white; box-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        /* Custom Color Pickers */
+        .color-btn-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 12px;
+            font-size: 0.8rem;
+            font-family: var(--font-main);
+            font-weight: bold;
+            border: 1px solid var(--terminal-green);
+            cursor: pointer;
+            overflow: hidden;
+            min-width: 140px;
+            text-transform: uppercase;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
+        }
+        .color-btn-wrapper input[type="color"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%; height: 100%;
+            cursor: pointer;
+            top: 0; left: 0;
+        }
+
+        /* --- 2. MAIN AREA --- */
+        #main-area {
+            flex: 1;
+            position: relative;
+            background: var(--void-black);
+            overflow: hidden;
+        }
+
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #mainCanvas { z-index: 10; cursor: crosshair; }
+
+        #reflection-tooltip {
+            position: fixed;
+            background: rgba(18, 18, 18, 0.9);
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 0 10px rgba(149, 255, 119, 0.2);
+            white-space: nowrap;
+        }
+
+        /* --- 3. OVERLAYS & MODALS --- */
+        #code-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(18, 18, 18, 0.98);
+            z-index: 200; display: none; flex-direction: column;
+        }
+        .overlay-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 20px; border-bottom: 1px solid var(--terminal-green); background: var(--graphite-grey);
+        }
+        .overlay-content { flex: 1; position: relative; }
+
+        #config-modal {
+            position: absolute; top: 70px; right: 20px; width: 300px;
+            background: var(--graphite-grey); border: 1px solid var(--terminal-green);
+            padding: 15px; z-index: 150; display: none; flex-direction: column; gap: 15px;
+            box-shadow: -5px 5px 15px rgba(0,0,0,0.8);
+        }
+        .modal-title { font-size: 1rem; color: var(--terminal-green); border-bottom: 1px solid #444; padding-bottom: 5px; margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .close-btn { cursor: pointer; color: var(--neon-pink); }
+        .config-row { display: flex; flex-direction: column; gap: 5px; }
+        .config-label { display: flex; justify-content: space-between; font-size: 0.8rem; color: #ccc; }
+        .config-val { color: var(--terminal-green); font-weight: bold; }
+        
+        input[type=range] { width: 100%; -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { height: 4px; background: #555; border: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 8px; background: #000; border: 1px solid var(--terminal-green); margin-top: -5px; cursor: pointer; }
+
+        /* Custom Prompt Modal (For Variables in iframe) */
+        #custom-prompt-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 9999;
+            display: none; justify-content: center; align-items: center;
+        }
+        .prompt-box {
+            background: var(--graphite-grey); border: 2px solid var(--terminal-green);
+            padding: 20px; width: 320px; display: flex; flex-direction: column; gap: 15px;
+            box-shadow: 0 0 20px rgba(149, 255, 119, 0.2);
+        }
+
+        /* Scrollbar */
+        #toolbar::-webkit-scrollbar { height: 4px; }
+        #toolbar::-webkit-scrollbar-track { background: var(--void-black); }
+        #toolbar::-webkit-scrollbar-thumb { background: var(--terminal-green); }
+
+        /* --- BLOCKLY UI CUSTOMIZATIONS --- */
+        .blocklyToolboxDiv { 
+            border-right: 1px solid #ccc; 
+            background-color: #f9f9f9 !important;
+        }
+        .blocklyTreeLabel { 
+            font-family: 'Helvetica Neue', Helvetica, sans-serif !important; 
+            color: #000000 !important; /* Force Black text */
+            font-weight: bold !important;
+            font-size: 14px !important;
+        }
+        .blocklySvg { background-color: transparent !important; }
+
+        .blocklyMenuItem {
+            min-height: 40px !important; 
+            display: flex !important;
+            align-items: center !important;
+        }
+        
+        .blocklyMenuItemContent {
+            font-size: 16px !important;
+            font-family: var(--font-main) !important;
+            padding: 5px 15px !important;
+        }
+
+        .blocklyHtmlInput {
+            font-family: var(--font-main) !important;
+            color: #000 !important;
+            font-weight: bold !important;
+            text-align: center !important;
+            background-color: transparent !important;
+            border: none !important;
+            outline: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. TOP TOOLBAR -->
+    <div id="toolbar">
+        <div class="tb-group">
+            <button class="cyber-btn btn-code" onclick="toggleCodeOverlay()">&lt;/&gt; LOGIC</button>
+        </div>
+
+        <div class="tb-group">
+            <button class="cyber-btn" id="btn-play" onclick="togglePlay()">▶ PLAY</button>
+            <button class="cyber-btn" onclick="resetSimulation()">↺ RESET</button>
+        </div>
+
+        <div class="tb-group">
+            <button class="cyber-btn" onclick="toggleConfigModal()">⚙️ ROBOT CONFIG</button>
+            <label class="color-btn-wrapper" id="lbl-floor" style="background-color: #000000; color: #FFFFFF;">
+                🏁 FLOOR COLOR
+                <input type="color" id="color-floor" value="#000000" oninput="updateColors()">
+            </label>
+            <label class="color-btn-wrapper" id="lbl-line" style="background-color: #FFFFFF; color: #000000;">
+                〰️ LINE COLOR
+                <input type="color" id="color-line" value="#FFFFFF" oninput="updateColors()">
+            </label>
+        </div>
+
+        <div class="tb-group">
+            <button class="cyber-btn" id="tool-reflection" onclick="selectTool('reflection')">🔍 REFLECT</button>
+            <button class="cyber-btn active" id="tool-freehand" onclick="selectTool('freehand')">〰 DRAW</button>
+            <button class="cyber-btn" id="tool-straight" onclick="selectTool('straight')">/ LINE</button>
+            <button class="cyber-btn" id="tool-circle" onclick="selectTool('circle')">⭕ CIRCLE</button>
+            <button class="cyber-btn" id="tool-start" onclick="selectTool('start')">📍 START POS</button>
+            <button class="cyber-btn btn-danger" id="tool-erase" onclick="selectTool('erase')">🧽 ERASE</button>
+            <button class="cyber-btn btn-danger" onclick="clearTrack()">CLEAR ALL</button>
+        </div>
+
+        <!-- App Title (Top Right) -->
+        <div style="flex: 1; min-width: 20px;"></div>
+        <div style="text-align: right; line-height: 1.2; display: flex; flex-direction: column; justify-content: center;">
+            <div style="font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; color: var(--terminal-green); white-space: nowrap;">LINEBOT LOGIC</div>
+            <div style="font-size: 0.7rem; color: var(--neon-pink); letter-spacing: 1px; white-space: nowrap;">TECH IN TWEAK // LAB</div>
+        </div>
+    </div>
+
+    <!-- 2. MAIN AREA -->
+    <div id="main-area">
+        <canvas id="mainCanvas"></canvas>
+        <div id="reflection-tooltip">REFLECTANCE: 100%</div>
+    </div>
+
+    <!-- 3. OVERLAYS & MODALS -->
+    
+    <!-- Code Workspace -->
+    <div id="code-overlay">
+        <div class="overlay-header">
+            <h2 style="margin:0; font-size:1.2rem; color: var(--terminal-green);">BLOCK-BASED LOGIC WORKSPACE</h2>
+            <button class="cyber-btn btn-danger" onclick="toggleCodeOverlay()">X CLOSE</button>
+        </div>
+        <div class="overlay-content">
+            <div id="blocklyDiv" style="height: 100%; width: 100%;"></div>
+        </div>
+    </div>
+
+    <!-- Robot Config -->
+    <div id="config-modal">
+        <div class="modal-title">ROBOT PARAMETERS <span class="close-btn" onclick="toggleConfigModal()">X</span></div>
+        <div class="config-row">
+            <div class="config-label"><span>Width (px)</span> <span class="config-val" id="val-width">40</span></div>
+            <input type="range" id="cfg-width" min="20" max="100" value="40" oninput="updateConfig()">
+        </div>
+        <div class="config-row">
+            <div class="config-label"><span>Wheel-to-Sensor Dist</span> <span class="config-val" id="val-length">30</span></div>
+            <input type="range" id="cfg-length" min="10" max="80" value="30" oninput="updateConfig()">
+        </div>
+        <div class="config-row">
+            <div class="config-label"><span>Wheel Size</span> <span class="config-val" id="val-wheel">20</span></div>
+            <input type="range" id="cfg-wheel" min="10" max="50" value="20" oninput="updateConfig()">
+        </div>
+        <div class="config-row">
+            <div class="config-label"><span>Sensors</span> <span class="config-val" id="val-sensors">3</span></div>
+            <input type="range" id="cfg-sensors" min="2" max="8" value="3" oninput="updateConfig()">
+        </div>
+        <div class="config-row">
+            <div class="config-label"><span>Sensor Spacing</span> <span class="config-val" id="val-spacing">12</span></div>
+            <input type="range" id="cfg-spacing" min="5" max="30" value="12" oninput="updateConfig()">
+        </div>
+    </div>
+
+    <!-- Custom Prompt for iframe environments -->
+    <div id="custom-prompt-modal">
+        <div class="prompt-box">
+            <div id="custom-prompt-msg" style="color:#fff; font-size:1rem;"></div>
+            <input type="text" id="custom-prompt-input" style="background:#111; border:1px solid var(--terminal-green); color:#fff; padding:8px; font-family:var(--font-main); font-size:1rem; outline:none;">
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:5px;">
+                <button class="cyber-btn btn-danger" onclick="cancelPrompt()">CANCEL</button>
+                <button class="cyber-btn" onclick="confirmPrompt()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Blockly Toolbox XML -->
+    <xml id="toolbox-xml" style="display: none">
+        <category name="Events" colour="#FFBF00">
+            <block type="event_when_play"></block>
+        </category>
+        <category name="LineBot" colour="#4C97FF">
+            <block type="linebot_sensor">
+                <value name="SENSOR_IDX"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
+            </block>
+            <block type="linebot_motor_left">
+                <value name="SPEED"><shadow type="linebot_speed_number"><field name="NUM">50</field></shadow></value>
+            </block>
+            <block type="linebot_motor_right">
+                <value name="SPEED"><shadow type="linebot_speed_number"><field name="NUM">50</field></shadow></value>
+            </block>
+        </category>
+        <category name="Logic" colour="#FFAB19">
+            <block type="logic_wait">
+                <value name="TIME"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
+            </block>
+            <block type="controls_forever"></block>
+            <block type="controls_repeat_ext">
+                <value name="TIMES"><shadow type="math_number"><field name="NUM">10</field></shadow></value>
+            </block>
+            <block type="controls_whileUntil"></block>
+            <block type="controls_if"></block>
+            <block type="controls_ifelse"></block>
+        </category>
+        <category name="Math" colour="#59C059">
+            <block type="logic_compare"></block>
+            <block type="logic_operation"></block>
+            <block type="logic_negate"></block>
+            <block type="logic_boolean"></block>
+            <block type="math_number"></block>
+            <block type="math_arithmetic">
+                <value name="A"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
+                <value name="B"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
+            </block>
+            <block type="math_random_int">
+                <value name="FROM"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
+                <value name="TO"><shadow type="math_number"><field name="NUM">100</field></shadow></value>
+            </block>
+        </category>
+        <category name="Variables" custom="VARIABLE" colour="#FF8C1A"></category>
+        <category name="My Blocks" custom="PROCEDURE" colour="#FF6680"></category>
+    </xml>
+
+    <script>
+        /**
+         * LINEBOT LOGIC LAB - CORE ENGINE v2.9
+         * Architect: VITHINAWAT
+         * Fixes: Wait Block, Execution attached to Hat only, Auto-stop
+         */
+
+        const mainCanvas = document.getElementById('mainCanvas');
+        const ctx = mainCanvas.getContext('2d');
+        const tooltip = document.getElementById('reflection-tooltip');
+        
+        const trackCanvas = document.createElement('canvas');
+        const trackCtx = trackCanvas.getContext('2d');
+
+        // State
+        let width, height;
+        let currentTool = 'freehand';
+        window.isPlaying = false;
+        
+        let floorColor = '#000000';
+        let lineColor = '#FFFFFF';
+        let lineWidth = 15;
+
+        let rConfig = { width: 40, length: 30, wheelSize: 20, sensors: 3, spacing: 12 };
+        let robot = { x: 0, y: 0, angle: 0, sensorReadings: [], motorLeft: 0, motorRight: 0 };
+        
+        // Drawing & Start Point State
+        let isDrawing = false;
+        let isSettingStart = false;
+        let startX = 0, startY = 0;
+        let lastX = 0, lastY = 0;
+        let customStartPos = { x: null, y: null, angle: null };
+
+        let workspace = null;
+        window._promptCallback = null;
+
+        // --- Custom Dialog Injection ---
+        function overrideBlocklyDialogs() {
+            if (Blockly.dialog) {
+                Blockly.dialog.setPrompt(function(message, defaultValue, callback) {
+                    document.getElementById('custom-prompt-msg').innerText = message;
+                    const input = document.getElementById('custom-prompt-input');
+                    input.value = defaultValue;
+                    document.getElementById('custom-prompt-modal').style.display = 'flex';
+                    input.focus();
+                    window._promptCallback = callback;
+                });
+                Blockly.dialog.setAlert(function(message, callback) {
+                    if (callback) callback();
+                });
+                Blockly.dialog.setConfirm(function(message, callback) {
+                    callback(true);
+                });
+            } else {
+                Blockly.prompt = function(message, defaultValue, callback) {
+                    document.getElementById('custom-prompt-msg').innerText = message;
+                    const input = document.getElementById('custom-prompt-input');
+                    input.value = defaultValue;
+                    document.getElementById('custom-prompt-modal').style.display = 'flex';
+                    input.focus();
+                    window._promptCallback = callback;
+                };
+            }
+        }
+
+        window.confirmPrompt = function() {
+            const val = document.getElementById('custom-prompt-input').value;
+            document.getElementById('custom-prompt-modal').style.display = 'none';
+            if(window._promptCallback) window._promptCallback(val);
+        };
+
+        window.cancelPrompt = function() {
+            document.getElementById('custom-prompt-modal').style.display = 'none';
+            if(window._promptCallback) window._promptCallback(null);
+        };
+
+        // --- Asynchronous Execution Helpers ---
+        window.yieldFrame = function() {
+            return new Promise(resolve => requestAnimationFrame(resolve));
+        };
+
+        window.setMotorLeft = function(val) { robot.motorLeft = val; };
+        window.setMotorRight = function(val) { robot.motorRight = val; };
+        window.getSensor = function(idx) { 
+            idx = Math.max(1, Math.floor(idx)) || 1; 
+            return robot.sensorReadings[idx - 1] !== undefined ? robot.sensorReadings[idx - 1] : 0; 
+        };
+
+        // --- Init ---
+        function init() {
+            overrideBlocklyDialogs();
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            if (customStartPos.x === null) {
+                customStartPos = { x: (width || 1)/2, y: (height || 1)/2, angle: -Math.PI/2 }; 
+            }
+            robot.x = customStartPos.x;
+            robot.y = customStartPos.y;
+            robot.angle = customStartPos.angle;
+
+            mainCanvas.addEventListener('mousedown', handlePointerDown);
+            mainCanvas.addEventListener('mousemove', handlePointerMove);
+            window.addEventListener('mouseup', handlePointerUp);
+
+            mainCanvas.addEventListener('touchstart', handleTouchDown, {passive: false});
+            mainCanvas.addEventListener('touchmove', handleTouchMove, {passive: false});
+            window.addEventListener('touchend', handlePointerUp);
+
+            initBlockly();
+            updateColors();
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        // --- Custom Blockly Blocks & Themes ---
+        function initBlockly() {
+            
+            let rendererName = 'zelos';
+
+            // DEFINE CUSTOM SCRATCH THEME
+            const scratchTheme = Blockly.Theme.defineTheme('scratchTheme', {
+                'base': Blockly.Themes.Zelos,
+                'blockStyles': {
+                    'logic_blocks': { 'colourPrimary': '#FFAB19', 'colourSecondary': '#EC9C13', 'colourTertiary': '#CF8B17' },
+                    'loop_blocks':  { 'colourPrimary': '#FFAB19', 'colourSecondary': '#EC9C13', 'colourTertiary': '#CF8B17' },
+                    'math_blocks':  { 'colourPrimary': '#59C059', 'colourSecondary': '#46B946', 'colourTertiary': '#389438' },
+                    'variable_blocks': { 'colourPrimary': '#FF8C1A', 'colourSecondary': '#FF8000', 'colourTertiary': '#DB6E00' },
+                    'variable_dynamic_blocks': { 'colourPrimary': '#FF8C1A', 'colourSecondary': '#FF8000', 'colourTertiary': '#DB6E00' },
+                    'procedure_blocks': { 'colourPrimary': '#FF6680', 'colourSecondary': '#FF4D6A', 'colourTertiary': '#DB425B' }
+                },
+                'componentStyles': {
+                    'workspaceBackgroundColour': '#121212',
+                    'toolboxBackgroundColour': '#f9f9f9',
+                    'toolboxForegroundColour': '#000000',
+                    'flyoutBackgroundColour': '#f9f9f9',
+                    'flyoutForegroundColour': '#000000'
+                },
+                'fontStyle': {
+                    'family': "'Share Tech Mono', monospace",
+                    'size': 14,
+                    'weight': 'bold'
+                }
+            });
+
+            // FIX: Force built-in logic blocks to display in Math Green
+            const mathOverrides = ['logic_compare', 'logic_operation', 'logic_negate', 'logic_boolean'];
+            mathOverrides.forEach(type => {
+                if (Blockly.Blocks[type]) {
+                    const originalInit = Blockly.Blocks[type].init;
+                    Blockly.Blocks[type].init = function() {
+                        originalInit.call(this);
+                        this.setColour('#59C059'); 
+                        if (this.setStyle) this.setStyle('math_blocks');
+                    };
+                }
+            });
+
+            // CUSTOM SPEED NUMBER BLOCK
+            Blockly.Blocks['linebot_speed_number'] = {
+                init: function() {
+                    this.appendDummyInput()
+                        .appendField(new Blockly.FieldNumber(50, -100, 100), "NUM");
+                    this.setOutput(true, "Number");
+                    this.setColour('#59C059'); 
+                }
+            };
+
+            Blockly.Blocks['event_when_play'] = {
+                init: function() {
+                    this.appendDummyInput().appendField("When ▶ PLAY clicked");
+                    this.setNextStatement(true, null);
+                    this.setColour('#FFBF00'); 
+                    this.setTooltip("Starts the execution");
+                }
+            };
+
+            // NEW: Logic Wait Block
+            Blockly.Blocks['logic_wait'] = {
+                init: function() {
+                    this.appendValueInput("TIME")
+                        .setCheck("Number")
+                        .appendField("wait");
+                    this.appendDummyInput().appendField("seconds");
+                    this.setPreviousStatement(true, null);
+                    this.setNextStatement(true, null);
+                    this.setColour('#FFAB19'); 
+                    this.setTooltip("Wait for specific seconds");
+                }
+            };
+
+            Blockly.Blocks['controls_forever'] = {
+                init: function() {
+                    this.appendDummyInput().appendField("forever");
+                    this.appendStatementInput("DO").setCheck(null);
+                    this.setPreviousStatement(true, null);
+                    this.setStyle('loop_blocks'); 
+                    this.setTooltip("Repeat forever");
+                }
+            };
+
+            Blockly.Blocks['linebot_sensor'] = {
+                init: function() {
+                    this.appendValueInput("SENSOR_IDX")
+                        .setCheck("Number")
+                        .appendField("Sensor");
+                    this.setOutput(true, "Number");
+                    this.setColour('#4C97FF'); 
+                    this.setTooltip("Reads Reflectance (0 = Black, 100 = White)");
+                }
+            };
+
+            Blockly.Blocks['linebot_motor_left'] = {
+                init: function() {
+                    this.appendValueInput("SPEED").setCheck("Number").appendField("Set Motor LEFT speed:");
+                    this.setPreviousStatement(true, null);
+                    this.setNextStatement(true, null);
+                    this.setColour('#4C97FF'); 
+                    this.setTooltip("Sets wheel speeds (-100 to 100)");
+                }
+            };
+
+            Blockly.Blocks['linebot_motor_right'] = {
+                init: function() {
+                    this.appendValueInput("SPEED").setCheck("Number").appendField("Set Motor RIGHT speed:");
+                    this.setPreviousStatement(true, null);
+                    this.setNextStatement(true, null);
+                    this.setColour('#4C97FF'); 
+                    this.setTooltip("Sets wheel speeds (-100 to 100)");
+                }
+            };
+
+            const jsGen = (typeof javascript !== 'undefined') ? javascript.javascriptGenerator : Blockly.JavaScript;
+            const jsOrder = (typeof javascript !== 'undefined') ? javascript.Order : Blockly.JavaScript;
+
+            if (jsGen) {
+                const addGen = (name, func) => {
+                    if (jsGen.forBlock) jsGen.forBlock[name] = func;
+                    else jsGen[name] = func;
+                };
+
+                addGen('linebot_speed_number', function(block, generator) {
+                    var num = block.getFieldValue('NUM');
+                    return [num, jsOrder.ATOMIC];
+                });
+
+                addGen('event_when_play', function(block, generator) {
+                    return ''; 
+                });
+
+                addGen('logic_wait', function(block, generator) {
+                    const genObj = jsGen.forBlock ? generator : jsGen;
+                    var time = genObj.valueToCode(block, 'TIME', jsOrder.ATOMIC) || '0';
+                    return `await new Promise(resolve => setTimeout(resolve, ${time} * 1000));\n`;
+                });
+
+                addGen('controls_forever', function(block, generator) {
+                    const genObj = jsGen.forBlock ? generator : jsGen;
+                    let branch = genObj.statementToCode(block, 'DO');
+                    return `while (window.isPlaying) {\n${branch}\nawait window.yieldFrame();\n}\n`;
+                });
+
+                const origWhile = jsGen.forBlock ? jsGen.forBlock['controls_whileUntil'] : jsGen['controls_whileUntil'];
+                if(origWhile) {
+                    addGen('controls_whileUntil', function(block, generator) {
+                        const genObj = jsGen.forBlock ? generator : jsGen;
+                        var until = block.getFieldValue('MODE') == 'UNTIL';
+                        var argument0 = genObj.valueToCode(block, 'BOOL', until ? jsOrder.LOGICAL_NOT : jsOrder.NONE) || 'false';
+                        var branch = genObj.statementToCode(block, 'DO');
+                        branch = genObj.addLoopTrap(branch, block) || branch;
+                        if (until) argument0 = '!' + argument0;
+                        return `while (${argument0} && window.isPlaying) {\n${branch}\nawait window.yieldFrame();\n}\n`;
+                    });
+                }
+
+                const origRepeat = jsGen.forBlock ? jsGen.forBlock['controls_repeat_ext'] : jsGen['controls_repeat_ext'];
+                if(origRepeat) {
+                    addGen('controls_repeat_ext', function(block, generator) {
+                        let code = origRepeat.call(this, block, generator);
+                        return code.replace(/{\n/, "{\nawait window.yieldFrame();\nif(!window.isPlaying) break;\n");
+                    });
+                }
+
+                addGen('linebot_sensor', function(block, generator) {
+                    const genObj = jsGen.forBlock ? generator : jsGen;
+                    var idx = genObj.valueToCode(block, 'SENSOR_IDX', jsOrder.ATOMIC) || '1';
+                    return [`window.getSensor(${idx})`, jsOrder.ATOMIC];
+                });
+                
+                addGen('linebot_motor_left', function(block, generator) {
+                    const genObj = jsGen.forBlock ? generator : jsGen;
+                    var speed = genObj.valueToCode(block, 'SPEED', jsOrder.ATOMIC) || '0';
+                    return `window.setMotorLeft(${speed});\n`;
+                });
+
+                addGen('linebot_motor_right', function(block, generator) {
+                    const genObj = jsGen.forBlock ? generator : jsGen;
+                    var speed = genObj.valueToCode(block, 'SPEED', jsOrder.ATOMIC) || '0';
+                    return `window.setMotorRight(${speed});\n`;
+                });
+            }
+
+            workspace = Blockly.inject('blocklyDiv', {
+                toolbox: document.getElementById('toolbox-xml'),
+                renderer: rendererName,
+                theme: scratchTheme
+            });
+
+            document.fonts.ready.then(() => {
+                if (workspace) {
+                    workspace.getTopBlocks(false).forEach(b => b.initSvg());
+                    workspace.render();
+                }
+            });
+        }
+
+        async function runLogic() {
+            try {
+                const jsGen = (typeof javascript !== 'undefined') ? javascript.javascriptGenerator : Blockly.JavaScript;
+                
+                // ONLY execute blocks attached to 'event_when_play' hat block
+                let code = '';
+                const topBlocks = workspace.getTopBlocks(true);
+                topBlocks.forEach(block => {
+                    if (block.type === 'event_when_play') {
+                        code += jsGen.blockToCode(block);
+                    }
+                });
+
+                if (!code) {
+                    console.log("No PLAY block found to execute.");
+                    return;
+                }
+
+                const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+                const executeCode = new AsyncFunction(`
+                    try {
+                        ${code}
+                    } catch(e) { console.error("Logic Error:", e); }
+                `);
+                
+                await executeCode();
+                
+                // Auto-stop motors when code finishes naturally (if not in forever loop)
+                if (window.isPlaying) {
+                    robot.motorLeft = 0;
+                    robot.motorRight = 0;
+                }
+
+            } catch (e) {
+                console.error("Execution Error:", e);
+            }
+        }
+
+        // --- Helpers ---
+        function getContrastYIQ(hexcolor){
+            hexcolor = hexcolor.replace("#", "");
+            var r = parseInt(hexcolor.substr(0,2),16);
+            var g = parseInt(hexcolor.substr(2,2),16);
+            var b = parseInt(hexcolor.substr(4,2),16);
+            var yiq = ((r*299)+(g*587)+(b*114))/1000;
+            return (yiq >= 128) ? '#000000' : '#FFFFFF';
+        }
+
+        window.updateColors = function() {
+            floorColor = document.getElementById('color-floor').value;
+            lineColor = document.getElementById('color-line').value;
+
+            const lblFloor = document.getElementById('lbl-floor');
+            lblFloor.style.backgroundColor = floorColor;
+            lblFloor.style.color = getContrastYIQ(floorColor);
+
+            const lblLine = document.getElementById('lbl-line');
+            lblLine.style.backgroundColor = lineColor;
+            lblLine.style.color = getContrastYIQ(lineColor);
+        };
+
+        function resizeCanvas() {
+            const parent = document.getElementById('main-area');
+            if (!parent) return;
+            
+            width = parent.clientWidth;
+            height = parent.clientHeight;
+            
+            if (width === 0 || height === 0) return;
+            
+            mainCanvas.width = width;
+            mainCanvas.height = height;
+            
+            let oldImg = null;
+            if (trackCanvas.width > 0 && trackCanvas.height > 0) {
+                oldImg = trackCtx.getImageData(0, 0, trackCanvas.width, trackCanvas.height);
+            }
+            
+            trackCanvas.width = width; 
+            trackCanvas.height = height;
+            trackCtx.lineCap = 'round'; 
+            trackCtx.lineJoin = 'round';
+            
+            if (oldImg) trackCtx.putImageData(oldImg, 0, 0);
+        }
+
+        // --- Interaction ---
+        function getPointerPos(e) {
+            const rect = mainCanvas.getBoundingClientRect();
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        function handlePointerDown(e) {
+            if (e.target !== mainCanvas) return;
+            const pos = getPointerPos(e);
+            startAction(pos.x, pos.y);
+        }
+
+        function handleTouchDown(e) {
+            if (e.target !== mainCanvas) return;
+            e.preventDefault();
+            const pos = getPointerPos(e.touches[0]);
+            startAction(pos.x, pos.y);
+        }
+
+        function startAction(x, y) {
+            if (currentTool === 'start') {
+                robot.x = x; robot.y = y;
+                customStartPos.x = x; customStartPos.y = y;
+                isSettingStart = true;
+                return;
+            }
+
+            if (currentTool === 'reflection') return;
+
+            isDrawing = true;
+            startX = x; startY = y; lastX = x; lastY = y;
+
+            trackCtx.lineWidth = currentTool === 'erase' ? lineWidth * 2 : lineWidth;
+            
+            if (currentTool === 'erase') {
+                trackCtx.globalCompositeOperation = 'destination-out';
+                trackCtx.strokeStyle = "rgba(0,0,0,1)";
+            } else {
+                trackCtx.globalCompositeOperation = 'source-over';
+                trackCtx.strokeStyle = lineColor;
+            }
+
+            if (currentTool === 'freehand' || currentTool === 'erase') {
+                trackCtx.beginPath(); trackCtx.moveTo(x, y); trackCtx.lineTo(x, y); trackCtx.stroke();
+            }
+        }
+
+        function handlePointerMove(e) { const pos = getPointerPos(e); moveAction(pos.x, pos.y, e.clientX, e.clientY); }
+        function handleTouchMove(e) { e.preventDefault(); const pos = getPointerPos(e.touches[0]); moveAction(pos.x, pos.y, e.touches[0].clientX, e.touches[0].clientY); }
+
+        function moveAction(x, y, clientX, clientY) {
+            if (currentTool === 'reflection') {
+                tooltip.style.display = 'block';
+                tooltip.style.left = (clientX + 15) + 'px';
+                tooltip.style.top = (clientY + 15) + 'px';
+                tooltip.innerText = `REFLECTANCE: ${Math.round(getReflectanceAt(x, y))}%`;
+                return;
+            } else { tooltip.style.display = 'none'; }
+
+            if (currentTool === 'start' && isSettingStart) {
+                robot.angle = Math.atan2(y - robot.y, x - robot.x);
+                customStartPos.angle = robot.angle;
+                return;
+            }
+
+            if (!isDrawing) return;
+
+            if (currentTool === 'freehand' || currentTool === 'erase') {
+                trackCtx.beginPath(); trackCtx.moveTo(lastX, lastY); trackCtx.lineTo(x, y); trackCtx.stroke();
+            }
+            lastX = x; lastY = y;
+        }
+
+        function handlePointerUp() {
+            isSettingStart = false;
+            if (!isDrawing) return;
+            isDrawing = false;
+
+            trackCtx.globalCompositeOperation = 'source-over';
+            trackCtx.strokeStyle = lineColor;
+
+            if (currentTool === 'straight') {
+                trackCtx.beginPath(); trackCtx.moveTo(startX, startY); trackCtx.lineTo(lastX, lastY); trackCtx.stroke();
+            } else if (currentTool === 'circle') {
+                const radius = Math.hypot(lastX - startX, lastY - startY);
+                trackCtx.beginPath(); trackCtx.arc(startX, startY, radius, 0, Math.PI * 2); trackCtx.stroke();
+            }
+        }
+
+        function getReflectanceAt(x, y) {
+            if (!width || !height || x < 0 || y < 0 || x >= width || y >= height) return 0;
+            const px = trackCtx.getImageData(x, y, 1, 1).data;
+            const alpha = px[3] / 255;
+            const fRgb = hexToRgb(floorColor); const lRgb = hexToRgb(lineColor);
+
+            const finalR = (lRgb.r * alpha) + (fRgb.r * (1 - alpha));
+            const finalG = (lRgb.g * alpha) + (fRgb.g * (1 - alpha));
+            const finalB = (lRgb.b * alpha) + (fRgb.b * (1 - alpha));
+
+            const luminance = 0.299*finalR + 0.587*finalG + 0.114*finalB;
+            return (luminance / 255) * 100;
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 255, g: 255, b: 255 };
+        }
+
+        // --- Render ---
+        function drawRobot(ctx) {
+            ctx.save();
+            ctx.translate(robot.x, robot.y);
+            ctx.rotate(robot.angle);
+
+            const hw = rConfig.width / 2;
+            const wheelW = 14; 
+            const wheelH = rConfig.wheelSize;
+
+            // 1. Draw Wheels
+            ctx.fillStyle = '#555';
+            ctx.fillRect(-wheelH/2, -hw - wheelW, wheelH, wheelW);
+            ctx.fillRect(-wheelH/2, hw, wheelH, wheelW);
+
+            // Wheel Labels (adjusted positioning for fatter wheels)
+            ctx.fillStyle = '#95FF77';
+            ctx.font = '10px Share Tech Mono';
+            ctx.fillText('L', -3, -hw - wheelW - 3);
+            ctx.fillText('R', -3, hw + wheelW + 11);
+
+            const sensorX = rConfig.length; 
+            const sCount = rConfig.sensors;
+            const sSpacing = rConfig.spacing;
+            const totalSpan = (sCount - 1) * sSpacing;
+            const startY = -totalSpan / 2;
+
+            // 2. Draw Chassis
+            ctx.fillStyle = '#222';
+            ctx.strokeStyle = '#95FF77';
+            ctx.lineWidth = 2;
+            const bodyLength = 20 + sensorX;
+            ctx.fillRect(-20, -hw, bodyLength, rConfig.width);
+            ctx.strokeRect(-20, -hw, bodyLength, rConfig.width);
+
+            // 3. Sensor Bounding Box
+            ctx.strokeStyle = '#95FF77';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(sensorX - 8, startY - 12, 16, totalSpan + 24);
+
+            robot.sensorReadings = [];
+
+            for (let i = 0; i < sCount; i++) {
+                const sY = startY + (i * sSpacing);
+                
+                const absX = robot.x + Math.cos(robot.angle) * sensorX - Math.sin(robot.angle) * sY;
+                const absY = robot.y + Math.sin(robot.angle) * sensorX + Math.cos(robot.angle) * sY;
+                
+                const ref = getReflectanceAt(absX, absY);
+                robot.sensorReadings.push(ref);
+
+                const heat = ref / 100; 
+                ctx.fillStyle = `rgb(${255 * heat}, 0, 0)`;
+                ctx.strokeStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(sensorX, sY, 4, 0, Math.PI*2);
+                ctx.fill(); ctx.stroke();
+
+                ctx.fillStyle = '#FFF';
+                ctx.font = '8px Arial';
+                ctx.fillText(i+1, sensorX - 15, sY + 3);
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.lineTo(sensorX - 10, 0);
+            ctx.moveTo(sensorX - 15, -5); ctx.lineTo(sensorX - 10, 0); ctx.lineTo(sensorX - 15, 5);
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function renderLoop() {
+            if (!width || !height) {
+                requestAnimationFrame(renderLoop);
+                return;
+            }
+
+            ctx.fillStyle = floorColor; 
+            ctx.fillRect(0, 0, width, height);
+            
+            if (trackCanvas.width > 0 && trackCanvas.height > 0) {
+                ctx.drawImage(trackCanvas, 0, 0);
+            }
+
+            if (isDrawing && (currentTool === 'straight' || currentTool === 'circle')) {
+                ctx.strokeStyle = lineColor; ctx.lineWidth = lineWidth; ctx.lineCap = 'round';
+                if (currentTool === 'straight') {
+                    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(lastX, lastY); ctx.stroke();
+                } else if (currentTool === 'circle') {
+                    const radius = Math.hypot(lastX - startX, lastY - startY);
+                    ctx.beginPath(); ctx.arc(startX, startY, radius, 0, Math.PI * 2); ctx.stroke();
+                }
+            }
+
+            // Move robot based on global motor variables controlled by Async Logic
+            if (window.isPlaying) {
+                let vL = Math.max(-100, Math.min(100, robot.motorLeft || 0));
+                let vR = Math.max(-100, Math.min(100, robot.motorRight || 0));
+                
+                vL = vL / 10;
+                vR = vR / 10;
+                
+                const v = (vL + vR) / 2;
+                const w = (vL - vR) / rConfig.width; 
+
+                robot.angle += w * 0.1;
+                robot.x += Math.cos(robot.angle) * v * 0.5;
+                robot.y += Math.sin(robot.angle) * v * 0.5;
+            }
+
+            drawRobot(ctx);
+            requestAnimationFrame(renderLoop);
+        }
+
+        // --- UI Interactions ---
+        window.selectTool = function(toolName) {
+            currentTool = toolName;
+            document.querySelectorAll('.tb-group .cyber-btn').forEach(btn => {
+                if(btn.id && btn.id.startsWith('tool-')) btn.classList.remove('active');
+            });
+            const btn = document.getElementById('tool-' + toolName);
+            if(btn) btn.classList.add('active');
+
+            if(toolName !== 'reflection') tooltip.style.display = 'none';
+        }
+
+        window.clearTrack = function() {
+            trackCtx.clearRect(0, 0, trackCanvas.width, trackCanvas.height);
+        }
+
+        window.togglePlay = function() {
+            const btn = document.getElementById('btn-play');
+            if (!window.isPlaying) {
+                // START
+                window.isPlaying = true;
+                
+                robot.motorLeft = 0;
+                robot.motorRight = 0;
+                
+                runLogic().then(() => {
+                    // Turn off button when execution finishes naturally
+                    if (window.isPlaying) {
+                        window.isPlaying = false;
+                        btn.innerText = "▶ PLAY"; 
+                        btn.classList.remove('btn-danger');
+                    }
+                }); 
+                
+                btn.innerText = "⏸ PAUSE"; 
+                btn.classList.add('btn-danger');
+            } else {
+                // PAUSE
+                window.isPlaying = false;
+                robot.motorLeft = 0;
+                robot.motorRight = 0;
+                
+                btn.innerText = "▶ PLAY"; 
+                btn.classList.remove('btn-danger');
+            }
+        }
+
+        window.resetSimulation = function() {
+            window.isPlaying = false;
+            robot.motorLeft = 0;
+            robot.motorRight = 0;
+            document.getElementById('btn-play').innerText = "▶ PLAY";
+            document.getElementById('btn-play').classList.remove('btn-danger');
+            
+            // Recall custom start position or center
+            robot.x = customStartPos.x !== null ? customStartPos.x : width / 2; 
+            robot.y = customStartPos.y !== null ? customStartPos.y : height / 2; 
+            robot.angle = customStartPos.angle !== null ? customStartPos.angle : -Math.PI/2; 
+        }
+
+        window.toggleCodeOverlay = function() {
+            const el = document.getElementById('code-overlay');
+            el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+            if(el.style.display === 'flex' && workspace) {
+                Blockly.svgResize(workspace);
+            }
+        }
+
+        window.toggleConfigModal = function() {
+            const el = document.getElementById('config-modal');
+            el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        window.updateConfig = function() {
+            rConfig.width = parseInt(document.getElementById('cfg-width').value);
+            rConfig.length = parseInt(document.getElementById('cfg-length').value);
+            rConfig.wheelSize = parseInt(document.getElementById('cfg-wheel').value);
+            rConfig.sensors = parseInt(document.getElementById('cfg-sensors').value);
+            rConfig.spacing = parseInt(document.getElementById('cfg-spacing').value);
+
+            document.getElementById('val-width').innerText = rConfig.width;
+            document.getElementById('val-length').innerText = rConfig.length;
+            document.getElementById('val-wheel').innerText = rConfig.wheelSize;
+            document.getElementById('val-sensors').innerText = rConfig.sensors;
+            document.getElementById('val-spacing').innerText = rConfig.spacing;
+        }
+
+        init();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SUB_PHYSICS_v4.8 // FIXED</title>
+    
+    <!-- Import Share Tech Mono Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* CYBERPUNK LAB PALETTE */
+            --void-black: #1A1C1B;
+            --terminal-green: #95FF77;
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            --track-grey: #2A2C2B;
+            --muted-text: #888888;
+            --plasma-orange: #FF8800;
+            --alert-red: #ff3300;
+            
+            --main-font: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--void-black);
+            color: var(--terminal-green);
+            font-family: var(--main-font);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- LAYOUT --- */
+        #sim-container {
+            flex: 8; 
+            position: relative;
+            background-color: var(--void-black);
+            background-image: 
+                linear-gradient(rgba(149, 255, 119, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(149, 255, 119, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            overflow: hidden;
+            border-bottom: 1px solid var(--terminal-green);
+        }
+
+        #control-panel {
+            flex: 2; 
+            background-color: var(--graphite-grey);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: row;
+            padding: 5px 10px; /* Reduced vertical padding */
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.8);
+            z-index: 10;
+            border-top: 1px solid var(--terminal-green);
+            gap: 10px;
+        }
+
+        /* --- TACTICAL HUD (RIGHT SIDE - COMPACT) --- */
+        #tactical-hud {
+            position: absolute;
+            right: 0;
+            /* Center Vertically with auto height */
+            top: 50%;
+            transform: translateY(-50%);
+            height: auto; /* Fit content */
+            width: 120px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--terminal-green); /* Full border for floating look */
+            border-right: none;
+            border-radius: 10px 0 0 10px;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            z-index: 20;
+            backdrop-filter: blur(4px);
+            gap: 8px; /* Consistent spacing */
+        }
+
+        .hud-header {
+            font-size: 0.7rem;
+            text-align: center;
+            color: var(--muted-text);
+            margin-bottom: 2px;
+            border-bottom: 1px dashed var(--terminal-green);
+            padding-bottom: 2px;
+            flex: 0 0 auto;
+        }
+
+        /* --- COLUMNS (BOTTOM PANEL) --- */
+        .col-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--terminal-green);
+            padding: 5px; /* Compact padding */
+            background: rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .col-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column; 
+            border: 1px solid var(--terminal-green);
+            padding: 5px; /* Compact padding */
+            gap: 5px; /* Reduced gap */
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        /* --- TYPOGRAPHY & UI --- */
+        h3 {
+            margin: 0 0 2px 0; /* Reduced margin */
+            font-size: 0.75rem;
+            color: var(--terminal-green);
+            border-bottom: 1px solid var(--track-grey);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding-bottom: 1px;
+        }
+
+        .data-row { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 0.75rem; /* Smaller font */
+            margin-bottom: 1px; 
+            border-bottom: 1px dotted var(--track-grey);
+            padding-bottom: 0;
+        }
+        .data-label { color: var(--muted-text); }
+        .val { font-weight: normal; color: #fff; letter-spacing: 1px; }
+
+        /* --- BUTTONS --- */
+        button {
+            background: transparent;
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            padding: 4px 8px; /* Compact padding */
+            font-family: var(--main-font);
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+            letter-spacing: 1px;
+        }
+        button:hover { 
+            background: rgba(149, 255, 119, 0.1); 
+            box-shadow: 0 0 8px var(--terminal-green);
+            text-shadow: 0 0 5px var(--terminal-green);
+        }
+        button.active { 
+            background: var(--terminal-green); 
+            color: #000; 
+            font-weight: bold; 
+            box-shadow: 0 0 10px var(--terminal-green);
+        }
+        
+        button.red-btn { 
+            border-color: var(--alert-red); 
+            color: var(--alert-red); 
+            font-weight: bold;
+            margin-top: 5px; 
+            flex: 0 0 auto;
+        }
+        button.red-btn:hover { background: rgba(255, 51, 0, 0.1); box-shadow: 0 0 10px var(--alert-red); }
+
+        button.stab-btn {
+            border-color: var(--terminal-green);
+            margin-bottom: 2px;
+            flex: 0 0 auto;
+        }
+
+        button.start-btn { 
+            border: 2px solid var(--terminal-green); 
+            color: #000; 
+            background: var(--terminal-green); 
+            font-size: 0.85rem; 
+            font-weight: bold;
+            margin-top: auto;
+            padding: 6px;
+            letter-spacing: 2px;
+        }
+        button.start-btn:hover {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 0 15px var(--terminal-green);
+        }
+
+        /* --- HUD SLIDER (Tactical) --- */
+        .hud-slider-container {
+            flex: 0 0 120px; /* Fixed reasonable height for slider */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin: 5px 0;
+        }
+        
+        input[type=range].lever {
+            -webkit-appearance: slider-vertical;
+            writing-mode: bt-lr;
+            width: 40px; 
+            height: 100%;
+            background: transparent;
+            cursor: ns-resize;
+            outline: none;
+            z-index: 10;
+            accent-color: var(--terminal-green);
+        }
+
+        .hud-labels {
+            position: absolute;
+            left: 5px;
+            top: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 0.6rem;
+            color: var(--muted-text);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* --- CONFIG SLIDER (Bottom) --- */
+        input[type=range].h-slider {
+            width: 100%;
+            cursor: pointer;
+            height: 6px;
+            background: var(--track-grey);
+            border: 1px solid var(--muted-text);
+            appearance: none;
+            outline: none;
+            margin: 5px 0;
+        }
+        input[type=range].h-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 12px; height: 16px;
+            background: #000;
+            border: 1px solid var(--terminal-green);
+            cursor: pointer;
+            box-shadow: 0 0 5px var(--terminal-green);
+        }
+        
+        /* --- OVERLAYS --- */
+        .overlay-btn-group {
+            position: absolute; top: 15px; left: 15px; display: flex; gap: 10px; z-index: 20;
+        }
+        .overlay-btn { 
+            background: rgba(0,0,0,0.8); 
+            border: 1px solid var(--terminal-green); 
+            color: var(--terminal-green); 
+            padding: 5px 10px;
+            transition: all 0.3s;
+            font-size: 0.7rem;
+        }
+        .btn-off { 
+            border-color: var(--muted-text) !important; 
+            color: var(--muted-text) !important; 
+            box-shadow: none !important;
+            background: rgba(0,0,0,0.5) !important;
+        }
+
+        /* --- FORMULA PANEL --- */
+        #formula-panel {
+            position: absolute; top: 60px; left: 15px;
+            background: rgba(10, 10, 10, 0.95);
+            border: 1px solid var(--terminal-green);
+            display: none; z-index: 15;
+            font-size: 0.8rem;
+            backdrop-filter: blur(5px);
+            box-shadow: 5px 5px 0px rgba(0,0,0,0.5);
+            width: 300px;
+        }
+        .formula-header {
+            background: rgba(149, 255, 119, 0.1);
+            color: var(--terminal-green);
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--terminal-green);
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        .formula-table {
+            width: 100%;
+            border-collapse: collapse;
+            color: #fff;
+            font-size: 0.75rem;
+        }
+        .formula-table td, .formula-table th {
+            padding: 6px 10px;
+            border-bottom: 1px solid #333;
+            text-align: left;
+        }
+        .formula-table td.math { 
+            color: var(--terminal-green); 
+            letter-spacing: 1px; 
+            font-weight: bold;
+            text-align: right;
+        }
+        .formula-table td.desc { color: #ccc; }
+
+        /* --- GAME OVER --- */
+        #game-over-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(26, 28, 27, 0.95);
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 100;
+            border: 2px solid var(--alert-red);
+        }
+
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* --- RESPONSIVE CSS --- */
+        
+        /* Mobile Portrait */
+        @media (max-width: 768px) {
+            #control-panel { 
+                flex: 5; 
+                flex-direction: column; 
+                height: auto; 
+                overflow-y: auto;
+                padding-bottom: 30px;
+            } 
+            .col-left, .col-right { 
+                width: 100%; 
+                margin-bottom: 5px;
+                border: none;
+                border-bottom: 1px dashed var(--track-grey);
+            }
+            #sim-container { flex: 5; }
+            #tactical-hud { width: 90px; }
+        }
+
+        /* Mobile Landscape (Height Limited) */
+        @media (max-height: 500px) {
+            body { 
+                flex-direction: column; 
+                overflow-y: auto; 
+            }
+            body::-webkit-scrollbar { display: none; }
+            body { -ms-overflow-style: none; scrollbar-width: none; }
+
+            #sim-container { 
+                flex: none; 
+                height: 100vh;
+                border-right: none;
+                border-bottom: 1px solid var(--terminal-green);
+            }
+            
+            #control-panel { 
+                flex: none;
+                display: flex;
+                flex-direction: row; 
+                height: auto;
+                min-height: auto;
+                border-top: none;
+                padding: 10px 15px 30px 15px; 
+                gap: 10px;
+            }
+
+            .col-left, .col-right {
+                flex: 1;
+                margin-bottom: 0;
+            }
+
+            #tactical-hud {
+                width: 90px;
+                padding: 5px;
+                background: rgba(0,0,0,0.8);
+                top: 50%;
+                height: auto;
+                border-radius: 10px 0 0 10px;
+                border: 1px solid var(--terminal-green);
+                border-right: none;
+            }
+            
+            .hud-header { font-size: 0.6rem; margin-bottom: 2px; } 
+            
+            button { padding: 4px; font-size: 0.65rem; margin: 2px 0; }
+            
+            button.red-btn { 
+                margin-top: 5px; 
+                background: rgba(255, 0, 0, 0.1);
+                border: 1px solid var(--alert-red);
+                padding: 8px;
+            }
+            
+            #ballast-val-display { font-size: 0.8rem; margin: 2px 0; }
+            
+            .hud-slider-container { margin: 2px 0; flex: 0 0 100px; }
+            
+            .hud-labels { font-size: 0.55rem; left: 2px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIMULATION VIEW -->
+    <div id="sim-container">
+        <!-- TOP LEFT BUTTONS -->
+        <div class="overlay-btn-group">
+            <button class="overlay-btn" onclick="toggleFormula()">FORMULA</button>
+            <button class="overlay-btn" id="sound-btn" onclick="toggleSound()">SOUND: ON</button>
+        </div>
+
+        <!-- FORMULA PANEL -->
+        <div id="formula-panel">
+            <div class="formula-header">PHYSICS_PARAMETERS</div>
+            <table class="formula-table">
+                <tr><td class="desc">Buoyancy Force</td><td class="math">F<sub>b</sub> = ρVg</td></tr>
+                <tr><td class="desc">Gravitational Force</td><td class="math">F<sub>g</sub> = mg</td></tr>
+                <tr><td class="desc">Net Force</td><td class="math" style="color:var(--plasma-orange)">F<sub>net</sub> = F<sub>b</sub> - F<sub>g</sub></td></tr>
+                <tr><td class="desc">Acceleration</td><td class="math">a = F<sub>net</sub> / m</td></tr>
+            </table>
+        </div>
+
+        <canvas id="simCanvas"></canvas>
+        
+        <!-- NEW TACTICAL HUD (RIGHT) -->
+        <div id="tactical-hud">
+            <div class="hud-header">TACTICAL</div>
+            
+            <!-- STABILIZER -->
+            <button onclick="toggleStabilizer()" id="btn-stab" class="stab-btn">AUTO_STAB</button>
+            
+            <!-- BALLAST SLIDER -->
+            <div class="hud-slider-container">
+                <div class="hud-labels">
+                    <span>BLOW</span>
+                    <span>NEUT</span>
+                    <span>FLOOD</span>
+                </div>
+                <input type="range" min="0" max="100" value="0" class="lever" id="ballast-lever" oninput="updateBallastInput(this.value)">
+            </div>
+            
+            <!-- PERCENT DISPLAY -->
+            <div id="ballast-val-display" style="text-align:center; font-weight:bold; color:var(--terminal-green); margin-bottom:5px;">0%</div>
+            
+            <!-- EMERGENCY -->
+            <button class="red-btn" onclick="emergencyBlow()">EMERGENCY</button>
+        </div>
+
+        <div id="game-over-screen">
+            <div style="font-size: 3rem; color: var(--alert-red); border: 2px solid var(--alert-red); padding: 30px; letter-spacing: 4px; background:rgba(0,0,0,0.8); text-align: center;">
+                MISSION FAILED
+                <div style="font-size:1rem; color:#fff; margin-top:10px; letter-spacing:2px;">HULL INTEGRITY COMPROMISED</div>
+            </div>
+            <button onclick="resetGame()" style="margin-top:30px; padding: 15px 40px; font-size: 1.2rem; background: var(--terminal-green); color: #000; border: none; font-weight:bold;">REBOOT SYSTEM</button>
+        </div>
+    </div>
+
+    <!-- CONTROL PANEL (BOTTOM) -->
+    <div id="control-panel">
+        
+        <!-- LEFT: MONITORING -->
+        <div class="col-left">
+            <h3>MISSION LOG</h3>
+            <div class="data-row"><span class="data-label">DEPTH</span> <span class="val" id="d-depth">0.0 m</span></div>
+            <div class="data-row"><span class="data-label">VELOCITY</span> <span class="val" id="d-vel">0.00 m/s</span></div>
+            <div class="data-row"><span class="data-label">DISTANCE</span> <span class="val" id="d-dist" style="color:var(--terminal-green)">0 m</span></div>
+            <button id="btn-mission" class="start-btn" onclick="toggleMission()">INITIALIZE MISSION</button>
+        </div>
+
+        <!-- RIGHT: CONFIG -->
+        <div class="col-right">
+            <div>
+                <h3>HULL CONFIGURATION</h3>
+                <div style="display:flex; gap:10px; margin-bottom:5px;">
+                    <button onclick="setMaterial('TITAN')" id="btn-titan" style="flex:1;">TITANIUM</button>
+                    <button onclick="setMaterial('STEEL')" id="btn-steel" class="active" style="flex:1;">STEEL</button>
+                </div>
+            </div>
+
+            <div>
+                <h3>ENVIRONMENT SETTINGS</h3>
+                <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--muted-text); margin-bottom:2px;">
+                    <span>FRESH</span>
+                    <span>DENSITY</span>
+                    <span>BRINE</span>
+                </div>
+                <input type="range" min="950" max="1100" value="1025" class="h-slider" id="rho-slider" oninput="updateEnv()">
+                
+                <!-- Compact Data Display -->
+                <div style="margin-top:2px; padding-top:2px; border-top:1px dashed var(--track-grey);">
+                    <div class="data-row"><span class="data-label">MASS_HULL</span> <span class="val" id="d-mhull">0 kg</span></div>
+                    <div class="data-row"><span class="data-label">MASS_BALLAST</span> <span class="val" id="d-mballast">0 kg</span></div>
+                    <div class="data-row"><span class="data-label">FLUID_RHO</span> <span class="val" id="d-fluid">1025 kg/m³</span></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+/**
+ * SUB_PHYSICS_v4.8 (FIXED)
+ * Theme: CYBERPUNK LAB - COMPACT LAYOUT
+ */
+
+const CONSTANTS = {
+    g: 9.81,
+    dragCoeff: 0.8,
+    simScale: 40,
+    dt: 1/60,
+};
+
+let state = {
+    hullMass: 8000,
+    ballastCapacity: 12000, 
+    currentBallastPct: 0.5, 
+    volume: 14,            
+    y: 100,                
+    vy: 0,
+    fluidDensity: 1025,    
+    waterLevelY: 100,
+    missionActive: false,
+    gameOver: false,
+    distance: 0,
+    gameSpeed: 0,
+    obstacles: [],
+    stabilizerOn: false,
+    material: 'STEEL',
+    audioEnabled: true,
+    audioContextStarted: false
+};
+
+const MATERIALS = {
+    'TITAN': { name: 'TITANIUM', mass: 6500 },
+    'STEEL': { name: 'STEEL', mass: 8000 }
+};
+
+/* --- AUDIO --- */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const masterGain = audioCtx.createGain();
+masterGain.connect(audioCtx.destination);
+masterGain.gain.value = 0.3;
+
+window.addEventListener('click', () => {
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(() => state.audioContextStarted = true);
+    }
+}, { once: true });
+
+let engineOsc = null, engineGain = null;
+
+function startEngineSound() {
+    if (!state.audioEnabled || engineOsc) return;
+    engineOsc = audioCtx.createOscillator();
+    engineGain = audioCtx.createGain();
+    engineOsc.type = 'sawtooth';
+    engineOsc.frequency.value = 60;
+    engineGain.gain.value = 0.05;
+    engineOsc.connect(engineGain);
+    engineGain.connect(masterGain);
+    engineOsc.start();
+}
+
+function stopEngineSound() {
+    if (engineOsc) {
+        engineOsc.stop();
+        engineOsc.disconnect();
+        engineOsc = null; engineGain = null;
+    }
+}
+
+function updateEngineSound() {
+    if (engineOsc && engineGain) {
+        let speedFactor = Math.abs(state.vy) + (state.missionActive ? 5 : 0);
+        engineOsc.frequency.setTargetAtTime(60 + speedFactor * 5, audioCtx.currentTime, 0.1);
+    }
+}
+
+function toggleSound() {
+    state.audioEnabled = !state.audioEnabled;
+    const btn = document.getElementById('sound-btn');
+    if (state.audioEnabled) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        masterGain.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.1);
+        btn.textContent = "SOUND: ON";
+        btn.classList.remove('btn-off'); 
+        if (state.missionActive) startEngineSound();
+    } else {
+        masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+        btn.textContent = "SOUND: OFF";
+        btn.classList.add('btn-off'); 
+        stopEngineSound();
+    }
+}
+
+function playSound(type) {
+    if (!state.audioEnabled) return;
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(masterGain);
+
+    if (type === 'ping') {
+        osc.frequency.setValueAtTime(800, t);
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.4, t + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 1.2);
+        osc.start(t); osc.stop(t + 1.2);
+    } else if (type === 'crash') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, t);
+        osc.frequency.exponentialRampToValueAtTime(10, t + 0.5);
+        gain.gain.setValueAtTime(0.5, t);
+        gain.gain.linearRampToValueAtTime(0, t + 0.5);
+        osc.start(t); osc.stop(t + 0.5);
+    } else if (type === 'alarm') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(600, t);
+        osc.frequency.linearRampToValueAtTime(800, t+0.1);
+        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.linearRampToValueAtTime(0, t+0.3);
+        osc.start(t); osc.stop(t+0.3);
+    }
+}
+
+/* --- LOGIC --- */
+function spawnObstacle() {
+    const type = Math.random() > 0.6 ? 'SURFACE' : 'UNDERWATER';
+    const canvas = document.getElementById('simCanvas');
+    let obs = {
+        x: canvas.width + 100,
+        type: type,
+        width: 0, height: 0,
+        y: 0, color: '#ff3300'
+    };
+
+    if (type === 'SURFACE') {
+        obs.width = 150; obs.height = 40;
+        obs.y = state.waterLevelY - 25; 
+    } else {
+        obs.width = 35; obs.height = 35;
+        const minDeep = state.waterLevelY + 100;
+        const maxDeep = canvas.height - 50;
+        obs.y = minDeep + Math.random() * (maxDeep - minDeep);
+    }
+    state.obstacles.push(obs);
+}
+
+function updateGameLogic() {
+    if (!state.missionActive || state.gameOver) return;
+
+    state.gameSpeed = 3; 
+    state.distance += (state.gameSpeed * 0.02);
+
+    if (Math.random() < 0.012) {
+        const lastObs = state.obstacles[state.obstacles.length-1];
+        if (!lastObs || (canvas.width - lastObs.x > 350)) {
+            spawnObstacle();
+        }
+    }
+
+    for (let i = state.obstacles.length - 1; i >= 0; i--) {
+        let o = state.obstacles[i];
+        o.x -= state.gameSpeed;
+        
+        const subX = canvas.width * 0.2;
+        const subY = state.y;
+        const subW = 100; const subH = 40;
+
+        const collisionX = (subX - subW/2 < o.x + o.width) && (subX + subW/2 > o.x);
+        const collisionY = (subY - subH/2 < o.y + o.height) && (subY + subH/2 > o.y);
+
+        if (collisionX && collisionY) gameOver();
+        if (o.x < -200) state.obstacles.splice(i, 1);
+    }
+}
+
+function gameOver() {
+    state.gameOver = true;
+    state.missionActive = false;
+    stopEngineSound();
+    playSound('crash');
+    document.getElementById('game-over-screen').style.display = 'flex';
+}
+
+function resetGame() {
+    state.gameOver = false;
+    state.distance = 0;
+    state.obstacles = [];
+    state.y = state.waterLevelY;
+    state.vy = 0;
+    state.currentBallastPct = 0.5;
+    const lever = document.getElementById('ballast-lever');
+    lever.value = 50; 
+    updateBallastInput(50);
+    document.getElementById('game-over-screen').style.display = 'none';
+    state.missionActive = false;
+    document.getElementById('btn-mission').textContent = "INITIALIZE MISSION";
+    document.getElementById('btn-mission').classList.remove('active');
+    stopEngineSound();
+}
+
+function updatePhysics() {
+    if (state.stabilizerOn) {
+        const targetVy = 0;
+        const err = targetVy - state.vy;
+        let adjustment = err * 0.01; 
+        state.currentBallastPct += adjustment;
+        if (state.currentBallastPct < 0) state.currentBallastPct = 0;
+        if (state.currentBallastPct > 1) state.currentBallastPct = 1;
+        const lever = document.getElementById('ballast-lever');
+        lever.value = (1.0 - state.currentBallastPct) * 100;
+        document.getElementById('ballast-val-display').textContent = Math.round(lever.value) + "%";
+    }
+
+    const m_ballast = state.ballastCapacity * state.currentBallastPct;
+    const m_total = state.hullMass + m_ballast;
+    
+    const Fg = m_total * CONSTANTS.g;
+    
+    let submergedFactor = 0;
+    const surfaceY = state.waterLevelY;
+    const subTop = state.y - 25;
+    const subBot = state.y + 25;
+    
+    if (subTop >= surfaceY) {
+        submergedFactor = 1;
+    } else if (subBot <= surfaceY) {
+        submergedFactor = 0;
+    } else {
+        const submergedH = subBot - surfaceY;
+        submergedFactor = submergedH / 50; 
+    }
+    
+    const Fb = state.fluidDensity * state.volume * CONSTANTS.g * submergedFactor;
+    const dragDir = state.vy > 0 ? -1 : 1;
+    const density = submergedFactor > 0 ? state.fluidDensity : 1.2; 
+    const Fdrag = 0.5 * CONSTANTS.dragCoeff * 10 * density * (state.vy * state.vy) * dragDir;
+
+    const Fnet = Fg - Fb + Fdrag;
+    const a = Fnet / m_total;
+    
+    state.vy += a * CONSTANTS.dt;
+    state.y += state.vy * CONSTANTS.dt * CONSTANTS.simScale;
+
+    if (state.y > canvas.height - 30) {
+        state.y = canvas.height - 30;
+        state.vy = 0;
+        if(Math.abs(state.vy) > 2) playSound('crash'); 
+    }
+    
+    updateEngineSound();
+    return { Fg, Fb, m_ballast, m_total };
+}
+
+/* --- RENDER --- */
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+    const container = document.getElementById('sim-container');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    state.waterLevelY = canvas.height * 0.2; 
+}
+window.addEventListener('resize', resize);
+resize();
+
+function draw() {
+    const phys = updatePhysics();
+    updateGameLogic();
+    
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    const waterLevel = state.waterLevelY;
+
+    // View Scale
+    let viewScale = canvas.width / 1000;
+    if (viewScale < 0.6) viewScale = 0.6;
+    if (viewScale > 1.2) viewScale = 1.2;
+
+    // 1. Water
+    const rho = state.fluidDensity;
+    const hue = 190 + ((rho - 950) / 150) * 50; 
+    const waterColor = `hsla(${hue}, 80%, 30%, 0.1)`;
+    const lineColor = `hsla(${hue}, 100%, 70%, 0.4)`;
+
+    ctx.fillStyle = waterColor;
+    ctx.fillRect(0, waterLevel, canvas.width, canvas.height - waterLevel);
+
+    ctx.beginPath();
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 1;
+    ctx.moveTo(0, waterLevel);
+    ctx.lineTo(canvas.width, waterLevel);
+    ctx.stroke();
+
+    // 2. Distance Grid
+    if (state.missionActive) {
+        ctx.fillStyle = `rgba(149, 255, 119, 0.05)`;
+        const offset = (state.distance * CONSTANTS.simScale) % 200;
+        for (let i = 0; i < canvas.width + 200; i+=200) {
+            ctx.fillRect(i - offset, waterLevel, 1, canvas.height);
+        }
+    }
+
+    // 3. Obstacles (Wireframe)
+    state.obstacles.forEach(o => {
+        ctx.save();
+        ctx.translate(o.x, o.y);
+        ctx.scale(viewScale, viewScale);
+        ctx.translate(-o.x, -o.y);
+        
+        ctx.strokeStyle = "#FF8800"; // Plasma Orange
+        ctx.lineWidth = 1.5;
+        
+        if (o.type === 'SURFACE') {
+            ctx.beginPath();
+            ctx.moveTo(o.x, o.y);
+            ctx.lineTo(o.x + 20, o.y + 25);
+            ctx.lineTo(o.x + 130, o.y + 25);
+            ctx.lineTo(o.x + 150, o.y);
+            ctx.moveTo(o.x + 80, o.y);
+            ctx.lineTo(o.x + 80, o.y - 30);
+            ctx.lineTo(o.x + 110, o.y - 30);
+            ctx.lineTo(o.x + 110, o.y);
+            ctx.stroke();
+            
+            ctx.fillStyle = "#FF8800";
+            ctx.font = "10px Share Tech Mono";
+            ctx.fillText("HOSTILE", o.x + 50, o.y - 40);
+        } else {
+            const cx = o.x + o.width/2;
+            const cy = o.y + o.height/2;
+            const r = 15;
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI*2);
+            ctx.stroke();
+            for(let i=0; i<8; i++) {
+                const angle = (Math.PI * 2 * i) / 8;
+                ctx.beginPath();
+                ctx.moveTo(cx + Math.cos(angle)*r, cy + Math.sin(angle)*r);
+                ctx.lineTo(cx + Math.cos(angle)*(r+8), cy + Math.sin(angle)*(r+8));
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    });
+
+    // 4. Submarine
+    const subCX = canvas.width * 0.2; 
+    const subCY = state.y;
+    
+    ctx.save();
+    ctx.translate(subCX, subCY);
+    ctx.scale(viewScale, viewScale);
+    
+    const rearX = -70;
+    const vScale = 0.0003; 
+    const txtOffset = 50; 
+    
+    // Fb (Orange)
+    ctx.beginPath();
+    ctx.moveTo(rearX, 0);
+    ctx.lineTo(rearX, -phys.Fb * vScale);
+    ctx.strokeStyle = "#FF8800";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(rearX-4, -phys.Fb * vScale + 8); ctx.lineTo(rearX, -phys.Fb * vScale); ctx.lineTo(rearX+4, -phys.Fb * vScale + 8); ctx.stroke();
+    ctx.fillStyle = "#FF8800";
+    ctx.font = "10px Share Tech Mono";
+    ctx.fillText(`Fb:${Math.round(phys.Fb)}`, rearX - txtOffset, -phys.Fb * vScale);
+
+    // Fg (Yellow)
+    ctx.beginPath();
+    ctx.moveTo(rearX + 10, 0); 
+    ctx.lineTo(rearX + 10, phys.Fg * vScale);
+    ctx.strokeStyle = "#FFFF00";
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(rearX+6, phys.Fg * vScale - 8); ctx.lineTo(rearX+10, phys.Fg * vScale); ctx.lineTo(rearX+14, phys.Fg * vScale - 8); ctx.stroke();
+    ctx.fillStyle = "#FFFF00";
+    ctx.fillText(`Fg:${Math.round(phys.Fg)}`, rearX - txtOffset, phys.Fg * vScale + 10);
+
+    // Wireframe Sub
+    ctx.strokeStyle = "#95FF77";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(0, 0, 60, 25, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.rect(-10, -35, 25, 15); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-10, -27); ctx.lineTo(15, -27); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5, -35); ctx.lineTo(5, -48); ctx.lineTo(15, -48); ctx.stroke();
+    const pOff = (Date.now() / 20) % 10;
+    ctx.beginPath(); ctx.moveTo(-65, -5); ctx.lineTo(-75, -5 + pOff); ctx.moveTo(-65, 5); ctx.lineTo(-75, 5 - pOff); ctx.stroke();
+
+    // Internal Ballast
+    ctx.strokeStyle = "rgba(149, 255, 119, 0.7)";
+    ctx.strokeRect(-20, -10, 40, 20);
+    const fillHeight = 20 * state.currentBallastPct;
+    const waterTopY = 10 - fillHeight;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(-20, waterTopY, 40, fillHeight); ctx.clip();
+    ctx.strokeStyle = "rgba(149, 255, 119, 0.4)";
+    ctx.lineWidth = 1;
+    for(let i = -30; i < 50; i+=4) {
+        ctx.beginPath(); ctx.moveTo(i, 20); ctx.lineTo(i+20, -20); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.restore();
+
+    // 5. Update HTML Data
+    document.getElementById('d-depth').textContent = ((state.y - waterLevel) / CONSTANTS.simScale).toFixed(1) + " m";
+    document.getElementById('d-vel').textContent = state.vy.toFixed(2) + " m/s";
+    document.getElementById('d-dist').textContent = Math.floor(state.distance) + " m";
+    // Fixed: Update correct IDs for Mass
+    document.getElementById('d-mhull').textContent = state.hullMass + " kg";
+    document.getElementById('d-mballast').textContent = Math.round(phys.m_ballast) + " kg";
+    document.getElementById('d-fluid').textContent = state.fluidDensity + " kg/m³";
+
+    requestAnimationFrame(draw);
+}
+
+/* --- UI HANDLERS --- */
+function updateBallastInput(val) {
+    const waterPct = 1.0 - (val / 100);
+    state.currentBallastPct = waterPct;
+    document.getElementById('ballast-val-display').textContent = val + "%";
+    if (state.stabilizerOn) toggleStabilizer(false);
+}
+
+function updateEnv() {
+    state.fluidDensity = parseInt(document.getElementById('rho-slider').value);
+}
+
+function setMaterial(mat) {
+    state.material = mat;
+    state.hullMass = MATERIALS[mat].mass;
+    document.getElementById('btn-titan').classList.remove('active');
+    document.getElementById('btn-steel').classList.remove('active');
+    document.getElementById('btn-' + mat.toLowerCase()).classList.add('active');
+}
+
+function toggleStabilizer(forceState) {
+    if (forceState !== undefined) state.stabilizerOn = forceState;
+    else state.stabilizerOn = !state.stabilizerOn;
+    
+    const btn = document.getElementById('btn-stab');
+    if (state.stabilizerOn) {
+        btn.classList.add('active');
+    } else {
+        btn.classList.remove('active');
+    }
+}
+
+function toggleMission() {
+    if (state.missionActive) {
+        state.missionActive = false;
+        document.getElementById('btn-mission').textContent = "RESUME MISSION";
+        stopEngineSound();
+    } else {
+        state.missionActive = true;
+        document.getElementById('btn-mission').textContent = "ABORT MISSION";
+        if(state.audioEnabled) startEngineSound();
+        playSound('ping');
+    }
+}
+
+function emergencyBlow() {
+    toggleStabilizer(false);
+    document.getElementById('ballast-lever').value = 100; 
+    state.currentBallastPct = 0; 
+    document.getElementById('ballast-val-display').textContent = "100%";
+    playSound('alarm');
+    document.body.style.transform = "translate(2px, 2px)";
+    setTimeout(() => document.body.style.transform = "none", 100);
+}
+
+function toggleFormula() {
+    const p = document.getElementById('formula-panel');
+    p.style.display = p.style.display === 'block' ? 'none' : 'block';
+}
+
+updateBallastInput(50);
+requestAnimationFrame(draw);
+
+</script>
+</body>
+</html>

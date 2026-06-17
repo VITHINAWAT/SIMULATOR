@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PARABOLA_HUNTER // M2 [VITHINAWAT v1.9.11 Fix]</title>
+    
+    <!-- Import Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <!-- KaTeX for Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    <style>
+        :root {
+            /* VITHINAWAT SPACE THEME */
+            --space-black: #0b0d17;
+            --neon-cyan: #00FFFF;       /* Parabola Dish */
+            --ray-faint: rgba(255, 255, 0, 0.1);
+            --ray-bright: #FFFF00;      /* Signal */
+            --receiver: #FF8800;        /* Neon Orange */
+            --ui-border: #95FF77;
+            --panel-bg: rgba(11, 13, 23, 0.95);
+            
+            --font-main: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* FIX: Google Sites/Iframe Compatibility */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--space-black);
+            font-family: var(--font-main);
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            color: var(--neon-cyan);
+        }
+
+        /* Starfield Background */
+        #stars {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* --- UNIFIED DASHBOARD --- */
+        #dashboard {
+            height: auto;
+            min-height: 80px;
+            background-color: var(--panel-bg);
+            border-bottom: 2px solid var(--ui-border);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            z-index: 10;
+            gap: 15px;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+
+        /* Section 1: Title */
+        .title-block {
+            display: flex;
+            flex-direction: column;
+            min-width: 150px;
+        }
+        .app-title {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            color: var(--ui-border);
+            font-weight: bold;
+        }
+        .app-subtitle { font-size: 0.7rem; color: var(--neon-cyan); }
+
+        /* Section 2: Controls */
+        .controls-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 180px;
+        }
+        
+        .math-display {
+            font-size: 0.9rem;
+            color: #fff;
+            text-align: center;
+            min-height: 25px; /* prevent layout shift */
+        }
+        .katex { font-size: 1.1em !important; color: var(--neon-cyan); }
+
+        input[type=range] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 6px; background: #444; border: none; border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; 
+            border-radius: 50%; background: var(--receiver); 
+            margin-top: -5px; cursor: pointer; box-shadow: 0 0 10px var(--receiver);
+            border: 2px solid #fff;
+        }
+
+        .data-display {
+            border-left: 1px solid #444;
+            padding-left: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            min-width: 100px;
+        }
+
+        /* Section 3: Signal Meter */
+        .signal-meter-container {
+            width: 150px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .signal-label { font-size: 0.7rem; color: #aaa; display: flex; justify-content: space-between;}
+        
+        .meter-bg {
+            width: 100%; height: 10px; background: #333; border: 1px solid #555;
+            position: relative; overflow: hidden;
+        }
+        .meter-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, transparent, var(--ray-bright));
+            box-shadow: 0 0 10px var(--ray-bright);
+            transition: width 0.1s;
+        }
+
+        /* --- EQUATION PANEL (TOP LEFT) --- */
+        #math-panel {
+            position: absolute;
+            top: 100px; left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--ui-border);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 15;
+            transition: height 0.3s;
+            overflow: hidden;
+            width: 240px;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--ui-border);
+            margin-bottom: 8px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+        .toggle-btn {
+            cursor: pointer;
+            color: #fff;
+            background: transparent;
+            border: none;
+            font-weight: bold;
+        }
+        .math-row {
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #math-content.hidden { display: none; }
+
+        /* --- MAIN STAGE --- */
+        #sim-stage {
+            position: relative;
+            flex: 1; /* Take remaining height */
+            width: 100%;
+            overflow: hidden;
+            cursor: crosshair;
+            z-index: 1;
+        }
+
+        canvas#simCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Status Message */
+        #status-msg {
+            position: absolute;
+            top: 40%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--ui-border);
+            text-shadow: 0 0 20px var(--ui-border);
+            display: none;
+            z-index: 20;
+            background: rgba(0,0,0,0.9);
+            padding: 20px 40px;
+            border: 2px solid var(--ui-border);
+            text-align: center;
+            animation: pulse 0.5s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { text-shadow: 0 0 10px var(--ui-border); box-shadow: 0 0 10px var(--ui-border); }
+            to { text-shadow: 0 0 30px var(--ui-border); box-shadow: 0 0 30px var(--ui-border); }
+        }
+
+        /* Lock Progress Bar */
+        #lock-container {
+            position: absolute;
+            bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            z-index: 15;
+            width: 250px;
+        }
+        #lock-progress {
+            width: 100%; height: 8px;
+            background: #222;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #555;
+        }
+        #lock-bar {
+            height: 100%; width: 0%;
+            background: var(--ui-border);
+            box-shadow: 0 0 10px var(--ui-border);
+            transition: width 0.1s linear;
+        }
+        #lock-text {
+            font-size: 0.9rem; color: var(--ui-border);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            text-shadow: 0 0 5px #000;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+
+        #instruction-overlay {
+            position: absolute;
+            top: 20px; right: 20px;
+            text-align: right;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            #dashboard { flex-direction: column; align-items: stretch; gap: 15px; }
+            .title-block { text-align: center; }
+            .controls-container { flex-direction: column; width: 100%; }
+            .control-group { width: 100%; }
+            .data-display { border-left: none; border-top: 1px solid #444; padding-top: 10px; width: 100%; align-items: center; flex-direction: row; justify-content: space-between; }
+            .signal-meter-container { width: 100%; }
+            #math-panel { top: auto; bottom: 20px; left: 20px; width: calc(100% - 40px); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="stars"></canvas>
+
+    <!-- MATH EQUATION PANEL -->
+    <div id="math-panel">
+        <div class="panel-header">
+            <span>PARABOLA MATH</span>
+            <button class="toggle-btn" onclick="toggleMath()">[ - ]</button>
+        </div>
+        <div id="math-content">
+            <div class="math-row">
+                <span>Eq:</span>
+                <span id="latex-eq">y = a(x-h)^2</span>
+            </div>
+            <div class="math-row">
+                <span>Focus (p):</span>
+                <span id="latex-formula">p = \frac{1}{4a}</span>
+            </div>
+            <div class="math-row" style="border-top:1px solid #444; padding-top:5px; margin-top:5px;">
+                <span>Coordinates:</span>
+                <span id="latex-curr" style="color:var(--ui-border)">F(h, k+p)</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard">
+        <!-- 1. Title -->
+        <div class="title-block">
+            <div class="app-title">PARABOLA HUNTER</div>
+            <div class="app-subtitle">M2 // SPACE GEOMETRY</div>
+        </div>
+
+        <!-- 2. Controls -->
+        <div class="controls-container">
+            <div class="control-group">
+                <div class="math-display">
+                    <span id="eq-display">y = a(x-h)^2</span>
+                </div>
+                <input type="range" id="curvature-slider" min="0" max="1000" step="1" value="500">
+                <div style="font-size:0.6rem; color:#888; text-align:center; display:flex; justify-content:space-between;">
+                    <span>WIDE</span><span>CURVATURE (a)</span><span>NARROW</span>
+                </div>
+            </div>
+            
+            <div class="data-display">
+                <div style="font-size:0.7rem; color:var(--receiver);">FOCAL DISTANCE (p)</div>
+                <div style="display:flex; align-items:baseline; gap:5px;">
+                    <div id="focal-val" style="font-size:1.5rem; color:#fff; font-weight:bold;">--</div>
+                    <div style="font-size:0.6rem; color:#666;">UNITS</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Signal Meter -->
+        <div class="signal-meter-container">
+            <div class="signal-label"><span>SIGNAL STRENGTH</span><span id="signal-val">0%</span></div>
+            <div class="meter-bg">
+                <div class="meter-fill" id="meter-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sim-stage">
+        <canvas id="simCanvas"></canvas>
+        <div id="instruction-overlay">DRAG DISH (LEFT/RIGHT)<br>DRAG RECEIVER (UP/DOWN)</div>
+        <div id="status-msg">UPLINK ESTABLISHED</div>
+        
+        <div id="lock-container">
+             <div id="lock-text">LOCKING SIGNAL...</div>
+             <div id="lock-progress"><div id="lock-bar"></div></div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * PARABOLA HUNTER ENGINE (M2) - VITHINAWAT v1.9.11 Fix
+         * Fix: Reordered functions to prevent ReferenceError for resize()
+         */
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const starCanvas = document.getElementById('stars');
+        const starCtx = starCanvas.getContext('2d');
+        const simStage = document.getElementById('sim-stage');
+
+        // --- CONFIG ---
+        const RAYS_COUNT = 15;
+        const DISH_WIDTH = 280; 
+        const BEAM_WIDTH = 200; 
+        const HOLD_TIME_FRAMES = 120; 
+        
+        // Slider Mapping Constants
+        const SLIDER_MAX = 1000;
+        const A_MIN = 0.001;
+        const A_MAX = 0.03;
+        
+        // --- STATE ---
+        let width = 0, height = 0;
+        let parabolaH = 0; 
+        let k = 0; 
+        let a = 0.01; 
+        let focalDist = 0; 
+        
+        let receiver = { x: 0, y: 0, r: 12, isDragging: false };
+        let dish = { isDragging: false, startX: 0, startH: 0 };
+        let beamX = 0; 
+        
+        let signalStrength = 0; 
+        let animationOffset = 0;
+        let lockTimer = 0;
+        let isSuccess = false;
+
+        // --- AUDIO ENGINE ---
+        const AudioSys = {
+            ctx: null,
+            init: function() {
+                if(!this.ctx) {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AC();
+                }
+                if(this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            playTone: function(freq, type, duration) {
+                if(!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            playClick: function() {
+                this.playTone(600, 'square', 0.05);
+            },
+            playSuccess: function() {
+                if(!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.5);
+            },
+            playLocking: function() {
+                 this.playTone(800 + Math.random()*200, 'sine', 0.1);
+            }
+        };
+
+        // --- HELPER FUNCTIONS (Defined BEFORE init) ---
+
+        function getAFromSlider(val) {
+            const t = val / SLIDER_MAX;
+            return A_MIN + (A_MAX - A_MIN) * (t * t);
+        }
+
+        function getSliderFromA(val) {
+            let tSq = (val - A_MIN) / (A_MAX - A_MIN);
+            if(tSq < 0) tSq = 0;
+            const t = Math.sqrt(tSq);
+            return t * SLIDER_MAX;
+        }
+
+        function calculateFocus() {
+            focalDist = 1 / (4 * a);
+            return focalDist;
+        }
+
+        function toggleMath() {
+            const content = document.getElementById('math-content');
+            const btn = document.querySelector('#math-panel .toggle-btn');
+            if (content && btn) {
+                if (content.classList.contains('hidden')) {
+                    content.classList.remove('hidden');
+                    btn.innerText = "[ - ]";
+                } else {
+                    content.classList.add('hidden');
+                    btn.innerText = "[ + ]";
+                }
+            }
+        }
+
+        function renderMathStatic() {
+            if (typeof katex !== 'undefined') {
+                try {
+                    katex.render("y = a(x-h)^2", document.getElementById('latex-eq'));
+                    katex.render("p = \\frac{1}{4a}", document.getElementById('latex-formula'));
+                } catch(e) {}
+            }
+        }
+
+        function updateMathDisplay() {
+            focalDist = calculateFocus();
+            
+            const eqDisplay = document.getElementById('eq-display');
+            const currDisplay = document.getElementById('latex-curr');
+            const focalValDisplay = document.getElementById('focal-val');
+
+            if (eqDisplay && currDisplay) {
+                if (typeof katex !== 'undefined') {
+                    const hVal = Math.round(parabolaH); 
+                    const sign = hVal >= 0 ? '-' : '+'; 
+                    const displayH = Math.abs(hVal);
+                    
+                    try {
+                        katex.render(`y = ${a.toFixed(4)}(x ${sign} ${displayH})^2`, eqDisplay);
+                        katex.render(`F(${hVal}, ${focalDist.toFixed(1)})`, currDisplay);
+                    } catch(e) {
+                         eqDisplay.innerText = `y = ${a.toFixed(4)}(x ${sign} ${displayH})^2`;
+                    }
+                } else {
+                    eqDisplay.innerText = `y = a(x-h)^2`;
+                }
+            }
+            if(focalValDisplay) focalValDisplay.innerText = focalDist.toFixed(1);
+        }
+
+        function generateStars() {
+            starCanvas.width = window.innerWidth;
+            starCanvas.height = window.innerHeight;
+            const w = starCanvas.width;
+            const h = starCanvas.height; 
+            starCtx.fillStyle = '#0b0d17';
+            starCtx.fillRect(0, 0, w, h);
+            starCtx.fillStyle = '#fff';
+            for(let i=0; i<200; i++) {
+                const x = Math.random() * w;
+                const y = Math.random() * h;
+                const r = Math.random() * 1.5;
+                const alpha = Math.random() * 0.8;
+                starCtx.globalAlpha = alpha;
+                starCtx.beginPath(); starCtx.arc(x,y,r,0,Math.PI*2); starCtx.fill();
+            }
+        }
+
+        function randomizeTarget() {
+            const safeMargin = DISH_WIDTH / 2 + 50;
+            const range = width - (safeMargin * 2);
+            beamX = (Math.random() * range) - (range/2); 
+            
+            // Randomize Receiver Y
+            const maxP = 1 / (4 * A_MIN); 
+            const minP = 1 / (4 * A_MAX);
+            
+            const screenLimitP = k - 100; 
+            const effectiveMaxP = Math.min(maxP, screenLimitP);
+            const effectiveMinP = Math.max(minP, 50); 
+            
+            const targetP = effectiveMinP + Math.random() * (effectiveMaxP - effectiveMinP);
+            receiver.y = k - targetP;
+            
+            lockTimer = 0;
+            isSuccess = false;
+            const statusMsg = document.getElementById('status-msg');
+            const lockCont = document.getElementById('lock-container');
+            if(statusMsg) statusMsg.style.display = 'none';
+            if(lockCont) lockCont.style.display = 'none';
+            
+            updateMathDisplay();
+        }
+
+        // Defined BEFORE init to avoid ReferenceError
+        function resize() {
+            const newW = simStage.clientWidth || window.innerWidth;
+            const newH = simStage.clientHeight || window.innerHeight;
+
+            if (newW === 0 || newH === 0) return; 
+
+            if (Math.abs(width - newW) > 5 || Math.abs(height - newH) > 5) {
+                width = newW;
+                height = newH;
+                canvas.width = width;
+                canvas.height = height;
+                
+                k = height - 40; 
+                
+                if (receiver.y === 0) receiver.y = k - 100;
+                
+                generateStars();
+                updateMathDisplay();
+            }
+        }
+
+        // --- DRAWING FUNCTIONS ---
+        function drawRays(vertexX, vertexY) {
+            animationOffset -= 2; 
+            
+            const beamScreenX = (width/2) + beamX;
+            const beamLeft = beamScreenX - BEAM_WIDTH/2;
+            const beamRight = beamScreenX + BEAM_WIDTH/2;
+            const rayGap = 20;
+            
+            for (let rx = beamLeft + 10; rx <= beamRight - 10; rx += rayGap) {
+                const distFromVertex = rx - vertexX;
+                
+                if (Math.abs(distFromVertex) > DISH_WIDTH/2) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = "rgba(255, 255, 0, 0.05)";
+                    ctx.lineWidth = 1;
+                    ctx.moveTo(rx, 0);
+                    ctx.lineTo(rx, height);
+                    ctx.stroke();
+                    continue;
+                }
+
+                const hitYRel = a * distFromVertex * distFromVertex;
+                const hitY = vertexY - hitYRel;
+
+                ctx.beginPath();
+                ctx.strokeStyle = "rgba(255, 255, 0, 0.3)"; 
+                if (signalStrength > 0.70) ctx.strokeStyle = "#FFFF00"; 
+                ctx.lineWidth = 1;
+                ctx.moveTo(rx, 0);
+                ctx.lineTo(rx, hitY);
+                ctx.stroke();
+
+                const focusY = vertexY - focalDist;
+                
+                ctx.beginPath();
+                ctx.moveTo(rx, hitY);
+                ctx.lineTo(vertexX, focusY);
+                ctx.stroke();
+
+                const packetY = (animationOffset + rx) % hitY; 
+                if(packetY > 0) {
+                    ctx.fillStyle = "#fff";
+                    ctx.fillRect(rx - 1, packetY, 2, 4);
+                }
+                
+                if (signalStrength > 0.1) {
+                    const dx = vertexX - rx;
+                    const dy = focusY - hitY;
+                    const len = Math.hypot(dx, dy);
+                    const packetDist = (Math.abs(animationOffset) + rx) % len;
+                    const t = packetDist / len;
+                    
+                    ctx.beginPath();
+                    ctx.arc(rx + dx*t, hitY + dy*t, 1.5, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        function draw() {
+            if (width === 0) return;
+            ctx.clearRect(0, 0, width, height);
+            const cx = width / 2; 
+
+            // Beam
+            const beamScreenX = cx + beamX;
+            ctx.fillStyle = "rgba(255, 255, 0, 0.08)";
+            ctx.fillRect(beamScreenX - BEAM_WIDTH/2, 0, BEAM_WIDTH, height);
+            ctx.strokeStyle = "rgba(255, 255, 0, 0.2)";
+            ctx.setLineDash([5, 10]);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(beamScreenX - BEAM_WIDTH/2, 0); ctx.lineTo(beamScreenX - BEAM_WIDTH/2, height);
+            ctx.moveTo(beamScreenX + BEAM_WIDTH/2, 0); ctx.lineTo(beamScreenX + BEAM_WIDTH/2, height);
+            ctx.stroke();
+            
+            ctx.fillStyle = "#FFFF00";
+            ctx.font = "12px monospace";
+            ctx.fillText("SIGNAL SOURCE", beamScreenX - 40, 30);
+            ctx.setLineDash([]);
+
+            // Dish
+            const vertexX = cx + parabolaH; 
+            const vertexY = k;
+
+            ctx.beginPath();
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--neon-cyan') || '#00FFFF';
+            ctx.lineWidth = 4;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = ctx.strokeStyle;
+            
+            const rangeX = DISH_WIDTH / 2; 
+            let start = true;
+            for (let dx = -rangeX; dx <= rangeX; dx += 5) {
+                const yRel = a * dx * dx; 
+                const plotX = vertexX + dx;
+                const plotY = vertexY - yRel;
+                if (plotY < 0) continue; 
+                if (start) { ctx.moveTo(plotX, plotY); start = false; }
+                else ctx.lineTo(plotX, plotY);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Mount
+            ctx.fillStyle = "#333";
+            ctx.fillRect(vertexX - 20, vertexY, 40, 20);
+            // Handle
+            ctx.fillStyle = "#00FFFF";
+            ctx.globalAlpha = 0.3;
+            ctx.fillRect(vertexX - 20, vertexY + 20, 40, 10); 
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = "#fff";
+            ctx.font = "10px monospace";
+            ctx.fillText("DRAG", vertexX - 12, vertexY + 28);
+
+            drawRays(vertexX, vertexY);
+
+            // Receiver
+            receiver.x = vertexX;
+            ctx.beginPath();
+            const receiverColor = getComputedStyle(document.documentElement).getPropertyValue('--receiver') || '#FF8800';
+            ctx.fillStyle = receiverColor;
+            const glow = 10 + (signalStrength * 40);
+            ctx.shadowBlur = glow;
+            ctx.shadowColor = ctx.fillStyle;
+            
+            const rx = receiver.x;
+            const ry = receiver.y;
+            ctx.moveTo(rx, ry - 8);
+            ctx.lineTo(rx + 8, ry);
+            ctx.lineTo(rx, ry + 8);
+            ctx.lineTo(rx - 8, ry);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Antenna Line
+            ctx.beginPath();
+            ctx.moveTo(rx, ry);
+            ctx.lineTo(rx, ry + (vertexY - ry)); 
+            ctx.strokeStyle = "rgba(255, 136, 0, 0.5)";
+            ctx.lineWidth = 1;
+            ctx.shadowBlur = 0;
+            ctx.stroke();
+        }
+
+        function update() {
+            if (width === 0) return;
+
+            const cx = width / 2;
+            const dishCenter = cx + parabolaH;
+            const dishLeft = dishCenter - DISH_WIDTH/2;
+            const dishRight = dishCenter + DISH_WIDTH/2;
+            
+            const beamCenter = cx + beamX;
+            const beamLeft = beamCenter - BEAM_WIDTH/2;
+            const beamRight = beamCenter + BEAM_WIDTH/2;
+            
+            const overlapLeft = Math.max(dishLeft, beamLeft);
+            const overlapRight = Math.min(dishRight, beamRight);
+            const overlapWidth = Math.max(0, overlapRight - overlapLeft);
+            
+            const hScore = overlapWidth / BEAM_WIDTH;
+
+            const targetFocusY = k - focalDist;
+            const vError = Math.abs(receiver.y - targetFocusY);
+            const vThreshold = 40;
+            
+            let vScore = 0;
+            if (vError < vThreshold) {
+                vScore = 1 - (vError / vThreshold);
+            }
+
+            const rawStrength = hScore * vScore;
+            signalStrength += (rawStrength - signalStrength) * 0.1;
+            
+            const pct = Math.round(signalStrength * 100);
+            const signalVal = document.getElementById('signal-val');
+            const meterFill = document.getElementById('meter-fill');
+            
+            if(signalVal) signalVal.innerText = pct + "%";
+            if(meterFill) meterFill.style.width = pct + "%";
+            
+            if (pct > 70) { 
+                if(meterFill) {
+                    meterFill.style.background = "#fff"; 
+                    meterFill.style.boxShadow = "0 0 20px #fff";
+                }
+                
+                if (!isSuccess) {
+                    lockTimer++;
+                    const lockCont = document.getElementById('lock-container');
+                    const lockBar = document.getElementById('lock-bar');
+                    if(lockCont) lockCont.style.display = 'flex';
+                    
+                    const prog = Math.min(100, (lockTimer / HOLD_TIME_FRAMES) * 100);
+                    if(lockBar) lockBar.style.width = prog + "%";
+                    
+                    if (lockTimer % 10 === 0) AudioSys.playLocking();
+
+                    if (lockTimer >= HOLD_TIME_FRAMES) {
+                        isSuccess = true;
+                        AudioSys.playSuccess();
+                        const statusMsg = document.getElementById('status-msg');
+                        if(statusMsg) statusMsg.style.display = 'block';
+                        if(statusMsg) statusMsg.innerText = "UPLINK ESTABLISHED";
+                        if(lockCont) lockCont.style.display = 'none';
+                        setTimeout(randomizeTarget, 3000);
+                    }
+                }
+            } else {
+                if(meterFill) {
+                    meterFill.style.background = "linear-gradient(90deg, transparent, #FFFF00)";
+                    meterFill.style.boxShadow = "0 0 10px #FFFF00";
+                }
+                
+                if(!isSuccess) {
+                    lockTimer = 0;
+                    const lockCont = document.getElementById('lock-container');
+                    if(lockCont) lockCont.style.display = 'none';
+                }
+            }
+        }
+
+        // --- INPUT ---
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches ? e.touches[0].clientX : e.clientX;
+            const y = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: x - rect.left, y: y - rect.top };
+        }
+
+        function handleStart(e) {
+            AudioSys.init();
+            const ptr = getPointerPos(e);
+            let hit = false;
+            
+            if (Math.hypot(ptr.x - receiver.x, ptr.y - receiver.y) < 40) {
+                e.preventDefault();
+                receiver.isDragging = true;
+                hit = true;
+            }
+            
+            const dishX = (width/2) + parabolaH; 
+            const dishY = k; 
+            
+            if (!hit && Math.abs(ptr.x - dishX) < 60 && Math.abs(ptr.y - dishY) < 60) {
+                 e.preventDefault();
+                 dish.isDragging = true;
+                 dish.startX = ptr.x;
+                 dish.startH = parabolaH; 
+                 hit = true;
+            }
+
+            if(hit) AudioSys.playClick();
+        }
+
+        function handleMove(e) {
+            if (receiver.isDragging) {
+                e.preventDefault();
+                const ptr = getPointerPos(e);
+                receiver.y = Math.max(0, Math.min(height, ptr.y));
+            }
+            
+            if (dish.isDragging) {
+                e.preventDefault();
+                const ptr = getPointerPos(e);
+                const dx = ptr.x - dish.startX;
+                parabolaH = dish.startH + dx; 
+                
+                const maxOffset = (width/2) - 50;
+                if (parabolaH < -maxOffset) parabolaH = -maxOffset;
+                if (parabolaH > maxOffset) parabolaH = maxOffset;
+                
+                updateMathDisplay();
+            }
+        }
+
+        function handleEnd(e) {
+            receiver.isDragging = false;
+            dish.isDragging = false;
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // --- INIT ---
+        function init() {
+            renderMathStatic();
+            resize();
+            
+            if (width === 0) {
+                setTimeout(init, 200);
+                return;
+            }
+
+            // Input Events
+            const slider = document.getElementById('curvature-slider');
+            if(slider) {
+                slider.addEventListener('input', (e) => {
+                    if(isSuccess) return;
+                    // Use non-linear mapping
+                    a = getAFromSlider(parseInt(e.target.value));
+                    updateMathDisplay();
+                    AudioSys.playClick();
+                });
+            }
+
+            canvas.addEventListener('mousedown', handleStart);
+            canvas.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', handleEnd);
+            
+            canvas.addEventListener('touchstart', handleStart, {passive: false});
+            canvas.addEventListener('touchmove', handleMove, {passive: false});
+            window.addEventListener('touchend', handleEnd);
+
+            if(window.ResizeObserver) {
+                new ResizeObserver(resize).observe(simStage);
+            }
+            window.addEventListener('resize', resize);
+
+            randomizeTarget();
+            loop();
+        }
+
+        // Boot
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+    </script>
+</body>
+</html>

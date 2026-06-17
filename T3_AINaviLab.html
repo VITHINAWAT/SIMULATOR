@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI_NAVI_LAB // VITHINAWAT</title>
+    
+    <!-- Import Share Tech Mono Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #1A1C1B;
+            --terminal-green: #95FF77;     /* UI / Start / OpenSet */
+            --plasma-orange: #FF8800;      /* Target / Path */
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            --wall-color: #333333;
+            --dim-grey: #444444;
+            --alert-red: #FF3300;
+            
+            --main-font: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--void-black); }
+        ::-webkit-scrollbar-thumb { background: var(--dim-grey); border-radius: 4px; border: 1px solid var(--void-black); }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--void-black);
+            color: var(--terminal-green);
+            font-family: var(--main-font);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: row; 
+        }
+
+        /* --- LAYOUT --- */
+        #sim-stage {
+            flex: 3; /* Canvas takes more space */
+            position: relative;
+            background-color: var(--void-black);
+            overflow: hidden;
+            border-right: 1px solid var(--terminal-green);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 1px solid var(--dim-grey);
+        }
+
+        #control-panel {
+            flex: 1; 
+            min-width: 280px;
+            max-width: 350px;
+            background-color: var(--graphite-grey);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+            border-left: 1px solid rgba(149, 255, 119, 0.1);
+        }
+
+        /* --- UI COMPONENTS --- */
+        .panel-header {
+            font-size: 1.2rem;
+            color: var(--terminal-green);
+            border-bottom: 2px solid var(--terminal-green);
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-section {
+            border: 1px solid var(--terminal-green);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            position: relative;
+            margin-top: 10px;
+        }
+
+        .panel-label {
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            background: var(--graphite-grey);
+            padding: 0 5px;
+            font-size: 0.8rem;
+            color: var(--terminal-green);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* TOOL SELECTION */
+        .tool-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: 1px solid var(--dim-grey);
+            color: #888;
+            padding: 10px;
+            font-family: var(--main-font);
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .tool-btn:hover { border-color: var(--terminal-green); color: #fff; }
+        
+        .tool-btn.active {
+            border-color: var(--terminal-green);
+            background: rgba(149, 255, 119, 0.1);
+            color: var(--terminal-green);
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(149, 255, 119, 0.2);
+        }
+
+        .tool-btn.active.orange {
+            border-color: var(--plasma-orange);
+            background: rgba(255, 136, 0, 0.1);
+            color: var(--plasma-orange);
+            box-shadow: 0 0 10px rgba(255, 136, 0, 0.2);
+        }
+
+        /* ACTION BUTTONS */
+        .action-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--terminal-green);
+            color: #000;
+            border: none;
+            font-family: var(--main-font);
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.2s;
+            margin-top: 5px;
+        }
+        .action-btn:hover {
+            box-shadow: 0 0 20px rgba(149, 255, 119, 0.5);
+            background: #fff;
+        }
+        .action-btn:active { transform: scale(0.98); }
+        .action-btn:disabled { background: #444; color: #888; cursor: not-allowed; box-shadow: none; }
+
+        .btn-clear {
+            background: transparent; border: 1px solid var(--alert-red); color: var(--alert-red); margin-top: 10px;
+        }
+        .btn-clear:hover { background: rgba(255, 51, 0, 0.2); }
+
+        /* SLIDERS */
+        .slider-group { margin-bottom: 5px; }
+        .slider-header { display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; margin-bottom: 5px; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--dim-grey); }
+        input[type=range]::-webkit-slider-thumb { height: 16px; width: 10px; border: 1px solid var(--terminal-green); background: #000; cursor: pointer; -webkit-appearance: none; margin-top: -6px; }
+
+        /* METRICS */
+        .metrics-box {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+        .metric-row { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--dim-grey); padding-bottom: 2px; }
+        .metric-val { font-weight: bold; color: #fff; }
+
+        /* STATUS BADGE */
+        #status-badge {
+            text-align: center;
+            padding: 8px;
+            font-weight: bold;
+            margin-top: 10px;
+            border: 1px solid var(--dim-grey);
+            color: #888;
+        }
+        .status-searching { border-color: var(--terminal-green); color: var(--terminal-green); animation: pulse 1s infinite; }
+        .status-found { border-color: var(--plasma-orange); color: var(--plasma-orange); background: rgba(255, 136, 0, 0.1); }
+        .status-blocked { border-color: var(--alert-red); color: var(--alert-red); }
+
+        @keyframes pulse { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #sim-stage { flex: 2; border-right: none; border-bottom: 1px solid var(--terminal-green); }
+            #control-panel { flex: 1; border-left: none; min-width: 100%; max-width: none; }
+            .tool-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIMULATION STAGE -->
+    <div id="sim-stage">
+        <canvas id="gridCanvas"></canvas>
+    </div>
+
+    <!-- CONTROL PANEL -->
+    <div id="control-panel">
+        <div class="panel-header">
+            <span>AI_NAVI_LAB</span>
+            <span style="font-size:0.6rem; opacity:0.7;">v1.0</span>
+        </div>
+
+        <!-- TOOLS -->
+        <div class="panel-section">
+            <span class="panel-label">TOOLBOX</span>
+            <div class="tool-grid">
+                <button class="tool-btn active" id="tool-wall" onclick="setTool('WALL')">🧱 WALL</button>
+                <button class="tool-btn" id="tool-erase" onclick="setTool('ERASE')">🧹 ERASE</button>
+                <button class="tool-btn" id="tool-start" onclick="setTool('START')">🟢 START</button>
+                <button class="tool-btn orange" id="tool-end" onclick="setTool('END')">🟠 TARGET</button>
+            </div>
+        </div>
+
+        <!-- EXECUTION -->
+        <div class="panel-section">
+            <span class="panel-label">EXECUTION</span>
+            
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span>SCAN SPEED</span>
+                    <span id="speed-val">FAST</span>
+                </div>
+                <input type="range" id="speed-slider" min="1" max="50" value="40" oninput="updateSpeed()">
+            </div>
+
+            <button class="action-btn" onclick="runAStar()">▷ EXECUTE SEARCH</button>
+            <button class="action-btn btn-clear" onclick="clearWalls()" style="font-size:0.8rem; padding:8px;">CLEAR OBSTACLES</button>
+        </div>
+
+        <!-- DATA -->
+        <div class="panel-section">
+            <span class="panel-label">DATA_STREAM</span>
+            <div class="metrics-box">
+                <div class="metric-row"><span>NODES SCANNED:</span> <span id="val-scanned" class="metric-val">0</span></div>
+                <div class="metric-row"><span>PATH LENGTH:</span> <span id="val-length" class="metric-val">0</span></div>
+                <div class="metric-row"><span>TIME ELAPSED:</span> <span id="val-time" class="metric-val">0 ms</span></div>
+            </div>
+            <div id="status-badge">READY TO SCAN</div>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * AI_NAVI_LAB (A* Pathfinding Visualization)
+         * - Tech in Tweak Theme
+         * - Canvas Grid System
+         * - A* Algorithm
+         */
+
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- CONFIG ---
+        const COLORS = {
+            bg: '#1A1C1B',
+            grid: '#2A2C2B',
+            wall: '#333333', // or darker
+            start: '#95FF77',
+            end: '#FF8800',
+            open: 'rgba(149, 255, 119, 0.3)', // Scanning
+            closed: 'rgba(149, 255, 119, 0.1)', // Scanned
+            path: '#FF8800'
+        };
+
+        const GRID_SIZE = 25; // Cells
+        let CELL_SIZE = 0;    // Calculated on resize
+        let cols = 20;
+        let rows = 20;
+
+        // --- STATE ---
+        let grid = []; // 2D Array: 0=Empty, 1=Wall
+        let startPos = {c: 2, r: 10};
+        let endPos = {c: 17, r: 10};
+        
+        let currentTool = 'WALL';
+        let isDrawing = false;
+        
+        // Algorithm State
+        let openSet = [];
+        let closedSet = [];
+        let path = [];
+        let isRunning = false;
+        let animationId = null;
+        let speed = 40; // Steps per frame (approx)
+
+        // --- AUDIO ---
+        const AudioSys = {
+            ctx: null,
+            init: function() {
+                if (!this.ctx) {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AC();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            playScan: function() {
+                if(!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                // Random high pitch bleeps
+                osc.frequency.setValueAtTime(800 + Math.random()*400, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.02, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.05);
+            },
+            playFound: function() {
+                if(!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(880, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.5);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.5);
+            }
+        };
+
+        // --- INIT ---
+        function initGrid() {
+            grid = new Array(cols).fill(0).map(() => new Array(rows).fill(0));
+            // Random obstacles for fun? No, start clean.
+        }
+
+        function resize() {
+            const container = document.getElementById('sim-stage');
+            const size = Math.min(container.clientWidth, container.clientHeight) - 40;
+            canvas.width = size;
+            canvas.height = size;
+            CELL_SIZE = size / cols;
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        // --- INTERACTION ---
+        function setTool(tool) {
+            currentTool = tool;
+            // Update UI
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            const idMap = {'WALL':'tool-wall', 'ERASE':'tool-erase', 'START':'tool-start', 'END':'tool-end'};
+            document.getElementById(idMap[tool]).classList.add('active');
+        }
+
+        function updateSpeed() {
+            const val = document.getElementById('speed-slider').value;
+            speed = parseInt(val);
+            document.getElementById('speed-val').innerText = speed > 45 ? "INSTANT" : (speed < 10 ? "SLOW" : "NORMAL");
+        }
+
+        function clearWalls() {
+            grid = grid.map(col => col.map(() => 0));
+            resetAlgo();
+            draw();
+        }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = e.clientX;
+            let clientY = e.clientY;
+            if(e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            const c = Math.floor(x / CELL_SIZE);
+            const r = Math.floor(y / CELL_SIZE);
+            return {c, r};
+        }
+
+        function handleDraw(e) {
+            if (!isDrawing) return;
+            // Prevent drawing during run?
+            if (isRunning) return;
+
+            const pos = getPos(e);
+            if (pos.c < 0 || pos.c >= cols || pos.r < 0 || pos.r >= rows) return;
+
+            if (currentTool === 'WALL') {
+                if(pos.c !== startPos.c || pos.r !== startPos.r) {
+                    if(pos.c !== endPos.c || pos.r !== endPos.r) {
+                        grid[pos.c][pos.r] = 1;
+                    }
+                }
+            } else if (currentTool === 'ERASE') {
+                grid[pos.c][pos.r] = 0;
+            } else if (currentTool === 'START') {
+                if (grid[pos.c][pos.r] === 0) {
+                    startPos = {c: pos.c, r: pos.r};
+                    // Ensure start isn't on end
+                    if(startPos.c === endPos.c && startPos.r === endPos.r) endPos.c = (endPos.c+1)%cols;
+                }
+            } else if (currentTool === 'END') {
+                if (grid[pos.c][pos.r] === 0) {
+                    endPos = {c: pos.c, r: pos.r};
+                    if(startPos.c === endPos.c && startPos.r === endPos.r) startPos.c = (startPos.c+1)%cols;
+                }
+            }
+            draw();
+        }
+
+        canvas.addEventListener('mousedown', e => { isDrawing = true; handleDraw(e); AudioSys.init(); });
+        canvas.addEventListener('mousemove', handleDraw);
+        window.addEventListener('mouseup', () => isDrawing = false);
+        
+        canvas.addEventListener('touchstart', e => { isDrawing = true; handleDraw(e); e.preventDefault(); AudioSys.init(); }, {passive:false});
+        canvas.addEventListener('touchmove', e => { handleDraw(e); e.preventDefault(); }, {passive:false});
+        window.addEventListener('touchend', () => isDrawing = false);
+
+        // --- ALGORITHM (A*) ---
+
+        class Node {
+            constructor(c, r, parent = null) {
+                this.c = c;
+                this.r = r;
+                this.parent = parent;
+                this.g = 0; // Cost from start
+                this.h = 0; // Heuristic to end
+                this.f = 0; // Total cost
+            }
+        }
+
+        function heuristic(a, b) {
+            // Manhattan distance
+            return Math.abs(a.c - b.c) + Math.abs(a.r - b.r);
+        }
+
+        function resetAlgo() {
+            if(animationId) cancelAnimationFrame(animationId);
+            openSet = [];
+            closedSet = [];
+            path = [];
+            isRunning = false;
+            document.getElementById('status-badge').innerText = "READY";
+            document.getElementById('status-badge').className = "";
+        }
+
+        function runAStar() {
+            resetAlgo();
+            isRunning = true;
+            
+            let startNode = new Node(startPos.c, startPos.r);
+            let endNode = new Node(endPos.c, endPos.r);
+            
+            openSet.push(startNode);
+            
+            document.getElementById('status-badge').innerText = "SCANNING...";
+            document.getElementById('status-badge').className = "status-searching";
+            
+            const startTime = performance.now();
+
+            function step() {
+                // Speed control: process N nodes per frame
+                let loops = speed;
+                if(loops > 45) loops = 1000; // Instant
+
+                for(let k=0; k<loops; k++) {
+                    if (openSet.length === 0) {
+                        // No path
+                        isRunning = false;
+                        document.getElementById('status-badge').innerText = "PATH BLOCKED";
+                        document.getElementById('status-badge').className = "status-blocked";
+                        draw();
+                        return;
+                    }
+
+                    // Find lowest F
+                    let lowestIndex = 0;
+                    for(let i=0; i<openSet.length; i++) {
+                        if(openSet[i].f < openSet[lowestIndex].f) lowestIndex = i;
+                    }
+                    let current = openSet[lowestIndex];
+
+                    // Check End
+                    if (current.c === endNode.c && current.r === endNode.r) {
+                        // Path Found!
+                        let temp = current;
+                        path = [];
+                        while(temp.parent) {
+                            path.push(temp);
+                            temp = temp.parent;
+                        }
+                        path.push(startNode);
+                        isRunning = false;
+                        
+                        document.getElementById('status-badge').innerText = "PATH FOUND";
+                        document.getElementById('status-badge').className = "status-found";
+                        document.getElementById('val-length').innerText = path.length;
+                        document.getElementById('val-time').innerText = (performance.now() - startTime).toFixed(0) + " ms";
+                        
+                        AudioSys.playFound();
+                        draw();
+                        return;
+                    }
+
+                    // Move current from Open to Closed
+                    openSet.splice(lowestIndex, 1);
+                    closedSet.push(current);
+
+                    // Audio Feedback (Throttle)
+                    if(Math.random() < 0.1) AudioSys.playScan();
+
+                    // Neighbors
+                    const neighbors = [];
+                    const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+                    for(let d of dirs) {
+                        let nc = current.c + d[0];
+                        let nr = current.r + d[1];
+                        
+                        if(nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                            if(grid[nc][nr] === 0) { // Not wall
+                                neighbors.push(new Node(nc, nr, current));
+                            }
+                        }
+                    }
+
+                    for(let neighbor of neighbors) {
+                        // If in closedSet, skip
+                        if(closedSet.find(n => n.c === neighbor.c && n.r === neighbor.r)) continue;
+
+                        let tempG = current.g + 1;
+                        let newPath = false;
+                        
+                        let existingNode = openSet.find(n => n.c === neighbor.c && n.r === neighbor.r);
+                        if(existingNode) {
+                            if(tempG < existingNode.g) {
+                                existingNode.g = tempG;
+                                existingNode.parent = current; // Reparent
+                                neighbor = existingNode; // Work on existing reference
+                                newPath = true;
+                            }
+                        } else {
+                            neighbor.g = tempG;
+                            newPath = true;
+                            openSet.push(neighbor);
+                        }
+
+                        if(newPath) {
+                            neighbor.h = heuristic(neighbor, endNode);
+                            neighbor.f = neighbor.g + neighbor.h;
+                        }
+                    }
+                }
+
+                // Update Metrics
+                document.getElementById('val-scanned').innerText = closedSet.length;
+                
+                draw();
+                if(isRunning) animationId = requestAnimationFrame(step);
+            }
+
+            step();
+        }
+
+        // --- DRAWING ---
+        function draw() {
+            // Clear
+            ctx.fillStyle = COLORS.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid Lines
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for(let i=0; i<=cols; i++) {
+                ctx.moveTo(i*CELL_SIZE, 0); ctx.lineTo(i*CELL_SIZE, canvas.height);
+            }
+            for(let i=0; i<=rows; i++) {
+                ctx.moveTo(0, i*CELL_SIZE); ctx.lineTo(canvas.width, i*CELL_SIZE);
+            }
+            ctx.stroke();
+
+            // Walls
+            ctx.fillStyle = COLORS.wall;
+            for(let c=0; c<cols; c++) {
+                for(let r=0; r<rows; r++) {
+                    if(grid[c][r] === 1) {
+                        ctx.fillRect(c*CELL_SIZE, r*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    }
+                }
+            }
+
+            // Closed Set (Explored)
+            ctx.fillStyle = COLORS.closed;
+            for(let n of closedSet) {
+                if(n.c === startPos.c && n.r === startPos.r) continue;
+                ctx.fillRect(n.c*CELL_SIZE + 1, n.r*CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+            }
+
+            // Open Set (Scanning)
+            ctx.fillStyle = COLORS.open;
+            for(let n of openSet) {
+                ctx.fillRect(n.c*CELL_SIZE + 2, n.r*CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+            }
+
+            // Path
+            if (path.length > 0) {
+                ctx.strokeStyle = COLORS.path;
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                // Path is backwards from end to start
+                ctx.moveTo(endPos.c*CELL_SIZE + CELL_SIZE/2, endPos.r*CELL_SIZE + CELL_SIZE/2);
+                for(let n of path) {
+                    ctx.lineTo(n.c*CELL_SIZE + CELL_SIZE/2, n.r*CELL_SIZE + CELL_SIZE/2);
+                }
+                ctx.stroke();
+            }
+
+            // Start & End
+            // Start
+            ctx.fillStyle = COLORS.start;
+            ctx.fillRect(startPos.c*CELL_SIZE, startPos.r*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            ctx.fillStyle = '#000'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+            ctx.fillText("S", startPos.c*CELL_SIZE + CELL_SIZE/2, startPos.r*CELL_SIZE + CELL_SIZE/1.5);
+
+            // End
+            ctx.fillStyle = COLORS.end;
+            ctx.fillRect(endPos.c*CELL_SIZE, endPos.r*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            ctx.fillStyle = '#000';
+            ctx.fillText("E", endPos.c*CELL_SIZE + CELL_SIZE/2, endPos.r*CELL_SIZE + CELL_SIZE/1.5);
+        }
+
+        // Start
+        initGrid();
+        setTimeout(resize, 100); // Allow layout to settle
+
+    </script>
+</body>
+</html>

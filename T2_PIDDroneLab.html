@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PID_DRONE_LAB v3.1 // FORWARD SPEED</title>
+    
+    <!-- Import Share Tech Mono Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #1A1C1B;
+            --terminal-green: #95FF77;     
+            --plasma-orange: #FF8800;      
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            --track-grey: #2A2C2B;
+            --muted-text: #888888;
+            --alert-red: #FF3300;
+            
+            --main-font: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Dark Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--void-black); }
+        ::-webkit-scrollbar-thumb { background: var(--track-grey); border-radius: 4px; border: 1px solid var(--void-black); }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--void-black);
+            color: var(--terminal-green);
+            font-family: var(--main-font);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: row; 
+        }
+
+        /* --- LAYOUT --- */
+        #sim-stage {
+            flex: 7; 
+            position: relative;
+            background-color: var(--void-black);
+            overflow: hidden;
+            border-right: 1px solid var(--terminal-green);
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #control-panel {
+            flex: 3; 
+            min-width: 300px;
+            background-color: var(--graphite-grey);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+            border-left: 1px solid rgba(149, 255, 119, 0.1);
+        }
+
+        /* --- UI COMPONENTS --- */
+        .panel-header {
+            font-size: 1.2rem;
+            color: var(--terminal-green);
+            border-bottom: 2px solid var(--terminal-green);
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-section {
+            border: 1px solid var(--terminal-green);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            position: relative;
+            margin-top: 10px;
+        }
+
+        .panel-label {
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            background: var(--graphite-grey);
+            padding: 0 5px;
+            font-size: 0.8rem;
+            color: var(--terminal-green);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* SLIDERS */
+        .slider-group { margin-bottom: 15px; }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--muted-text);
+            margin-bottom: 5px;
+        }
+        .slider-val { color: var(--terminal-green); font-weight: bold; }
+
+        input[type=range] {
+            -webkit-appearance: none; width: 100%; background: transparent; margin: 5px 0;
+        }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer;
+            background: var(--track-grey); border: 1px solid #444;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px; width: 10px; border: 1px solid var(--terminal-green);
+            background: #000; cursor: pointer; -webkit-appearance: none;
+            margin-top: -7px; box-shadow: 0 0 5px var(--terminal-green);
+        }
+
+        /* BUTTONS */
+        .cyber-btn {
+            background: transparent;
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            padding: 10px;
+            font-family: var(--main-font);
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            width: 100%;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+        .cyber-btn:hover { background: rgba(149, 255, 119, 0.1); box-shadow: 0 0 10px rgba(149, 255, 119, 0.3); }
+        .cyber-btn.active { background: var(--terminal-green); color: #000; font-weight: bold; }
+        
+        .btn-wind { border-color: var(--plasma-orange); color: var(--plasma-orange); }
+        .btn-wind:hover { background: rgba(255, 136, 0, 0.1); box-shadow: 0 0 10px rgba(255, 136, 0, 0.3); }
+        .btn-wind:active { transform: scale(0.95); }
+
+        /* METRICS */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .metric-box { display: flex; flex-direction: column; }
+        .metric-label { font-size: 0.7rem; color: var(--muted-text); }
+        .metric-value { font-size: 1.1rem; font-weight: bold; color: #FFF; }
+
+        /* OVERLAYS */
+        .overlay-btn {
+            position: absolute; top: 15px; left: 15px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            padding: 5px 10px;
+            font-family: var(--main-font);
+            font-size: 0.8rem;
+            cursor: pointer;
+            z-index: 20;
+        }
+        .overlay-btn:hover { background: var(--terminal-green); color: #000; }
+
+        #formula-overlay {
+            position: absolute; top: 50px; left: 15px;
+            background: rgba(0,0,0,0.9);
+            border: 1px solid var(--terminal-green);
+            padding: 15px;
+            pointer-events: none;
+            font-size: 0.8rem;
+            color: #ccc;
+            z-index: 10;
+            display: none; /* Hidden by default */
+            backdrop-filter: blur(5px);
+        }
+        .math-var { color: var(--terminal-green); }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow-y: auto; }
+            #sim-stage { flex: 0 0 50vh; border-right: none; border-bottom: 1px solid var(--terminal-green); }
+            #control-panel { flex: 1; border-left: none; padding: 15px; }
+            .panel-header { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIMULATION STAGE -->
+    <div id="sim-stage">
+        <button class="overlay-btn" onclick="toggleFormula()">TOGGLE INFO</button>
+        
+        <div id="formula-overlay">
+            <div style="margin-bottom:5px; color:var(--terminal-green); font-weight:bold;">PID CONTROLLER LOGIC</div>
+            <div>OUTPUT = <span class="math-var">P</span> + <span class="math-var">I</span> + <span class="math-var">D</span></div>
+            <div style="font-size:0.7rem; color:#888; margin-top:5px;">
+                P = Kp * error (Present)<br>
+                I = Ki * sum(error) (Past)<br>
+                D = Kd * delta(error) (Future)
+            </div>
+        </div>
+
+        <canvas id="simCanvas"></canvas>
+    </div>
+
+    <!-- CONTROL PANEL -->
+    <div id="control-panel">
+        <div class="panel-header">
+            <span>PID_DRONE_LAB</span>
+            <span style="font-size:0.6rem; opacity:0.7;">v3.1</span>
+        </div>
+
+        <!-- MODE SELECTION -->
+        <div class="panel-section">
+            <span class="panel-label">FLIGHT_MODE</span>
+            <div style="display:flex; gap:10px;">
+                <button id="btn-hover" class="cyber-btn active" onclick="setMode('HOVER')">HOVER</button>
+                <button id="btn-flight" class="cyber-btn" onclick="setMode('FLIGHT')">FLIGHT</button>
+            </div>
+            <button class="cyber-btn btn-wind" onclick="applyWind()">⚠️ GUST OF WIND</button>
+        </div>
+
+        <!-- PID TUNING -->
+        <div class="panel-section">
+            <span class="panel-label">CONTROLLER_TUNING</span>
+            
+            <!-- P -->
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span>PROPORTIONAL (Kp)</span>
+                    <span id="val-kp" class="slider-val">2.00</span>
+                </div>
+                <input type="range" id="slider-kp" min="0" max="20" step="0.1" value="2.0" oninput="updatePID()">
+            </div>
+
+            <!-- I -->
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span>INTEGRAL (Ki)</span>
+                    <span id="val-ki" class="slider-val">0.00</span>
+                </div>
+                <input type="range" id="slider-ki" min="0" max="5.0" step="0.01" value="0.0" oninput="updatePID()">
+            </div>
+
+            <!-- D -->
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span>DERIVATIVE (Kd)</span>
+                    <span id="val-kd" class="slider-val">5.00</span>
+                </div>
+                <input type="range" id="slider-kd" min="0" max="50" step="0.5" value="5.0" oninput="updatePID()">
+            </div>
+        </div>
+
+        <!-- METRICS & SPEED -->
+        <div class="panel-section">
+            <span class="panel-label">TELEMETRY & SPEED</span>
+            
+            <!-- FORWARD SPEED SLIDER -->
+            <div class="slider-group" style="margin-bottom:10px;">
+                <div class="slider-header">
+                    <span>FORWARD_SPD</span>
+                    <span id="val-speed" class="slider-val" style="color:var(--plasma-orange)">1.0x</span>
+                </div>
+                <input type="range" id="slider-speed" min="0.5" max="5.0" step="0.5" value="1.0" oninput="updateSpeed()">
+                <div style="font-size:0.6rem; color:#666;">Controls scrolling speed.</div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <span class="metric-label">ALTITUDE</span>
+                    <span id="disp-alt" class="metric-value">0.0 m</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">ERROR</span>
+                    <span id="disp-err" class="metric-value" style="color:var(--plasma-orange)">0.0 m</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">THRUST</span>
+                    <span id="disp-thrust" class="metric-value">0 %</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">VELOCITY</span>
+                    <span id="disp-vel" class="metric-value">0.0 m/s</span>
+                </div>
+            </div>
+        </div>
+        
+        <button class="cyber-btn" style="border-color:#444; color:#888; font-size:0.7rem;" onclick="resetSim()">RESET SIMULATION</button>
+
+    </div>
+
+    <script>
+        /**
+         * PID_DRONE_LAB v3.1
+         * - FORWARD SPEED slider replaces Time Scale
+         * - Controls scrolling speed and target frequency
+         */
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- CONFIG ---
+        const COLORS = {
+            bg: '#1A1C1B',
+            green: '#95FF77',
+            orange: '#FF8800',
+            grid: 'rgba(149, 255, 119, 0.1)',
+            trail: 'rgba(255, 136, 0, 0.8)'
+        };
+
+        const PHYSICS = {
+            g: 9.81,          
+            mass: 1.0,        
+            dt: 1/60,     // Fixed physics time step
+            maxThrust: 40     
+        };
+
+        const VISUALS = {
+            baseScrollSpeed: 3,   // Pixels per frame at 1x speed
+            droneXRatio: 0.2  
+        };
+
+        // --- STATE ---
+        let state = {
+            y: 0,             
+            vy: 0,            
+            thrust: 0,        
+            
+            targetY: 50,      
+            error: 0,
+            integral: 0,
+            prevError: 0,
+            kp: 2.0,
+            ki: 0.0,
+            kd: 5.0,
+
+            time: 0,
+            travelDistance: 0, // Used for target generation instead of time
+            forwardSpeed: 1.0, // Multiplier for scroll speed
+            
+            mode: 'HOVER',    
+            scrollOffset: 0,  
+            history: [],      
+            historyMax: 500,  
+            
+            windForce: 0,
+            windTimer: 0
+        };
+
+        // --- AUDIO ---
+        const AudioSys = {
+            ctx: null,
+            droneOsc: null,
+            droneGain: null,
+            
+            init: function() {
+                if (this.ctx) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+                
+                this.droneOsc = this.ctx.createOscillator();
+                this.droneGain = this.ctx.createGain();
+                this.droneOsc.type = 'sawtooth';
+                this.droneOsc.frequency.value = 100;
+                this.droneGain.gain.value = 0;
+                
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 400;
+
+                this.droneOsc.connect(filter);
+                filter.connect(this.droneGain);
+                this.droneGain.connect(this.ctx.destination);
+                this.droneOsc.start();
+            },
+
+            update: function(thrustPct) {
+                if (!this.ctx) return;
+                const baseFreq = 80;
+                const maxFreq = 200;
+                const targetFreq = baseFreq + (maxFreq - baseFreq) * thrustPct;
+                this.droneOsc.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.1);
+                this.droneGain.gain.setTargetAtTime(thrustPct * 0.15, this.ctx.currentTime, 0.1);
+            },
+
+            playWind: function() {
+                if (!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 0.5;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const gain = this.ctx.createGain();
+                gain.gain.value = 0.2;
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 400;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
+        };
+
+        // --- LOGIC ---
+
+        function updatePID() {
+            state.kp = parseFloat(document.getElementById('slider-kp').value);
+            state.ki = parseFloat(document.getElementById('slider-ki').value);
+            state.kd = parseFloat(document.getElementById('slider-kd').value);
+
+            document.getElementById('val-kp').innerText = state.kp.toFixed(2);
+            document.getElementById('val-ki').innerText = state.ki.toFixed(2);
+            document.getElementById('val-kd').innerText = state.kd.toFixed(2);
+            AudioSys.init();
+        }
+
+        function updateSpeed() {
+            state.forwardSpeed = parseFloat(document.getElementById('slider-speed').value);
+            document.getElementById('val-speed').innerText = state.forwardSpeed.toFixed(1) + "x";
+        }
+
+        function setMode(mode) {
+            state.mode = mode;
+            document.getElementById('btn-hover').classList.toggle('active', mode === 'HOVER');
+            document.getElementById('btn-flight').classList.toggle('active', mode === 'FLIGHT');
+            state.integral = 0;
+            AudioSys.init();
+        }
+
+        function toggleFormula() {
+            const el = document.getElementById('formula-overlay');
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function applyWind() {
+            state.windForce = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 10 + 5); 
+            state.windTimer = 0.5; 
+            AudioSys.playWind();
+        }
+
+        function resetSim() {
+            state.y = 0; state.vy = 0; state.integral = 0; state.prevError = 0;
+            state.history = []; state.time = 0; state.scrollOffset = 0; state.travelDistance = 0;
+        }
+
+        // --- PHYSICS ---
+
+        function getTargetHeight(dist) {
+            // dist scales with forward speed
+            if (state.mode === 'HOVER') return 50;
+            
+            // Map distance to cycles. 
+            // Default speed 1x = 3px/frame = 180px/sec.
+            // Let's say one cycle is 4 seconds at 1x speed = 720 units of distance.
+            const cycleDist = 720;
+            const pos = (dist % (cycleDist * 4)) / cycleDist; // 0-4 phase
+            
+            if (pos < 1) return 30;
+            if (pos < 2) return 70;
+            if (pos < 3) return 80;
+            return 20;
+        }
+
+        function updatePhysics() {
+            // Physics time step is constant (Real-time)
+            const dt = PHYSICS.dt; 
+
+            // Calculate Target based on Travel Distance (Speed dependent)
+            const targetMeters = getTargetHeight(state.travelDistance) / 10; 
+            
+            const error = targetMeters - state.y;
+            state.integral += error * dt;
+            
+            if (state.integral > 10) state.integral = 10;
+            if (state.integral < -10) state.integral = -10;
+
+            const derivative = (error - state.prevError) / dt;
+            const pidOutput = (state.kp * error) + (state.ki * state.integral) + (state.kd * derivative);
+            
+            let thrust = (PHYSICS.mass * PHYSICS.g) + pidOutput;
+            if (thrust < 0) thrust = 0;
+            if (thrust > PHYSICS.maxThrust) thrust = PHYSICS.maxThrust;
+            
+            state.thrust = thrust;
+            state.prevError = error;
+            state.error = error;
+
+            let wind = 0;
+            if (state.windTimer > 0) {
+                wind = state.windForce;
+                state.windTimer -= dt;
+            }
+
+            const forceNet = thrust - (PHYSICS.mass * PHYSICS.g) + wind;
+            const accel = forceNet / PHYSICS.mass;
+
+            state.vy += accel * dt;
+            state.y += state.vy * dt;
+
+            if (state.y < 0) { state.y = 0; state.vy = 0; }
+            if (state.y > 10) { state.y = 10; if (state.vy > 0) state.vy = 0; }
+
+            state.time += dt;
+            
+            // Move the world forward
+            // pixels moved this frame = baseSpeed * multiplier
+            const pxMoved = VISUALS.baseScrollSpeed * state.forwardSpeed;
+            state.scrollOffset += pxMoved;
+            state.travelDistance += pxMoved;
+
+            state.history.push({
+                t: state.time, // Real time for x-axis spacing? No, we need spatial spacing.
+                dist: state.travelDistance, // Store distance for drawing x-axis relative to speed
+                y: state.y * 10,
+                target: targetMeters * 10
+            });
+            if (state.history.length > state.historyMax) state.history.shift();
+
+            AudioSys.update(state.thrust / PHYSICS.maxThrust);
+
+            document.getElementById('disp-alt').innerText = state.y.toFixed(2) + " m";
+            document.getElementById('disp-err').innerText = state.error.toFixed(2) + " m";
+            document.getElementById('disp-vel').innerText = state.vy.toFixed(2) + " m/s";
+            document.getElementById('disp-thrust').innerText = Math.round((state.thrust / PHYSICS.maxThrust) * 100) + " %";
+        }
+
+        // --- DRAWING ---
+
+        function resize() {
+            canvas.width = document.getElementById('sim-stage').clientWidth;
+            canvas.height = document.getElementById('sim-stage').clientHeight;
+        }
+        window.addEventListener('resize', resize);
+
+        function drawGrid(offset) {
+            ctx.strokeStyle = COLORS.grid;
+            ctx.lineWidth = 1;
+            const gridSize = 50;
+            
+            const startX = -(offset % gridSize);
+            for (let x = startX; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawPath() {
+            const droneX = canvas.width * VISUALS.droneXRatio;
+            const scaleY = canvas.height / 100;
+            
+            // We draw based on 'distance' now, not time, to match the scroll speed
+            const currentDist = state.travelDistance;
+            
+            // 1. Draw HISTORY
+            ctx.lineWidth = 3;
+            
+            // Target (Green Dashed)
+            ctx.beginPath();
+            ctx.strokeStyle = COLORS.green;
+            ctx.setLineDash([5, 5]);
+            for(let i = state.history.length - 1; i >= 0; i--) {
+                const pt = state.history[i];
+                // Distance difference
+                const dDist = currentDist - pt.dist; 
+                // In pixels, this is exactly the difference
+                const drawX = droneX - dDist; 
+                
+                if (drawX < 0) break;
+                
+                const y = canvas.height - (pt.target * scaleY);
+                if (i === state.history.length - 1) ctx.moveTo(drawX, y);
+                else ctx.lineTo(drawX, y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Actual (Orange)
+            ctx.beginPath();
+            ctx.strokeStyle = COLORS.orange;
+            for(let i = state.history.length - 1; i >= 0; i--) {
+                const pt = state.history[i];
+                const dDist = currentDist - pt.dist;
+                const drawX = droneX - dDist;
+                
+                if (drawX < 0) break;
+                
+                const y = canvas.height - (pt.y * scaleY);
+                if (i === state.history.length - 1) ctx.moveTo(drawX, y);
+                else ctx.lineTo(drawX, y);
+            }
+            ctx.stroke();
+
+            // 2. Draw FUTURE
+            ctx.beginPath();
+            ctx.strokeStyle = COLORS.green;
+            ctx.setLineDash([5, 5]);
+            
+            const currentTargetH = getTargetHeight(currentDist);
+            ctx.moveTo(droneX, canvas.height - (currentTargetH*scaleY/10)*10); 
+            
+            // Look ahead pixels
+            const lookAheadPx = canvas.width - droneX;
+            const stepPx = 10; 
+            
+            for(let dx = 0; dx <= lookAheadPx; dx += stepPx) {
+                const futureDist = currentDist + dx;
+                const targetM = getTargetHeight(futureDist) / 10;
+                const drawX = droneX + dx;
+                const drawY = canvas.height - (targetM * 10 * scaleY);
+                ctx.lineTo(drawX, drawY);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawDrone() {
+            const droneX = canvas.width * VISUALS.droneXRatio;
+            const scaleY = canvas.height / 100;
+            const logicY = state.y * 10; 
+            const droneY = canvas.height - (logicY * scaleY);
+
+            ctx.save();
+            ctx.translate(droneX, droneY);
+
+            // Thrust Flame
+            const thrustScale = state.thrust / PHYSICS.maxThrust;
+            if (thrustScale > 0.1) {
+                ctx.beginPath();
+                ctx.moveTo(-10, 10);
+                ctx.lineTo(0, 10 + (thrustScale * 30) + (Math.random()*5));
+                ctx.lineTo(10, 10);
+                ctx.fillStyle = COLORS.orange;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = COLORS.orange;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // Body
+            ctx.fillStyle = "#222"; ctx.strokeStyle = COLORS.orange; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(20, 0); ctx.stroke();
+
+            // Rotors
+            ctx.fillStyle = COLORS.green;
+            // Rotate based on thrust + forward speed visual
+            const rot = Date.now() * 0.02 * (thrustScale + 0.1) * state.forwardSpeed;
+            // Left
+            ctx.save(); ctx.translate(-20, -5); ctx.scale(1, 0.3); ctx.rotate(rot);
+            ctx.fillRect(-12, -2, 24, 4); ctx.restore();
+            // Right
+            ctx.save(); ctx.translate(20, -5); ctx.scale(1, 0.3); ctx.rotate(-rot);
+            ctx.fillRect(-12, -2, 24, 4); ctx.restore();
+
+            // LED
+            const errAbs = Math.abs(state.error);
+            ctx.fillStyle = errAbs < 0.5 ? COLORS.green : COLORS.orange;
+            if (errAbs > 2.0) ctx.fillStyle = COLORS.alert_red || '#FF0000';
+            ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI*2); ctx.fill();
+
+            ctx.restore();
+        }
+
+        function loop() {
+            updatePhysics();
+            
+            ctx.fillStyle = COLORS.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawGrid(state.scrollOffset);
+            drawPath();
+            drawDrone();
+
+            requestAnimationFrame(loop);
+        }
+
+        resize();
+        updatePID(); 
+        loop();
+
+        window.addEventListener('click', () => { AudioSys.init(); }, {once:true});
+
+    </script>
+</body>
+</html>

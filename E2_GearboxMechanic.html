@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GEARBOX v5.6 // WIDE FIX</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --void-black: #1A1C1B;
+            --terminal-green: #95FF77;      
+            --plasma-orange: #FF8800;       
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            --track-grey: #444444;
+            --muted-text: #888888;
+            --alert-red: #FF3300;
+            --electric-blue: #00F3FF;
+            --gold-lock: #FFD700;       
+            --gear-layer0: rgba(180, 180, 180, 0.75); 
+            --gear-layer1: rgba(40, 40, 40, 0.75);    
+            --main-font: 'Share Tech Mono', monospace;
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        html, body {
+            margin: 0; padding: 0;
+            background-color: var(--void-black);
+            color: var(--terminal-green);
+            font-family: var(--main-font);
+            width: 100%; height: 100%;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh; /* Force full viewport height */
+        }
+        
+        /* --- 1. SLIM DASHBOARD (TOP) --- */
+        #dashboard { 
+            height: 50px; 
+            min-height: 50px; /* Prevent shrinking */
+            background-color: var(--graphite-grey); 
+            border-bottom: 1px solid var(--terminal-green); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 0 10px; 
+            z-index: 20; 
+            font-size: 0.8rem;
+        }
+        
+        .slider-section { display: flex; align-items: center; gap: 8px; width: 200px; }
+        .slider-label { font-size: 0.6rem; color: var(--terminal-green); font-weight: bold; white-space: nowrap; }
+        input[type=range] { -webkit-appearance: none; flex: 1; background: transparent; margin: 0; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--track-grey); border-radius: 2px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 8px; border-radius: 1px; background: var(--terminal-green); cursor: pointer; margin-top: -5px; box-shadow: 0 0 5px var(--terminal-green); }
+        
+        .readout-group { display: flex; gap: 12px; align-items: center; height: 100%; }
+        .dash-section { display: flex; flex-direction: row; align-items: baseline; gap: 4px; }
+        .dash-label { font-size: 0.6rem; color: var(--muted-text); }
+        .dash-value { font-size: 0.9rem; font-weight: bold; color: #FFF; }
+        
+        /* Compact Target Box */
+        #target-box { 
+            display: none; /* Hidden by default */
+            align-items: center; 
+            border: 1px solid var(--gold-lock); 
+            background: rgba(255, 215, 0, 0.05);
+            padding: 2px 6px; border-radius: 4px;
+            margin-right: 5px;
+            height: 32px;
+        }
+        #val-target { color: var(--gold-lock); font-size: 1.0rem; margin-left: 5px; }
+        
+        .top-controls { display: flex; gap: 5px; }
+        .cyber-btn { background: rgba(0,0,0,0.3); border: 1px solid var(--terminal-green); color: var(--terminal-green); padding: 0 10px; font-family: var(--main-font); cursor: pointer; text-transform: uppercase; font-size: 0.65rem; transition: all 0.2s; font-weight: bold; height: 30px; display: flex; align-items: center; justify-content: center; }
+        .cyber-btn:hover { background: var(--terminal-green); color: #000; }
+        .btn-challenge { border-color: var(--plasma-orange); color: var(--plasma-orange); }
+        .btn-challenge:hover { background: var(--plasma-orange); color: #000; }
+        .btn-challenge.active { background: var(--plasma-orange); color: #000; box-shadow: 0 0 10px var(--plasma-orange); }
+        .btn-reset { border-color: var(--alert-red); color: var(--alert-red); }
+        .btn-reset:hover { background: var(--alert-red); color: #000; }
+
+        /* --- 2. MAIN CANVAS (CENTER) --- */
+        #sim-stage { 
+            flex-grow: 1; /* Fill remaining space */
+            min-height: 0; /* Important for flex child scroll/sizing */
+            position: relative; 
+            background-color: var(--void-black); 
+            overflow: hidden; 
+            cursor: crosshair; 
+            touch-action: none; 
+            z-index: 0;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* --- 3. SLIM TOOLBOX (BOTTOM) --- */
+        #toolbox { 
+            height: 60px; 
+            min-height: 60px;
+            background-color: var(--graphite-grey); 
+            border-top: 1px solid var(--terminal-green); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+            padding: 0 10px; 
+            z-index: 20; 
+        }
+        .tool-item { 
+            width: 45px; height: 45px;
+            border: 1px dashed var(--muted-text); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            cursor: pointer; transition: all 0.2s; position: relative; border-radius: 4px; 
+        }
+        .tool-item:hover, .tool-item.selected { border-color: var(--terminal-green); background: rgba(149, 255, 119, 0.1); box-shadow: 0 0 10px rgba(149, 255, 119, 0.2); }
+        .tool-item.selected { border: 2px solid var(--terminal-green); transform: translateY(-2px); }
+        .tool-label { position: absolute; bottom: 1px; font-size: 0.4rem; color: var(--muted-text); }
+        .tool-icon { font-size: 1.2rem; line-height: 1; }
+
+        @media (max-width: 800px) {
+            #dashboard { height: auto; flex-wrap: wrap; padding: 5px; justify-content: center; gap: 5px;}
+            .slider-section { width: 100%; justify-content: center; margin-bottom: 0;}
+            .readout-group { width: 100%; justify-content: center; font-size: 0.8em; }
+            .top-controls { width: 100%; justify-content: center; }
+            #toolbox { overflow-x: auto; justify-content: flex-start; padding: 0 10px; }
+            .tool-item { flex-shrink: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="dashboard">
+            <div class="slider-section">
+                <span class="slider-label">SPEED</span>
+                <input type="range" id="speed-slider" min="-100" max="100" value="0" step="1" oninput="updateInputSpeed()">
+                <span id="val-in-rpm" style="color:var(--terminal-green); font-weight:bold; width:30px; text-align:right;">0</span>
+            </div>
+            
+            <div class="readout-group">
+                <div id="target-box">
+                    <span class="dash-label" style="color:var(--gold-lock)">GOAL</span>
+                    <span id="val-target">2.0:1</span>
+                </div>
+                <div class="dash-section"><span class="dash-label">RATIO</span><span id="val-ratio" class="dash-value" style="color:var(--electric-blue)">0:0</span></div>
+                <div class="dash-section"><span class="dash-label">RPM</span><span id="val-out-rpm" class="dash-value" style="color:var(--plasma-orange)">0</span></div>
+                <div class="dash-section"><span class="dash-label">TORQUE</span><span id="val-out-torque" class="dash-value" style="color:var(--plasma-orange)">0</span></div>
+            </div>
+
+            <div class="top-controls">
+                <button id="btn-challenge" class="cyber-btn btn-challenge" onclick="toggleChallenge()">CHALLENGE</button>
+                <button class="cyber-btn btn-reset" onclick="clearAll()">RESET</button>
+            </div>
+        </div>
+        
+        <div id="sim-stage">
+            <canvas id="simCanvas"></canvas>
+        </div>
+        
+        <div id="toolbox">
+            <div class="tool-item selected" onclick="selectTool('GEAR_10')" data-tool="GEAR_10"><div class="tool-icon" style="color:var(--terminal-green);">⚙️</div><span class="tool-label">10T</span></div>
+            <div class="tool-item" onclick="selectTool('GEAR_20')" data-tool="GEAR_20"><div class="tool-icon" style="color:var(--terminal-green); font-size:1.4rem;">⚙️</div><span class="tool-label">20T</span></div>
+            <div class="tool-item" onclick="selectTool('GEAR_40')" data-tool="GEAR_40"><div class="tool-icon" style="color:var(--terminal-green); font-size:1.6rem;">⚙️</div><span class="tool-label">40T</span></div>
+            <div style="width:1px; height:30px; background:#444;"></div>
+            <div class="tool-item" onclick="selectTool('LOCK')" data-tool="LOCK"><div class="tool-icon" style="color:var(--gold-lock);">🔒</div><span class="tool-label">LOCK</span></div>
+            <div style="width:1px; height:30px; background:#444;"></div>
+            <div class="tool-item" onclick="selectTool('SET_MOTOR')" data-tool="SET_MOTOR">
+                <svg width="25" height="25" viewBox="0 0 100 100" style="fill:none; stroke:#95FF77; stroke-width:8;"><rect x="20" y="20" width="60" height="60" rx="10" /><circle cx="50" cy="50" r="10" fill="#95FF77" stroke="none"/></svg>
+                <span class="tool-label">MOTOR</span>
+            </div>
+            <div class="tool-item" onclick="selectTool('SET_OUTPUT')" data-tool="SET_OUTPUT">
+                <svg width="25" height="25" viewBox="0 0 100 100" style="fill:none; stroke:#FF8800; stroke-width:8;"><circle cx="50" cy="50" r="35" /><circle cx="50" cy="50" r="12" fill="#FF8800" stroke="none"/></svg>
+                <span class="tool-label">OUTPUT</span>
+            </div>
+            <div class="tool-item" onclick="selectTool('ERASE')" data-tool="ERASE">
+                <svg width="20" height="20" viewBox="0 0 100 100" style="stroke:#FF3300; stroke-width:12; stroke-linecap:round;"><line x1="20" y1="20" x2="80" y2="80" /><line x1="80" y1="20" x2="20" y2="80" /></svg>
+                <span class="tool-label">ERASE</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const COLORS = {
+            bg: '#1A1C1B', grid: 'rgba(149, 255, 119, 0.05)', motor: '#95FF77', output: '#FF8800', shaft: '#00F3FF', lock: '#FFD700',
+            layer0: 'rgba(180, 180, 180, 0.75)', layer1: 'rgba(40, 40, 40, 0.75)',    
+            strokeIdle: '#666', strokeMotor: '#95FF77', strokeOutput: '#FF8800'
+        };
+        const GRID_SIZE = 20; const VISUAL_SCALE = 2.5; const MESH_DIST = 8; 
+        
+        let gears = []; let currentTool = 'GEAR_10'; let mousePos = { x: 0, y: 0 };
+        let inputRPM = 0; let inputTorque = 50; let outputGears = []; 
+        let challengeMode = false; let challengeTarget = 0;
+
+        // --- DEFINE CHALLENGES HERE ---
+        // Edit x, y, teeth (t) to customize your levels
+        const CHALLENGES = [
+            { ratio: 2.0, motor: { x: 100, y: 300, t: 10 }, output: { x: 300, y: 300, t: 20 } },
+            { ratio: 4.0, motor: { x: 100, y: 400, t: 10 }, output: { x: 400, y: 400, t: 40 } },
+            { ratio: 0.5, motor: { x: 150, y: 300, t: 40 }, output: { x: 450, y: 300, t: 20 } },
+            { ratio: 8.0, motor: { x: 100, y: 300, t: 10 }, output: { x: 600, y: 300, t: 40 } }
+        ];
+
+        function init() { 
+            // Delay resize slightly to ensure DOM is ready
+            setTimeout(() => { resize(); loop(); }, 50);
+        }
+        function resize() { 
+            const c = document.getElementById('sim-stage'); 
+            if(c) {
+                canvas.width = c.clientWidth; 
+                canvas.height = c.clientHeight; 
+            }
+        }
+        window.addEventListener('resize', resize);
+
+        function addGear(x, y, teeth) {
+            const r = teeth * VISUAL_SCALE;
+            const stackTarget = gears.find(g => Math.hypot(g.x - x, g.y - y) < 10);
+            if (stackTarget) {
+                const gearsOnShaft = gears.filter(g => Math.hypot(g.x - stackTarget.x, g.y - stackTarget.y) < 10);
+                if (gearsOnShaft.length >= 2) return; 
+                const hasLayer0 = gearsOnShaft.some(g => g.layer === 0);
+                const newLayer = hasLayer0 ? 1 : 0;
+                gears.push({ id: Date.now()+Math.random(), x: stackTarget.x, y: stackTarget.y, teeth: teeth, radius: r, layer: newLayer, angle: stackTarget.angle, rpm: 0, type: 'IDLE', locked: false });
+                recalcPhysics();
+            } else {
+                if (gears.some(g => Math.hypot(g.x - x, g.y - y) < (g.radius + r - 12))) return;
+                gears.push({ id: Date.now()+Math.random(), x: x, y: y, teeth: teeth, radius: r, layer: 0, angle: 0, rpm: 0, type: 'IDLE', locked: false });
+                recalcPhysics();
+            }
+        }
+        function removeGearAt(x, y) {
+            const targets = gears.filter(g => Math.hypot(g.x - x, g.y - y) < g.radius);
+            if(targets.length === 0) return;
+            targets.sort((a,b) => b.layer - a.layer);
+            const target = targets[0];
+            const idx = gears.indexOf(target);
+            if(idx > -1) {
+                gears.splice(idx, 1);
+                const remains = gears.filter(g => Math.hypot(g.x - target.x, g.y - target.y) < 1);
+                remains.forEach(g => g.locked = false);
+                recalcPhysics();
+            }
+        }
+        function setAttributeAt(x, y, type) {
+            const targets = gears.filter(g => Math.hypot(g.x - x, g.y - y) < g.radius);
+            if (targets.length === 0) return;
+            if (type === 'LOCK') {
+                const shaftGears = gears.filter(g => Math.hypot(g.x - targets[0].x, g.y - targets[0].y) < 10);
+                if (shaftGears.length === 2) {
+                    const newState = !shaftGears[0].locked;
+                    shaftGears.forEach(g => g.locked = newState);
+                    recalcPhysics();
+                }
+                return;
+            }
+            targets.sort((a,b) => b.layer - a.layer);
+            const target = targets[0]; 
+            target.type = (target.type === type) ? 'IDLE' : type;
+            recalcPhysics();
+        }
+        function recalcPhysics() {
+            gears.forEach(g => { g.rpm = 0; }); outputGears = [];
+            let queue = gears.filter(g => g.type === 'MOTOR');
+            let processed = new Set();
+            queue.forEach(g => { g.rpm = inputRPM; processed.add(g.id); });
+            let head = 0;
+            while(head < queue.length) {
+                const driver = queue[head++];
+                if (driver.locked) {
+                    const partner = gears.find(g => Math.hypot(g.x - driver.x, g.y - driver.y) < 1 && g.id !== driver.id);
+                    if (partner && !processed.has(partner.id)) { partner.rpm = driver.rpm; processed.add(partner.id); queue.push(partner); }
+                }
+                gears.forEach(driven => {
+                    if(processed.has(driven.id) || driver.id === driven.id) return;
+                    if(Math.abs(driver.x - driven.x) > (driver.radius + driven.radius + MESH_DIST)) return;
+                    if(driver.layer !== driven.layer) return;
+                    const dist = Math.hypot(driver.x - driven.x, driver.y - driven.y);
+                    if (Math.abs(dist - (driver.radius + driven.radius)) < MESH_DIST) {
+                        driven.rpm = driver.rpm * (driver.teeth / driven.teeth) * -1;
+                        processed.add(driven.id); queue.push(driven);
+                    }
+                });
+            }
+            let totalRatio = 0; let count = 0;
+            gears.forEach(g => { if(g.type === 'OUTPUT' && Math.abs(g.rpm) > 0) { totalRatio = Math.abs(inputRPM) / Math.abs(g.rpm); count++; outputGears.push(g); }});
+            const currentRatio = (count > 0 && isFinite(totalRatio)) ? totalRatio : 0;
+            if (challengeMode) checkChallenge(currentRatio);
+            updateUI(outputGears.length > 0 ? outputGears[0].rpm : 0, currentRatio);
+        }
+        function updateUI(rpm, ratio) {
+            document.getElementById('val-out-rpm').innerText = Math.round(Math.abs(rpm));
+            document.getElementById('val-ratio').innerText = ratio > 0 ? ratio.toFixed(2) + ":1" : "0:1";
+            document.getElementById('val-out-torque').innerText = Math.round(inputTorque * (ratio || 0));
+        }
+        function toggleChallenge() {
+            challengeMode = !challengeMode;
+            const box = document.getElementById('target-box');
+            const btn = document.getElementById('btn-challenge');
+            if(challengeMode) { 
+                box.style.display = 'flex'; 
+                btn.classList.add('active'); 
+                generateChallenge(); 
+            } else { 
+                box.style.display = 'none'; 
+                btn.classList.remove('active'); 
+            }
+        }
+        function generateChallenge() {
+            clearAll();
+            const level = CHALLENGES[Math.floor(Math.random() * CHALLENGES.length)];
+            
+            challengeTarget = level.ratio;
+            document.getElementById('val-target').innerText = `${challengeTarget}:1`;
+            document.getElementById('val-target').style.color = 'var(--gold-lock)';
+
+            addGear(level.motor.x, level.motor.y, level.motor.t);
+            setAttributeAt(level.motor.x, level.motor.y, 'MOTOR');
+
+            addGear(level.output.x, level.output.y, level.output.t);
+            setAttributeAt(level.output.x, level.output.y, 'OUTPUT');
+            
+            document.getElementById('speed-slider').value = 50;
+            updateInputSpeed();
+        }
+        function checkChallenge(r) {
+            const t = document.getElementById('val-target');
+            if (Math.abs(r - challengeTarget) < 0.05 && r > 0) {
+                t.innerText = "SUCCESS!"; t.style.color = COLORS.motor;
+            } else {
+                if (t.innerText.includes("SUCCESS")) { t.innerText = `${challengeTarget}:1`; t.style.color = 'var(--gold-lock)'; }
+            }
+        }
+        function drawInvoluteGear(g) {
+            const rPitch = g.teeth * VISUAL_SCALE, rOut = rPitch+5, rRoot = rPitch-5;
+            ctx.save(); ctx.translate(g.x, g.y); ctx.rotate(g.angle);
+            ctx.beginPath(); const step = (Math.PI*2)/g.teeth;
+            for(let i=0; i<g.teeth; i++) {
+                const a = i*step;
+                ctx.lineTo(Math.cos(a)*rRoot, Math.sin(a)*rRoot); ctx.lineTo(Math.cos(a+step*0.15)*rOut, Math.sin(a+step*0.15)*rOut);
+                ctx.lineTo(Math.cos(a+step*0.35)*rOut, Math.sin(a+step*0.35)*rOut); ctx.lineTo(Math.cos(a+step*0.5)*rRoot, Math.sin(a+step*0.5)*rRoot);
+            }
+            ctx.closePath();
+            ctx.fillStyle = g.layer===0 ? COLORS.layer0 : COLORS.layer1; ctx.fill();
+            ctx.lineWidth = Math.abs(g.rpm)>0 ? 3 : 2;
+            ctx.strokeStyle = g.type==='MOTOR' ? COLORS.motor : (g.type==='OUTPUT' ? COLORS.output : COLORS.strokeIdle);
+            ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fillStyle = COLORS.shaft; ctx.fill();
+            if (g.locked) {
+                ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fillStyle = COLORS.lock; ctx.fill();
+                ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(-3,0); ctx.lineTo(3,0); ctx.moveTo(0,-3); ctx.lineTo(0,3); ctx.stroke();
+            } else if (g.layer===1) { ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI*2); ctx.fillStyle = '#FFF'; ctx.fill(); }
+            ctx.restore();
+        }
+        function drawGhost(x, y, teeth) {
+            const r = teeth * VISUAL_SCALE;
+            const stackTarget = gears.find(g => Math.hypot(g.x - x, g.y - y) < 10);
+            let valid = true, ghostLayer = 0;
+            if (stackTarget) {
+                const gearsOnShaft = gears.filter(g => Math.hypot(g.x - stackTarget.x, g.y - stackTarget.y) < 10);
+                ghostLayer = gearsOnShaft.some(g => g.layer === 0) ? 1 : 0;
+                if(gearsOnShaft.length >= 2) valid = false;
+            } else {
+                if (gears.some(g => Math.hypot(g.x - x, g.y - y) < (g.radius + r - 12))) valid = false;
+            }
+            ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+            if(valid) { ctx.fillStyle = ghostLayer===0 ? 'rgba(180,180,180,0.3)' : 'rgba(40,40,40,0.3)'; ctx.strokeStyle = COLORS.motor; } 
+            else { ctx.fillStyle = 'rgba(255,50,0,0.2)'; ctx.strokeStyle = COLORS.output; }
+            ctx.fill(); ctx.setLineDash([5,5]); ctx.stroke(); ctx.restore();
+        }
+        function draw() {
+            ctx.fillStyle = COLORS.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = COLORS.grid; ctx.lineWidth = 1;
+            for(let x=0; x<canvas.width; x+=GRID_SIZE) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+            for(let y=0; y<canvas.height; y+=GRID_SIZE) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+            gears.filter(g => g.layer===0).forEach(drawInvoluteGear); gears.filter(g => g.layer===1).forEach(drawInvoluteGear);
+            if(mousePos.active && currentTool.startsWith('GEAR')) drawGhost(snap(mousePos.x), snap(mousePos.y), parseInt(currentTool.split('_')[1]));
+            if(mousePos.active && ['SET_MOTOR','SET_OUTPUT','LOCK'].includes(currentTool)) {
+                const s = {x:snap(mousePos.x), y:snap(mousePos.y)};
+                if(currentTool==='LOCK') {
+                    const t = gears.find(g => Math.hypot(g.x - s.x, g.y - s.y) < 10);
+                    if(t) { ctx.strokeStyle = COLORS.lock; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(t.x, t.y, 12, 0, Math.PI*2); ctx.stroke(); }
+                } else {
+                    ctx.fillStyle = currentTool==='SET_MOTOR' ? COLORS.motor : COLORS.output; ctx.globalAlpha = 0.5;
+                    ctx.beginPath(); ctx.arc(s.x, s.y, 10, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0;
+                }
+            }
+        }
+        function loop() { gears.forEach(g => g.angle += g.rpm * 0.002); draw(); requestAnimationFrame(loop); }
+        function selectTool(t) { currentTool = t; document.querySelectorAll('.tool-item').forEach(e => e.classList.remove('selected')); document.querySelector(`[data-tool="${t}"]`).classList.add('selected'); }
+        function updateInputSpeed() { inputRPM = parseInt(document.getElementById('speed-slider').value); document.getElementById('val-in-rpm').innerText = inputRPM; recalcPhysics(); }
+        function clearAll() { gears = []; document.getElementById('speed-slider').value = 0; updateInputSpeed(); recalcPhysics(); }
+        function getMousePos(e) { const r = canvas.getBoundingClientRect(); let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; return { x: x - r.left, y: y - r.top, active: true }; }
+        function snap(v) { return Math.round(v / GRID_SIZE) * GRID_SIZE; }
+        
+        canvas.addEventListener('mousemove', e => mousePos = getMousePos(e));
+        canvas.addEventListener('mousedown', e => {
+            const p = getMousePos(e), sx = snap(p.x), sy = snap(p.y);
+            if(currentTool==='ERASE') removeGearAt(p.x, p.y);
+            else if(currentTool.startsWith('GEAR')) addGear(sx, sy, parseInt(currentTool.split('_')[1]));
+            else if(currentTool==='SET_MOTOR') setAttributeAt(p.x, p.y, 'MOTOR');
+            else if(currentTool==='SET_OUTPUT') setAttributeAt(p.x, p.y, 'OUTPUT');
+            else if(currentTool==='LOCK') setAttributeAt(p.x, p.y, 'LOCK');
+        });
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY })); }, {passive: false});
+
+        init();
+    </script>
+</body>
+</html>

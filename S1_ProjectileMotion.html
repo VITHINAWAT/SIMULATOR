@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Added user-scalable=no to prevent accidental zooming on mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Paper Toss Physics</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            /* Allow scrolling */
+            height: auto; 
+            min-height: 100%;
+            overflow-y: auto; 
+            overflow-x: hidden;
+            background-color: #1A1C1B;
+            font-family: 'Share Tech Mono', monospace;
+            color: #95FF77;
+            user-select: none;
+            -webkit-user-select: none;
+            /* Allow vertical pan for scrolling */
+            touch-action: pan-y; 
+            
+            /* Hide scrollbar for IE, Edge and Firefox */
+            -ms-overflow-style: none;  
+            scrollbar-width: none;  
+        }
+
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        body::-webkit-scrollbar {
+            display: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            /* Set fixed viewport height ratio for simulation area */
+            height: 70vh; 
+            touch-action: none; /* Prevent scrolling when touching canvas */
+            cursor: crosshair;
+        }
+
+        /* Equation Overlay (Top Left) */
+        #panel-equation {
+            position: absolute;
+            top: 20px;
+            left: 70px;
+            background: linear-gradient(135deg, rgba(20, 24, 22, 0.95), rgba(26, 28, 27, 0.9));
+            border: 1px solid #444;
+            border-left: 4px solid #95FF77;
+            padding: 15px;
+            pointer-events: none;
+            border-radius: 6px;
+            z-index: 5;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Common Button Style */
+        .toggle-btn {
+            position: absolute;
+            right: 20px;
+            background: rgba(26, 28, 27, 0.8);
+            border: 1px solid #95FF77;
+            color: #95FF77;
+            padding: 8px 12px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 20;
+            border-radius: 4px;
+            backdrop-filter: blur(4px);
+            transition: all 0.2s;
+            text-transform: uppercase;
+            width: 120px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            /* Prevent touch actions on button from scrolling page */
+            touch-action: none;
+        }
+        
+        .toggle-btn:hover {
+            background: #95FF77;
+            color: #1A1C1B;
+            box-shadow: 0 0 15px rgba(149, 255, 119, 0.4);
+        }
+
+        /* OFF State Style */
+        .toggle-btn.off {
+            border-color: #666;
+            color: #666;
+            box-shadow: none;
+        }
+
+        .toggle-btn.off:hover {
+            background: #666;
+            color: #1A1C1B;
+            box-shadow: 0 0 15px rgba(102, 102, 102, 0.4);
+        }
+
+        /* Guide Toggle Button (Top Right) */
+        #toggleGuideBtn {
+            top: 20px;
+        }
+
+        /* Mass Toggle Button (Below Guide) */
+        #toggleMassBtn {
+            top: 65px; /* Spacing below Guide btn */
+        }
+
+        /* Equation Toggle Button (Below Mass) */
+        #toggleEqBtn {
+            top: 110px; /* Spacing below Mass btn */
+        }
+
+        /* Sound Toggle Button (New) */
+        #toggleSoundBtn {
+            top: 155px; /* Spacing below Eq btn */
+        }
+
+        /* UI Overlay - Dashboard Style */
+        /* Changed from absolute to relative to stack below canvas */
+        .ui-panel {
+            position: relative; 
+            width: 100%;
+            height: auto; /* Let content dictate height */
+            background: #1A1C1B;
+            /* Border removed as requested */
+            border-top: none;
+            padding: 20px 30px;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr) 140px;
+            grid-template-rows: 1fr 1fr;
+            column-gap: 25px;
+            row-gap: 15px; 
+            align-items: center;
+            z-index: 10;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.2);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        
+        /* Math symbols in labels */
+        .sym {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            text-transform: none;
+            color: #aaa;
+        }
+
+        .value-display {
+            font-weight: bold;
+            color: #95FF77;
+            font-size: 13px;
+        }
+
+        /* Custom Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            margin: 5px 0;
+            cursor: pointer;
+            touch-action: none; /* Critical for sliders on mobile */
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #2A2C2B;
+            border-radius: 0px;
+            border: 1px solid #444;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            height: 20px; /* Made slightly larger for touch */
+            width: 12px;  /* Made slightly larger for touch */
+            border: 1px solid #95FF77;
+            background: #1A1C1B;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -8px;
+            box-shadow: 0 0 5px #95FF77;
+            transition: background 0.2s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            background: #95FF77;
+        }
+
+        /* Launch Button */
+        .launch-btn {
+            grid-column: 4;
+            grid-row: 1 / span 2;
+            background: rgba(149, 255, 119, 0.05);
+            color: #95FF77;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 20px;
+            border: 2px solid #95FF77;
+            width: 100%;
+            height: 100%;
+            min-height: 80px; /* Ensure clickability */
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px rgba(149, 255, 119, 0.1);
+            font-weight: bold;
+            touch-action: none;
+        }
+
+        .launch-btn:hover {
+            background: #95FF77;
+            color: #1A1C1B;
+            box-shadow: 0 0 20px rgba(149, 255, 119, 0.4);
+        }
+
+        .launch-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Overlay Messages */
+        #message {
+            position: absolute;
+            top: 35%; /* Adjusted for 70vh canvas */
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 64px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+            text-shadow: 0 0 20px #95FF77;
+            z-index: 5;
+            color: #fff;
+            text-align: center;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 1024px) {
+            .ui-panel {
+                height: auto;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto;
+                padding: 20px;
+                gap: 20px;
+                /* On small screens, ensure panel has min-height or flex behavior if needed */
+            }
+            .launch-btn {
+                grid-column: 1 / span 2;
+                grid-row: auto;
+                height: 60px;
+                min-height: 60px;
+                margin-top: 10px;
+            }
+            #panel-equation {
+                transform: scale(0.7); /* Scale down more for small screens */
+                transform-origin: top left;
+                left: 10px;
+            }
+            .toggle-btn {
+                transform: scale(0.9);
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="simCanvas"></canvas>
+        <div id="message">PERFECT!</div>
+
+        <!-- Toggle Guide Button -->
+        <button id="toggleGuideBtn" class="toggle-btn">GUIDE: ON</button>
+        <!-- Toggle Mass Button -->
+        <button id="toggleMassBtn" class="toggle-btn">MASS: ON</button>
+        <!-- Toggle Equation Button -->
+        <button id="toggleEqBtn" class="toggle-btn">EQ: ON</button>
+        <!-- Toggle Sound Button -->
+        <button id="toggleSoundBtn" class="toggle-btn">SOUND: ON</button>
+
+        <!-- Equation Overlay -->
+        <div id="panel-equation">
+            <svg width="340" height="130" viewBox="0 0 340 130" xmlns="http://www.w3.org/2000/svg">
+                <style>
+                    .title { font-family: 'Share Tech Mono', monospace; font-size: 10px; fill: #888; letter-spacing: 1px; }
+                    .math { font-family: 'Times New Roman', serif; font-size: 16px; fill: #e0e0e0; }
+                    .var { font-style: italic; fill: #fff; }
+                    .const { fill: #95FF77; font-weight: normal; }
+                    .op { fill: #aaa; }
+                    .func { font-family: 'Arial', sans-serif; font-size: 13px; fill: #bbb; }
+                    .comment { font-family: 'Arial', sans-serif; font-size: 10px; fill: #666; font-style: italic; }
+                    .diagram-line { stroke: #95FF77; stroke-width: 1.5; stroke-dasharray: 3 3; fill: none; opacity: 0.6; }
+                    .diagram-axis { stroke: #555; stroke-width: 1; }
+                    .divider { stroke: #444; stroke-width: 1; }
+                </style>
+                
+                <text x="10" y="15" class="title">KINEMATICS (TRAJECTORY)</text>
+                
+                <text x="10" y="35" class="math">
+                    <tspan class="var">x</tspan> <tspan class="op">=</tspan> <tspan class="var">v</tspan><tspan dy="5" font-size="10" class="const">0</tspan><tspan dy="-5" class="func">cos</tspan>(<tspan class="var">θ</tspan>)<tspan class="var">t</tspan>
+                </text>
+                
+                <text x="10" y="60" class="math">
+                    <tspan class="var">y</tspan> <tspan class="op">=</tspan> <tspan class="var">h</tspan><tspan dy="5" font-size="10" class="const">1</tspan><tspan dy="-5" class="op">+</tspan> <tspan class="var">v</tspan><tspan dy="5" font-size="10" class="const">0</tspan><tspan dy="-5" class="func">sin</tspan>(<tspan class="var">θ</tspan>)<tspan class="var">t</tspan> <tspan class="op">−</tspan> <tspan class="const">½</tspan><tspan class="var">g</tspan><tspan class="var">t</tspan><tspan dy="-7" font-size="10" class="const">2</tspan>
+                </text>
+
+                <line x1="10" y1="75" x2="230" y2="75" class="divider" />
+
+                <text x="10" y="90" class="title">DYNAMICS & TARGET</text>
+
+                <text x="10" y="110" class="math">
+                    <tspan font-size="12" fill="#aaa">Drag:</tspan> <tspan class="var">a</tspan><tspan dy="5" font-size="9" class="op">air</tspan><tspan dy="-5" class="op"> ∝ </tspan> <tspan class="op">-</tspan><tspan class="var">v</tspan><tspan class="op">/</tspan><tspan class="var" fill="#95FF77">m</tspan>
+                </text>
+
+                <text x="120" y="110" class="math">
+                    <tspan font-size="12" fill="#aaa">Goal:</tspan> <tspan class="var">y</tspan><tspan dy="5" font-size="9" class="op">final</tspan><tspan dy="-5" class="op"> = </tspan><tspan class="var" fill="#95FF77">h</tspan><tspan dy="5" font-size="9" class="const">2</tspan>
+                </text>
+
+                <g transform="translate(250, 40)">
+                    <line x1="0" y1="50" x2="60" y2="50" class="diagram-axis" />
+                    <line x1="0" y1="50" x2="0" y2="10" class="diagram-axis" />
+                    <path d="M 0 40 Q 25 0 55 45" class="diagram-line" />
+                    <circle cx="0" cy="40" r="2" fill="#fff" />
+                    <circle cx="55" cy="45" r="2" fill="#95FF77" />
+                    <text x="-5" y="40" font-size="8" fill="#aaa" text-anchor="end">h₁</text>
+                    <text x="60" y="45" font-size="8" fill="#95FF77" text-anchor="start">h₂</text>
+                </g>
+            </svg>
+        </div>
+        
+        <div class="ui-panel">
+            <!-- Row 1 -->
+            <div class="control-group">
+                <div class="label-row">
+                    <span>Angle <span class="sym">(θ)</span></span>
+                    <span id="angleVal" class="value-display">45°</span>
+                </div>
+                <input type="range" id="angleSlide" min="0" max="90" value="45">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <span>Velocity <span class="sym">(v₀)</span></span>
+                    <span id="powerVal" class="value-display">15.0 m/s</span>
+                </div>
+                <input type="range" id="powerSlide" min="5" max="30" step="0.5" value="15">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <span>Mass <span class="sym">(m)</span></span>
+                    <span id="massVal" class="value-display">5 g</span>
+                </div>
+                <input type="range" id="massSlide" min="1" max="1000" step="1" value="5">
+            </div>
+
+            <!-- Row 2 -->
+            <div class="control-group">
+                <div class="label-row">
+                    <span>Launch H. <span class="sym">(h₁)</span></span>
+                    <span id="hLaunchVal" class="value-display">0.0 m</span>
+                </div>
+                <input type="range" id="hLaunchSlide" min="0" max="10" step="0.1" value="0">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <span>Target H. <span class="sym">(h₂)</span></span>
+                    <span id="hBinVal" class="value-display">0.0 m</span>
+                </div>
+                <input type="range" id="hBinSlide" min="0" max="10" step="0.1" value="0">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <span>Distance <span class="sym">(Δx)</span></span>
+                    <span id="distVal" class="value-display">10.0 m</span>
+                </div>
+                <input type="range" id="distSlide" min="2" max="60" step="0.5" value="10">
+            </div>
+
+            <button id="throwBtn" class="launch-btn">LAUNCH</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const messageEl = document.getElementById('message');
+        const throwBtn = document.getElementById('throwBtn');
+        const toggleGuideBtn = document.getElementById('toggleGuideBtn');
+        const toggleMassBtn = document.getElementById('toggleMassBtn');
+        const toggleEqBtn = document.getElementById('toggleEqBtn');
+        const toggleSoundBtn = document.getElementById('toggleSoundBtn');
+        const panelEquation = document.getElementById('panel-equation');
+
+        // Inputs
+        const angleSlide = document.getElementById('angleSlide');
+        const powerSlide = document.getElementById('powerSlide');
+        const massSlide = document.getElementById('massSlide');
+        const hLaunchSlide = document.getElementById('hLaunchSlide');
+        const hBinSlide = document.getElementById('hBinSlide');
+        const distSlide = document.getElementById('distSlide');
+
+        // Value Displays
+        const angleVal = document.getElementById('angleVal');
+        const powerVal = document.getElementById('powerVal');
+        const massVal = document.getElementById('massVal');
+        const hLaunchVal = document.getElementById('hLaunchVal');
+        const hBinVal = document.getElementById('hBinVal');
+        const distVal = document.getElementById('distVal');
+
+        // --- Config ---
+        const scale = 20; // pixels per meter
+        const gravity = 9.8 * scale; // pixels/s^2
+        const startX = 100; // Fixed start X position for ball
+        let groundMargin = 10; // Reduced margin to make floor stick to UI panel
+
+        // --- State ---
+        let width, height, groundLevel;
+        let isSimulating = false;
+        let showGuide = true; 
+        let enableMass = true; // Mass/Drag Toggle
+        let showEquation = true; // Equation Toggle
+        let enableSound = true; // Sound Toggle
+        let particles = [];
+        let trail = []; 
+        let lastTime = 0;
+        let animationId = null; 
+
+        // --- Audio Context ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playTone(freq, type, duration, vol = 0.1) {
+            if (!enableSound || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playThud(intensity) {
+            if (!enableSound || !audioCtx) return;
+            // intensity 0 to 1
+            const vol = Math.min(Math.max(intensity, 0.1), 1.0) * 0.5;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            // Low thud sound
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+            
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playSwoosh() {
+            if (!enableSound || !audioCtx) return;
+            // White noise buffer for wind sound
+            const bufferSize = audioCtx.sampleRate * 0.5; 
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+            
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            noise.start();
+        }
+
+        function playWinSound() {
+            if (!enableSound || !audioCtx) return;
+            // Simple victory arpeggio
+            const now = audioCtx.currentTime;
+            [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => { // C Major
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + i * 0.1);
+                gain.gain.setValueAtTime(0.1, now + i * 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.3);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now + i * 0.1);
+                osc.stop(now + i * 0.1 + 0.3);
+            });
+        }
+
+        let ball = {
+            x: 0, y: 0, vx: 0, vy: 0,
+            radius: 10, rotation: 0, mass: 5
+        };
+
+        // Lip height for the bin
+        const leftLip = 5; // Reduced to 5px for easier entry
+
+        let trashBin = {
+            x: 0, y: 0,
+            width: 45, 
+            height: 30, 
+            elevation: 0
+        };
+
+        let launchParams = {
+            angle: 45,
+            power: 15,
+            height: 0,
+            dist: 10
+        };
+
+        // --- Initialization ---
+
+        function resize() {
+            width = window.innerWidth;
+            // Set canvas height to 70% of viewport height (matches CSS)
+            // But for internal pixel scaling we need exact pixels
+            height = window.innerHeight * 0.7; 
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            groundLevel = height - groundMargin;
+            
+            // Dynamic Distance Limit
+            const rightPadding = 100; 
+            let maxMeters = (width - startX - rightPadding) / scale;
+            if (maxMeters < 5) maxMeters = 5; 
+            
+            distSlide.max = Math.floor(maxMeters);
+            
+            if (parseFloat(distSlide.value) > parseFloat(distSlide.max)) {
+                distSlide.value = distSlide.max;
+                launchParams.dist = parseFloat(distSlide.value);
+            }
+
+            updatePositionsFromInputs();
+            if(!isSimulating) resetBall();
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('orientationchange', resize); 
+
+        // --- Input Handling ---
+
+        function updatePositionsFromInputs() {
+            launchParams.angle = parseInt(angleSlide.value);
+            launchParams.power = parseFloat(powerSlide.value);
+            launchParams.height = parseFloat(hLaunchSlide.value);
+            launchParams.dist = parseFloat(distSlide.value);
+            ball.mass = parseInt(massSlide.value);
+            trashBin.elevation = parseFloat(hBinSlide.value);
+
+            // Update UI Text
+            angleVal.innerText = launchParams.angle + "°";
+            powerVal.innerText = launchParams.power.toFixed(1) + " m/s";
+            massVal.innerText = ball.mass + " g";
+            hLaunchVal.innerText = launchParams.height.toFixed(1) + " m";
+            hBinVal.innerText = trashBin.elevation.toFixed(1) + " m";
+            distVal.innerText = launchParams.dist.toFixed(1) + " m";
+
+            // Calculate Positions
+            // Ball Start Pos
+            if(!isSimulating) {
+                ball.x = startX;
+                ball.y = groundLevel - (launchParams.height * scale) - ball.radius;
+            }
+
+            // Bin Pos - Center the bin on the target distance
+            const targetX = startX + (launchParams.dist * scale);
+            trashBin.x = targetX - (trashBin.width / 2);
+            trashBin.y = groundLevel - (trashBin.elevation * scale);
+        }
+
+        function onInput() {
+            updatePositionsFromInputs();
+            if(!isSimulating) {
+                resetBall();
+                draw();
+            }
+        }
+
+        [angleSlide, powerSlide, massSlide, hLaunchSlide, hBinSlide, distSlide].forEach(el => {
+            el.addEventListener('input', onInput);
+        });
+
+        throwBtn.addEventListener('click', () => {
+            if(throwBtn.innerText === "RESET") {
+                resetBall();
+                draw();
+            } else {
+                initAudio(); // Init audio on first interaction
+                playSwoosh(); // Play sound
+                startSimulation();
+            }
+        });
+
+        toggleGuideBtn.addEventListener('click', () => {
+            showGuide = !showGuide;
+            toggleGuideBtn.innerText = "GUIDE: " + (showGuide ? "ON" : "OFF");
+            toggleGuideBtn.classList.toggle('off', !showGuide);
+            if(!isSimulating) draw();
+        });
+
+        toggleMassBtn.addEventListener('click', () => {
+            enableMass = !enableMass;
+            toggleMassBtn.innerText = "MASS: " + (enableMass ? "ON" : "OFF");
+            toggleMassBtn.classList.toggle('off', !enableMass);
+            if(!isSimulating) draw(); 
+        });
+
+        toggleEqBtn.addEventListener('click', () => {
+            showEquation = !showEquation;
+            toggleEqBtn.innerText = "EQ: " + (showEquation ? "ON" : "OFF");
+            toggleEqBtn.classList.toggle('off', !showEquation);
+            panelEquation.style.display = showEquation ? 'flex' : 'none';
+        });
+
+        toggleSoundBtn.addEventListener('click', () => {
+            enableSound = !enableSound;
+            toggleSoundBtn.innerText = "SOUND: " + (enableSound ? "ON" : "OFF");
+            toggleSoundBtn.classList.toggle('off', !enableSound);
+            if (enableSound) initAudio(); // Init if turning on
+        });
+
+        function resetBall() {
+            isSimulating = false;
+            throwBtn.innerText = "LAUNCH";
+            throwBtn.disabled = false;
+            messageEl.style.opacity = 0;
+            
+            ball.vx = 0;
+            ball.vy = 0;
+            ball.rotation = 0;
+            trail = []; // Clear trail
+            updatePositionsFromInputs();
+            // Fix sticky glitch: ensure ball is clearly slightly above any collision surface
+            // Increased offset to prevent immediate collision with ground
+            ball.y -= 5; 
+        }
+
+        // --- Physics Engine ---
+
+        function startSimulation() {
+            // Cancel any existing loop to prevent double-update bugs
+            if (animationId) cancelAnimationFrame(animationId);
+
+            isSimulating = true;
+            throwBtn.innerText = "RESET";
+            trail = []; // Clear trail on start
+            
+            const rad = launchParams.angle * (Math.PI / 180);
+            const vTotal = launchParams.power * scale;
+            
+            ball.vx = Math.cos(rad) * vTotal;
+            ball.vy = -Math.sin(rad) * vTotal;
+            
+            lastTime = performance.now();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function gameLoop(timestamp) {
+            const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+            lastTime = timestamp;
+
+            if (isSimulating) {
+                updatePhysics(dt);
+            }
+            
+            // Allow particles to finish even if sim stops
+            if (isSimulating || particles.length > 0) {
+                updateParticles(dt);
+                draw();
+                animationId = requestAnimationFrame(gameLoop);
+            } else {
+                // Stop loop completely if idle
+                animationId = null;
+                draw();
+            }
+        }
+
+        function updatePhysics(dt) {
+            if (isSimulating) {
+                trail.push({x: ball.x, y: ball.y});
+            }
+
+            // --- Physics Calculation ---
+            let dragCoeff = 0;
+            if (enableMass) {
+                // If Mass is ON, calculate drag
+                dragCoeff = 2.0 * scale; 
+            } else {
+                // If Mass is OFF, drag is 0 (Vacuum)
+                dragCoeff = 0;
+            }
+
+            const ax = -(dragCoeff * ball.vx) / (ball.mass * 5); 
+            const ay = gravity - (dragCoeff * ball.vy) / (ball.mass * 5); 
+
+            ball.vx += ax * dt;
+            ball.vy += ay * dt;
+
+            ball.x += ball.vx * dt;
+            ball.y += ball.vy * dt;
+            ball.rotation += ball.vx * dt * 0.1;
+
+            // 1. Ground Collision
+            if (ball.y > groundLevel - ball.radius) {
+                ball.y = groundLevel - ball.radius;
+                
+                // Sound logic: Play thud if impact speed is high enough
+                if (Math.abs(ball.vy) > 50) {
+                    playThud(Math.min(Math.abs(ball.vy) / 500, 1.0));
+                }
+
+                ball.vy *= -0.3; // Reduced bounce restitution
+                ball.vx *= 0.7;  // Friction
+                if (Math.abs(ball.vy) < 10 && Math.abs(ball.vx) < 10) isSimulating = false;
+            }
+
+            // 2. Launch Platform Collision
+            const platformW = 80;
+            // startX is global const 100
+            const launchY = groundLevel - (launchParams.height * scale);
+            
+            if (launchParams.height > 0) {
+                 if (ball.x < startX + platformW/2 && ball.x > startX - platformW/2) {
+                     if (ball.y > launchY - ball.radius) {
+                         ball.y = launchY - ball.radius;
+                         
+                         // Sound logic
+                         if (Math.abs(ball.vy) > 50) {
+                             playThud(Math.min(Math.abs(ball.vy) / 500, 1.0));
+                         }
+
+                         ball.vy *= -0.3; // Reduced bounce
+                         ball.vx *= 0.7;
+                         if (Math.abs(ball.vy) < 10 && Math.abs(ball.vx) < 10) isSimulating = false;
+                     }
+                 }
+            }
+
+            // 3. Bin Platform Collision
+            const binBaseY = groundLevel - (trashBin.elevation * scale);
+            const binX = trashBin.x;
+            const binW = trashBin.width;
+            
+            if (trashBin.elevation > 0) {
+                if (ball.x > binX - 20 && ball.x < binX + binW + 20) { 
+                    if (ball.y > binBaseY - ball.radius && ball.y < binBaseY + 10) {
+                         ball.y = binBaseY - ball.radius;
+                         
+                         // Sound logic
+                         if (Math.abs(ball.vy) > 50) {
+                             playThud(Math.min(Math.abs(ball.vy) / 500, 1.0));
+                         }
+
+                         ball.vy *= -0.3; // Reduced bounce
+                         ball.vx *= 0.7;
+                         if (Math.abs(ball.vy) < 10 && Math.abs(ball.vx) < 10) isSimulating = false;
+                    }
+                }
+            }
+            
+            checkBinInteractions();
+
+            // Wall bounds
+            if (ball.x > width || ball.x < 0) {
+                ball.vx *= -0.5;
+                // Wall thud
+                if (Math.abs(ball.vx) > 50) {
+                    playThud(Math.min(Math.abs(ball.vx) / 500, 1.0));
+                }
+                ball.x = Math.max(ball.radius, Math.min(width - ball.radius, ball.x));
+            }
+        }
+
+        function checkBinInteractions() {
+            const binL = trashBin.x;
+            const binR = trashBin.x + trashBin.width;
+            const binB = trashBin.y; 
+            const binT = binB - trashBin.height;
+
+            if (ball.x < binL - 50 || ball.x > binR + 50 || ball.y < binT - 50) return;
+
+            // 1. Left Wall (The Lip)
+            // Check collision with the vertical lip on the left
+            if (ball.y + ball.radius > binB - leftLip) {
+                // If ball hits the left wall from outside
+                if (ball.x + ball.radius > binL && ball.x - ball.radius < binL) {
+                    if (ball.x < binL) {
+                        ball.x = binL - ball.radius;
+                        ball.vx *= -0.5;
+                        playThud(0.3); // Small thud
+                    }
+                }
+            }
+
+            // 2. Right Wall (Backboard)
+            if (ball.y + ball.radius > binT) {
+                if (ball.x + ball.radius > binR && ball.x - ball.radius < binR) {
+                    if (ball.x > binR) {
+                        ball.x = binR + ball.radius;
+                        ball.vx *= -0.6;
+                        playThud(0.4); // Medium thud
+                    } else {
+                        ball.x = binR - ball.radius;
+                        ball.vx *= -0.6;
+                        playThud(0.4); // Medium thud
+                    }
+                }
+            }
+
+            // 3. Inside & Success
+            // Adjusted logic for Trapezoid shape
+            if (ball.x > binL && ball.x < binR - ball.radius) {
+                // Calculate slope height at ball x
+                // Slope runs from (binL, binB-leftLip) to (binR, binT)
+                const relX = ball.x - binL;
+                const totalH = trashBin.height - leftLip;
+                const slopeH = leftLip + (relX / trashBin.width) * totalH;
+                const slopeY = binB - slopeH;
+                
+                if (ball.y > slopeY) {
+                    // It's "inside" the volume
+                    if (ball.y + ball.radius >= binB - 5) {
+                        ball.y = binB - ball.radius;
+                        ball.vy = 0;
+                        ball.vx = 0;
+                        isSimulating = false;
+                        playWinSound(); // Play win sound
+                        triggerWin();
+                    }
+                }
+            }
+        }
+
+        // --- Visuals ---
+
+        function triggerWin() {
+            messageEl.style.opacity = 1;
+            createConfetti(trashBin.x + trashBin.width/2, trashBin.y - trashBin.height);
+        }
+
+        function createConfetti(x, y) {
+            for(let i=0; i<30; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 300,
+                    vy: (Math.random() - 1) * 400,
+                    life: 1.5,
+                    color: Math.random() > 0.5 ? '#95FF77' : '#fff'
+                });
+            }
+            if (!animationId) {
+                lastTime = performance.now();
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function updateParticles(dt) {
+            for(let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.vy += gravity * dt;
+                p.life -= dt;
+                if(p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, 5, 5);
+                ctx.restore();
+            });
+        }
+
+        function draw() {
+            // Background
+            ctx.fillStyle = '#1A1C1B';
+            ctx.fillRect(0, 0, width, height);
+
+            drawGridLines(); 
+            drawPlatforms();
+            drawBin(); 
+            
+            if (showGuide && !isSimulating) {
+                drawTrajectory(); 
+            }
+            
+            drawTrail(); 
+            drawBall();
+            drawParticles();
+            drawAxisLabels(); 
+        }
+
+        function drawGridLines() {
+            ctx.strokeStyle = '#2A2C2B';
+            ctx.lineWidth = 1;
+            const gridSize = scale * 5; 
+
+            // Vertical lines
+            ctx.beginPath();
+            for (let x = 0; x <= width; x += gridSize) {
+                ctx.moveTo(x, 0); ctx.lineTo(x, height);
+            }
+            ctx.stroke();
+
+            // Horizontal lines
+            ctx.beginPath();
+            for (let y = groundLevel; y >= 0; y -= gridSize) {
+                ctx.moveTo(0, y); ctx.lineTo(width, y);
+            }
+            ctx.stroke();
+
+            // Draw Ground Line
+            ctx.beginPath();
+            ctx.strokeStyle = '#95FF77';
+            ctx.lineWidth = 3; /* Reduced thickness from 5 to 3 */
+            ctx.moveTo(0, groundLevel);
+            ctx.lineTo(width, groundLevel);
+            ctx.stroke();
+        }
+
+        function drawAxisLabels() {
+            const gridSize = scale * 5;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'; 
+            ctx.font = '11px "Share Tech Mono", monospace';
+            ctx.textBaseline = 'bottom'; 
+            
+            for (let x = 0; x <= width; x += gridSize) {
+                const meters = Math.round((x - startX) / scale);
+                if (x < 20) {
+                    ctx.textAlign = 'left';
+                    ctx.fillText(meters + "m", x + 5, groundLevel - 5);
+                } else if (x > width - 30) {
+                    ctx.textAlign = 'right';
+                    ctx.fillText(meters + "m", x - 5, groundLevel - 5);
+                } else {
+                    ctx.textAlign = 'center';
+                    ctx.fillText(meters + "m", x, groundLevel - 5);
+                }
+            }
+
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            for (let y = groundLevel; y >= 0; y -= gridSize) {
+                const heightMeters = Math.round((groundLevel - y) / scale);
+                if (heightMeters > 0) {
+                    ctx.fillText(heightMeters + "m", 5, y - 10);
+                }
+            }
+        }
+
+        function drawPlatforms() {
+            ctx.fillStyle = '#2A2C2B';
+            ctx.strokeStyle = '#95FF77';
+            ctx.lineWidth = 1;
+
+            if (launchParams.height > 0) {
+                const pH = launchParams.height * scale;
+                ctx.fillRect(startX - 40, groundLevel - pH, 80, pH);
+                ctx.strokeRect(startX - 40, groundLevel - pH, 80, pH);
+            }
+
+            if (trashBin.elevation > 0) {
+                const bH = trashBin.elevation * scale;
+                const bW = trashBin.width + 20; 
+                const bX = trashBin.x - 10;
+                ctx.fillRect(bX, groundLevel - bH, bW, bH);
+                ctx.strokeRect(bX, groundLevel - bH, bW, bH);
+            }
+        }
+
+        function drawBin() {
+            const { x, y, width: w, height: h } = trashBin;
+            ctx.strokeStyle = '#95FF77';
+            ctx.lineWidth = 2;
+            ctx.fillStyle = 'rgba(26, 28, 27, 0.9)';
+            
+            // Draw Trapezoid (Wedge with lip)
+            ctx.beginPath();
+            ctx.moveTo(x, y); // Bottom Left
+            ctx.lineTo(x, y - leftLip); // Top Left (Lip)
+            ctx.lineTo(x + w, y - h); // Top Right (Back)
+            ctx.lineTo(x + w, y); // Bottom Right
+            ctx.closePath(); 
+            
+            ctx.fill();
+            ctx.stroke();
+
+            // Mesh details
+            ctx.save();
+            ctx.clip(); 
+            ctx.beginPath();
+            ctx.strokeStyle = '#2A4425';
+            ctx.lineWidth = 1;
+            for(let i=5; i<w; i+=8) {
+                ctx.moveTo(x + i, y);
+                // Calculate height 
+                const currentH = leftLip + (i/w * (h - leftLip));
+                ctx.lineTo(x + i, y - currentH);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawTrajectory() {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; 
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+
+            const startY = groundLevel - (launchParams.height * scale) - 10;
+            const rad = launchParams.angle * (Math.PI / 180);
+            const vTotal = launchParams.power * scale;
+            const vx_init = Math.cos(rad) * vTotal;
+            const vy_init = -Math.sin(rad) * vTotal;
+            const dt = 0.05;
+
+            let cx = startX;
+            let cy = startY;
+            let cvx = vx_init;
+            let cvy = vy_init;
+
+            ctx.moveTo(cx, cy);
+            for (let t = 0; t < 4.0; t += dt) {
+                const ay = gravity; 
+                cvy += ay * dt;
+                cx += cvx * dt;
+                cy += cvy * dt;
+                if (cy > groundLevel) break;
+                ctx.lineTo(cx, cy);
+            }
+            ctx.stroke();
+
+            // Real Trajectory (Light Green)
+            ctx.beginPath();
+            ctx.strokeStyle = '#95FF77';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+
+            cx = startX;
+            cy = startY;
+            cvx = vx_init;
+            cvy = vy_init;
+
+            ctx.moveTo(cx, cy);
+            let dragCoeff = 0;
+            if (enableMass) {
+                dragCoeff = 2.0 * scale; 
+            }
+
+            for (let t = 0; t < 4.0; t += dt) {
+                const ax = -(dragCoeff * cvx) / (ball.mass * 5);
+                const ay = gravity - (dragCoeff * cvy) / (ball.mass * 5);
+                cvx += ax * dt;
+                cvy += ay * dt;
+                cx += cvx * dt;
+                cy += cvy * dt;
+                if (cy > groundLevel) break;
+                ctx.lineTo(cx, cy);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawTrail() {
+            if (trail.length < 2) return;
+            
+            ctx.save();
+            ctx.shadowBlur = 5; 
+            ctx.shadowColor = '#FF8800'; 
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            for (let i = 0; i < trail.length - 1; i++) {
+                ctx.beginPath();
+                // Fading effect: older points are more transparent
+                let alpha = i / trail.length; 
+                ctx.strokeStyle = `rgba(255, 136, 0, ${alpha})`;
+                ctx.lineWidth = 1; 
+                ctx.moveTo(trail[i].x, trail[i].y);
+                ctx.lineTo(trail[i+1].x, trail[i+1].y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawBall() {
+            ctx.save();
+            ctx.translate(ball.x, ball.y);
+            ctx.rotate(ball.rotation);
+            ctx.fillStyle = '#eee';
+            ctx.beginPath();
+            ctx.arc(0, 0, ball.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = '#999';
+            ctx.beginPath();
+            ctx.moveTo(-5, -5); ctx.lineTo(3, 2);
+            ctx.moveTo(4, -4); ctx.lineTo(-2, 5);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        updatePositionsFromInputs();
+        resize();
+
+    </script>
+</body>
+</html>

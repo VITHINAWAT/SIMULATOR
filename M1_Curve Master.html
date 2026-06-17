@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CURVE_MASTER // M1 [VITHINAWAT MATH v2.1.0]</title>
+    
+    <!-- Import Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <!-- KaTeX for Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #121212;
+            --neon-green: #95FF77;     
+            --neon-yellow: #FFFF00;    
+            --neon-orange: #FF8800;    
+            --neon-red: #FF0055;       
+            --neon-cyan: #00F3FF;      
+            
+            --grid-color: rgba(149, 255, 119, 0.15);
+            --panel-bg: rgba(18, 18, 18, 0.95);
+            
+            --font-main: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; 
+            background-color: var(--void-black);
+            font-family: var(--font-main);
+        }
+
+        body {
+            /* Adjusted Grid Visuals: 50px grid */
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 50px 50px; 
+            color: var(--neon-green);
+            display: flex;
+        }
+
+        #sim-container {
+            flex: 1;
+            position: relative;
+            cursor: crosshair;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #dashboard {
+            width: 280px; 
+            background: var(--panel-bg);
+            border-left: 2px solid var(--neon-green);
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 12px;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+            overflow-y: auto;
+            z-index: 10;
+            height: 100%; 
+            flex-shrink: 0; 
+        }
+
+        #dashboard::-webkit-scrollbar { width: 8px; }
+        #dashboard::-webkit-scrollbar-track { background: #000; }
+        #dashboard::-webkit-scrollbar-thumb { 
+            background: #222; 
+            border: 1px solid var(--neon-green);
+            border-radius: 4px;
+        }
+        #dashboard::-webkit-scrollbar-thumb:hover {
+            background: var(--neon-green);
+            border-color: #000;
+        }
+
+        .app-header h1 {
+            font-size: 1.2rem;
+            margin: 0;
+            line-height: 1;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--neon-green);
+        }
+        .app-header span {
+            font-size: 0.65rem;
+            color: var(--neon-cyan);
+            letter-spacing: 1px;
+        }
+
+        .panel-section {
+            border: 1px solid rgba(149, 255, 119, 0.3);
+            padding: 10px;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.3);
+        }
+        .section-title {
+            font-size: 0.7rem;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #444;
+            padding-bottom: 2px;
+        }
+
+        .math-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+        }
+        .live-val {
+            font-weight: bold;
+            text-align: right;
+            min-width: 45px;
+        }
+        .val-slope { color: var(--neon-yellow); }
+        .val-curve { color: var(--neon-cyan); }
+        .val-vel { color: var(--neon-green); }
+
+        .katex { 
+            font-size: 1.4em !important; 
+            color: var(--neon-green) !important;
+        }
+        .katex .base {
+            color: var(--neon-green) !important;
+        }
+
+        .legend-item {
+            font-size: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #ccc;
+            margin-bottom: 3px;
+        }
+        .legend-line { width: 12px; height: 3px; }
+
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .ctrl-row {
+            display: flex;
+            gap: 4px;
+            justify-content: space-between;
+        }
+
+        .cyber-btn {
+            flex: 1;
+            background: rgba(149, 255, 119, 0.1);
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            font-family: var(--font-main);
+            padding: 8px 0;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        .cyber-btn:hover {
+            background: var(--neon-green);
+            color: var(--void-black);
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+        .cyber-btn.reset {
+            border-color: var(--neon-red);
+            color: var(--neon-red);
+            background: rgba(255, 0, 85, 0.1);
+        }
+        .cyber-btn.reset:hover {
+            background: var(--neon-red);
+            color: white;
+            box-shadow: 0 0 15px var(--neon-red);
+        }
+        .cyber-btn.mode-switch {
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            font-size: 0.75rem;
+            flex: 2;
+        }
+        .cyber-btn.mode-switch:hover {
+            background: var(--neon-cyan);
+            color: var(--void-black);
+            box-shadow: 0 0 15px var(--neon-cyan);
+        }
+        .cyber-btn.mini {
+            padding: 4px 0;
+            font-size: 0.75rem;
+        }
+
+        input[type=range] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #000;
+            border: 2px solid var(--neon-green);
+            margin-top: -5px;
+            cursor: pointer;
+            box-shadow: 0 0 5px var(--neon-green);
+        }
+
+        #status-overlay {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 20px 30px;
+            border: 2px solid;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            z-index: 100;
+            pointer-events: none;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 320px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+        .status-success { color: var(--neon-green); border-color: var(--neon-green); box-shadow: 0 0 30px var(--neon-green); }
+        .status-fail { color: var(--neon-red); border-color: var(--neon-red); box-shadow: 0 0 30px var(--neon-red); }
+        
+        .status-detail {
+            font-size: 0.85rem;
+            color: #ccc;
+            font-weight: normal;
+            border-top: 1px solid #444;
+            padding-top: 10px;
+            margin-top: 5px;
+            text-align: left;
+            font-family: monospace;
+        }
+        .stat-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow-y: auto; }
+            #dashboard { width: 100%; height: auto; min-height: 50%; border-left: none; border-top: 2px solid var(--neon-green); padding: 10px; flex-shrink: 0; }
+            #sim-container { height: 50vh; min-height: 300px; flex-shrink: 0; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="sim-container">
+        <canvas id="simCanvas"></canvas>
+        <div id="status-overlay">
+            <div id="status-main">STATUS MSG</div>
+            <div id="status-detail" class="status-detail"></div>
+        </div>
+    </div>
+
+    <div id="dashboard">
+        <div class="app-header">
+            <h1>CURVE MASTER</h1>
+            <span>M1 // CALCULUS & GEOMETRY</span>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">SIMULATION CONTROL</div>
+            
+            <div class="btn-group">
+                <button class="cyber-btn" onclick="startRide()">TEST RIDE</button>
+                <button class="cyber-btn reset" onclick="resetTrack()">RESET</button>
+            </div>
+
+            <div class="math-row" style="margin-bottom:10px; margin-top: 10px;">
+                <span style="color:#ccc; font-size:0.75rem;">TIME WARP: <span id="val-speed" style="color:var(--neon-yellow)">1.0x</span></span>
+                <input type="range" min="0.1" max="3.0" step="0.1" value="1.0" oninput="updateSpeed(this.value)">
+            </div>
+
+            <div class="ctrl-row" style="margin-bottom: 8px;">
+                <button class="cyber-btn mini mode-switch" id="btn-mode" onclick="toggleTrackMode()">MODE: CURVE</button>
+                <button class="cyber-btn mini" onclick="addPoint()">+ PT</button>
+                <button class="cyber-btn mini reset" onclick="deletePoint()">- PT</button>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">GEOMETRY ENGINE</div>
+            
+            <div class="math-row">
+                <span id="eq-slope" style="font-size: 0.8rem">Angle (θ):</span>
+                <span id="val-slope" class="live-val val-slope">0°</span>
+            </div>
+            
+            <div class="math-row">
+                <span id="eq-curve">k = 1/r</span>
+                <span id="val-curve" class="live-val val-curve">0.00</span>
+            </div>
+
+            <div class="math-row">
+                <span style="font-size:0.75rem; color:#888;">Radius (r):</span>
+                <span id="val-radius" class="live-val" style="color:#fff;">∞</span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">DYNAMICS & SAFETY</div>
+            
+            <div class="math-row">
+                <span id="eq-vel">v = sqrt(2gh)</span>
+                <span id="val-vel" class="live-val val-vel">0.0</span>
+            </div>
+
+            <div class="math-row">
+                <span id="eq-gforce">G = 1 + v^2/rg</span>
+                <span id="val-gforce" class="live-val" style="color:var(--neon-orange)">1.0</span>
+            </div>
+        </div>
+
+        <div style="flex:1"></div>
+
+        <div style="font-size:0.65rem; color:#666; margin-bottom:5px;">
+            <div class="legend-item"><div class="legend-line" style="background:var(--neon-green)"></div> Safe (&lt;3G)</div>
+            <div class="legend-item"><div class="legend-line" style="background:var(--neon-yellow)"></div> Intense (3-5G)</div>
+            <div class="legend-item"><div class="legend-line" style="background:var(--neon-orange)"></div> Extreme (5-7G)</div>
+            <div class="legend-item"><div class="legend-line" style="background:var(--neon-red)"></div> Danger (&gt;7G)</div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * CURVE MASTER ENGINE (M1) - Math Edition v2.1.0
+         * OVERHAUL: Minimum Radius Clamping, G-Smoothing, Degree Angles
+         */
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const simContainer = document.getElementById('sim-container');
+        
+        // --- OVERHAULED PHYSICS CONSTANTS ---
+        const GRAVITY = 9.8; 
+        const PIXELS_PER_METER = 25; // Scale: 50px grid = 2 Meters. 
+        const MIN_PHYSICS_RADIUS = 5.0; // Meters. Even if drawn tighter, simulation treats it as 5m minimum.
+        const G_SMOOTHING_FACTOR = 0.15; // Lower = Smoother G readings (Moving Average)
+        const FRICTION_COEF = 0.03; 
+        const DRAG_COEF = 0.002;
+
+        const C_TRACK_SAFE = "#95FF77";
+        const C_TRACK_WARN = "#FFFF00";
+        const C_TRACK_CRIT = "#FF8800";
+        const C_TRACK_DANGER = "#FF0055";
+        
+        const C_POINT = "#00F3FF";
+        const C_SELECTED = "#FF0055"; 
+        const C_CART = "#FFFF00";
+        const C_TANGENT = "#FFFF00";
+        const C_NORMAL = "#FF0055";
+        const C_OSCULATING = "#00F3FF"; 
+        
+        let width = 0;
+        let height = 0;
+        let points = []; 
+        let trackPath = [];
+        let cart = { dist: 0, v: 0 }; 
+        let isRunning = false;
+        let startHeight = 0;
+        let totalTrackLength = 0;
+        let draggingPoint = null;
+        let selectedPoint = 0; 
+        let simSpeed = 1.0; 
+        let isLinearMode = false;
+        let rideStartTime = 0; 
+        
+        // Smoothing Variables
+        let smoothedG = 1.0;
+
+        let stats = {
+            maxSlope: -Infinity, minSlope: Infinity,
+            maxCurv: -Infinity, minCurv: Infinity,
+            maxVel: -Infinity, minVel: Infinity,
+            maxG: -Infinity, minG: Infinity
+        };
+
+        function renderMath() {
+            if (typeof katex === 'undefined') {
+                setTimeout(renderMath, 500);
+                return;
+            }
+            try {
+                katex.render("\\kappa = \\frac{1}{r}", document.getElementById('eq-curve'));
+                katex.render("v = \\sqrt{2g\\Delta h}", document.getElementById('eq-vel'));
+                katex.render("G = 1 + \\frac{v^2}{rg}", document.getElementById('eq-gforce'));
+            } catch(e) { 
+                console.log("Katex rendering failed, using fallback text."); 
+            }
+        }
+
+        function resize() {
+            const newW = simContainer.clientWidth || window.innerWidth;
+            const newH = simContainer.clientHeight || (window.innerHeight / 2);
+
+            if (newW === 0 || newH === 0) return; 
+
+            if (Math.abs(width - newW) > 5 || Math.abs(height - newH) > 5) {
+                width = newW;
+                height = newH;
+                canvas.width = width;
+                canvas.height = height;
+                
+                if(points.length === 0) {
+                    resetTrack();
+                } else {
+                    generateTrack();
+                }
+            }
+        }
+
+        function init() {
+            renderMath();
+            resize();
+            if (width === 0) setTimeout(init, 200);
+            else loop();
+
+            window.addEventListener('resize', resize);
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => resize());
+                ro.observe(simContainer);
+            }
+            canvas.addEventListener('mousedown', onPointerDown);
+            canvas.addEventListener('mousemove', onPointerMove);
+            window.addEventListener('mouseup', onPointerUp);
+            canvas.addEventListener('touchstart', onPointerDown, {passive:false});
+            canvas.addEventListener('touchmove', onPointerMove, {passive:false});
+            window.addEventListener('touchend', onPointerUp);
+        }
+
+        window.addEventListener('load', init);
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+            setTimeout(init, 50);
+        }
+
+        function resetTrack() {
+            if (width === 0 || height === 0) { resize(); if(width===0) return; } 
+
+            const cx = width / 2;
+            const cy = height / 2;
+            
+            points = [
+                { x: 50, y: height * 0.2 }, 
+                { x: width * 0.35, y: height * 0.8 },
+                { x: width * 0.65, y: height * 0.65 },
+                { x: width - 50, y: height * 0.4 } 
+            ];
+            
+            selectedPoint = 0;
+            stopRide();
+            document.getElementById('status-overlay').style.display = 'none';
+            generateTrack();
+        }
+
+        function toggleTrackMode() {
+            isLinearMode = !isLinearMode;
+            document.getElementById('btn-mode').innerText = isLinearMode ? "MODE: LINEAR" : "MODE: CURVE";
+            stopRide();
+            generateTrack();
+        }
+
+        function updateSpeed(val) {
+            simSpeed = parseFloat(val);
+            document.getElementById('val-speed').innerText = simSpeed.toFixed(1) + "x";
+        }
+
+        function addPoint() {
+            if (isRunning) return;
+            const idx = selectedPoint;
+            
+            if (idx >= 0 && idx < points.length - 1) {
+                const p1 = points[idx];
+                const p2 = points[idx+1];
+                const newP = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+                points.splice(idx + 1, 0, newP);
+                selectedPoint = idx + 1; 
+            } else {
+                const last = points[points.length-1];
+                const newP = { x: last.x + 60, y: last.y }; 
+                points.push(newP);
+                selectedPoint = points.length - 1;
+            }
+            document.getElementById('status-overlay').style.display = 'none';
+            generateTrack();
+        }
+
+        function deletePoint() {
+            if (isRunning) return;
+            if (points.length <= 3) return; 
+            points.splice(selectedPoint, 1);
+            if (selectedPoint >= points.length) selectedPoint = points.length - 1;
+            document.getElementById('status-overlay').style.display = 'none';
+            generateTrack();
+        }
+
+        function generateTrack() {
+            trackPath = [];
+            
+            // Generate Path Geometry
+            if (isLinearMode) {
+                for (let i = 0; i < points.length - 1; i++) {
+                    const p1 = points[i];
+                    const p2 = points[i+1];
+                    const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                    const segments = Math.max(2, Math.floor(dist / 5)); 
+                    for (let j = 0; j < segments; j++) {
+                        const t = j / segments;
+                        trackPath.push({
+                            x: p1.x + (p2.x - p1.x) * t,
+                            y: p1.y + (p2.y - p1.y) * t
+                        });
+                    }
+                }
+                trackPath.push({ ...points[points.length-1] });
+            } else {
+                const p = [points[0], ...points, points[points.length-1]];
+                for (let i = 0; i < p.length - 3; i++) {
+                    const p0 = p[i], p1 = p[i+1], p2 = p[i+2], p3 = p[i+3];
+                    const segments = 30; 
+                    for (let t = 0; t < 1; t += 1/segments) {
+                        trackPath.push(getCatmullRomPoint(t, p0, p1, p2, p3));
+                    }
+                }
+                trackPath.push(points[points.length-1]);
+            }
+            
+            // --- PHYSICS PRE-CALCULATION ---
+            totalTrackLength = 0;
+            trackPath[0].dist = 0;
+            trackPath[0].angle = 0;
+            
+            const safeH = height > 0 ? height : 600;
+            const startH = (safeH - trackPath[0].y) / PIXELS_PER_METER;
+            const v_init = 1.0; // Initial push
+            let currentTotalEnergy = (startH * GRAVITY) + (0.5 * v_init * v_init); 
+
+            // Temporary smoothing array
+            let rawG = [];
+
+            for(let i=0; i<trackPath.length; i++) {
+                // 1. Distance & Angle
+                if(i > 0) {
+                    const d = Math.hypot(trackPath[i].x - trackPath[i-1].x, trackPath[i].y - trackPath[i-1].y);
+                    totalTrackLength += d;
+                    trackPath[i].dist = totalTrackLength;
+                    trackPath[i].angle = Math.atan2(trackPath[i].y - trackPath[i-1].y, trackPath[i].x - trackPath[i-1].x);
+                }
+
+                // 2. Velocity (Energy Method)
+                const h_curr = (safeH - trackPath[i].y) / PIXELS_PER_METER;
+                const PE = h_curr * GRAVITY;
+                
+                // Energy Losses
+                let prevVSq = (i > 0) ? trackPath[i-1].vSq : (v_init * v_init); 
+                let stepDist = (i > 0) ? (trackPath[i].dist - trackPath[i-1].dist) / PIXELS_PER_METER : 0;
+                
+                let loss = (DRAG_COEF * prevVSq + FRICTION_COEF * GRAVITY) * stepDist;
+                currentTotalEnergy -= loss;
+                
+                let KE = currentTotalEnergy - PE;
+                let vSq = 2 * KE;
+                if (vSq < 0) vSq = 0;
+                
+                trackPath[i].vSq = vSq;
+
+                // 3. Radius & G-Force (Raw)
+                let r = Infinity;
+                if (vSq > 0 && i > 0 && i < trackPath.length-1) {
+                    const prev = trackPath[i-1];
+                    const curr = trackPath[i];
+                    const next = trackPath[i+1];
+                    const rPx = getCurvatureRadius(prev, curr, next);
+                    
+                    // CORE FIX: Minimum Physics Radius
+                    let rMeters = rPx / PIXELS_PER_METER;
+                    if (rMeters < MIN_PHYSICS_RADIUS) rMeters = MIN_PHYSICS_RADIUS;
+                    r = rMeters;
+                }
+                
+                // Centripetal Accel
+                const ac = (r === Infinity) ? 0 : vSq / r;
+                let g = 1 + (ac / GRAVITY);
+                
+                trackPath[i].rawG = g;
+                trackPath[i].radius = r;
+            }
+
+            // 4. Post-Process: Smooth G-Force
+            // Forward pass moving average to simulate bogie suspension
+            let smoothed = trackPath[0].rawG;
+            for(let i=0; i<trackPath.length; i++) {
+                // Low pass filter
+                smoothed = smoothed + (trackPath[i].rawG - smoothed) * 0.2;
+                trackPath[i].gForce = smoothed;
+
+                // Color Coding based on Smoothed G
+                let color = C_TRACK_SAFE;
+                if (smoothed > 7) color = C_TRACK_DANGER;
+                else if (smoothed > 5) color = C_TRACK_CRIT;
+                else if (smoothed > 3) color = C_TRACK_WARN;
+                trackPath[i].color = color;
+            }
+            
+            if(trackPath.length > 1) trackPath[0].angle = trackPath[1].angle;
+        }
+
+        function getCatmullRomPoint(t, p0, p1, p2, p3) {
+            const t2 = t * t;
+            const t3 = t2 * t;
+            const f1 = -0.5 * t3 + t2 - 0.5 * t;
+            const f2 =  1.5 * t3 - 2.5 * t2 + 1.0;
+            const f3 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+            const f4 =  0.5 * t3 - 0.5 * t2;
+            return { 
+                x: p0.x * f1 + p1.x * f2 + p2.x * f3 + p3.x * f4, 
+                y: p0.y * f1 + p1.y * f2 + p2.y * f3 + p3.y * f4 
+            };
+        }
+
+        function startRide() {
+            if (isRunning) return;
+            const safeH = height > 0 ? height : 600;
+            startHeight = (safeH - trackPath[0].y) / PIXELS_PER_METER; 
+            
+            isRunning = true;
+            cart = { dist: 0, v: 0.5 };
+            rideStartTime = Date.now(); 
+            smoothedG = 1.0; // Reset smoother
+            
+            stats = {
+                maxSlope: -Infinity, minSlope: Infinity,
+                maxCurv: -Infinity, minCurv: Infinity,
+                maxVel: -Infinity, minVel: Infinity,
+                maxG: -Infinity, minG: Infinity
+            };
+
+            document.getElementById('status-overlay').style.display = 'none';
+        }
+
+        function stopRide() { isRunning = false; }
+
+        function updatePhysics() {
+            if (!isRunning) return;
+
+            let idx = 0;
+            for(let i=0; i<trackPath.length-1; i++) {
+                if(cart.dist >= trackPath[i].dist && cart.dist < trackPath[i+1].dist) {
+                    idx = i; break;
+                }
+            }
+            
+            if (cart.dist >= totalTrackLength) {
+                finishRide(true);
+                return;
+            }
+
+            const pCurr = trackPath[idx];
+            let vSq = pCurr.vSq;
+            
+            if (vSq <= 0.1) {
+                if (cart.dist > 10) { 
+                    finishRide(false, "STALLED! Not enough momentum.");
+                    return;
+                }
+            }
+
+            const v = Math.sqrt(vSq);
+            cart.dist += v * PIXELS_PER_METER * (1/60) * simSpeed; 
+            cart.v = v;
+
+            const angle = pCurr.angle;
+            // Convert slope to degrees for better UX
+            let deg = (angle * 180 / Math.PI);
+            // Normalize to -90 to 90 relative to horizon (0 is flat right)
+            // But angle returned by atan2 is standard unit circle. 
+            // In canvas Y is down. 0 is Right. 90 is Down. -90 is Up.
+            liveSlope = deg; 
+            
+            liveRadius = pCurr.radius;
+            liveCurvature = (liveRadius === Infinity) ? 0 : 1 / liveRadius;
+
+            // Use the pre-calculated Smoothed G
+            liveG = pCurr.gForce;
+            
+            if (Date.now() - rideStartTime > 100) {
+                if (liveG > stats.maxG) stats.maxG = liveG;
+                if (liveG < stats.minG) stats.minG = liveG;
+                
+                if (v > stats.maxVel) stats.maxVel = v;
+                if (v < stats.minVel) stats.minVel = v;
+            }
+
+            if (liveG > 9) { 
+                 finishRide(false, `BLACKOUT! (${Math.round(liveG)}G)`);
+            }
+
+            updateDashboard();
+        }
+
+        function getCurvatureRadius(p1, p2, p3) {
+            const x1=p1.x, y1=p1.y, x2=p2.x, y2=p2.y, x3=p3.x, y3=p3.y;
+            const A = x1*(y2-y3) - y1*(x2-x3) + x2*y3 - x3*y2;
+            if (Math.abs(A) < 0.001) return Infinity; 
+            const len12 = Math.hypot(x2-x1, y2-y1);
+            const len23 = Math.hypot(x3-x2, y3-y2);
+            const len31 = Math.hypot(x1-x3, y1-y3);
+            return (len12 * len23 * len31) / (4 * Math.abs(A));
+        }
+
+        function updateDashboard() {
+            // Display Slope as Degrees
+            let sText = (-liveSlope).toFixed(1) + "°"; // Invert so Up is positive
+            document.getElementById('val-slope').innerText = sText;
+            
+            const cText = liveCurvature < 0.01 ? "0.00" : liveCurvature.toFixed(3);
+            document.getElementById('val-curve').innerText = cText;
+            
+            const rText = liveRadius > 100 ? "∞" : liveRadius.toFixed(1) + " m";
+            document.getElementById('val-radius').innerText = rText;
+
+            document.getElementById('val-vel').innerText = cart.v.toFixed(1);
+            document.getElementById('val-gforce').innerText = liveG.toFixed(2);
+        }
+
+        function finishRide(success, msg) {
+            isRunning = false;
+            const el = document.getElementById('status-overlay');
+            const mainMsg = document.getElementById('status-main');
+            const detailMsg = document.getElementById('status-detail');
+            
+            if(el) {
+                el.style.display = 'flex';
+                el.className = success ? 'status-success' : 'status-fail';
+                mainMsg.innerText = success ? "TRACK COMPLETED!" : msg;
+                
+                if (success) {
+                    let maxG = stats.maxG === -Infinity ? 1.0 : stats.maxG;
+                    // Scored based on excitement but safety penalty
+                    // Best is 3G - 5G.
+                    let safety = 100;
+                    if (maxG > 5) safety -= (maxG - 5) * 20;
+                    if (safety < 0) safety = 0;
+                    
+                    let statusNote = "";
+                    if (maxG > 7) statusNote = "(DANGEROUS)";
+                    else if (maxG > 5) statusNote = "(INTENSE)";
+                    else if (maxG > 3) statusNote = "(THRILLING)";
+                    else statusNote = "(GENTLE)";
+
+                    let html = `
+                        <div class="stat-line">
+                            <span style="color:var(--neon-orange)">SAFETY SCORE:</span> 
+                            <span>${Math.round(safety)}% <small style="color:#666">${statusNote}</small></span>
+                        </div>
+                        <div style="border-top:1px solid #444; margin:5px 0;"></div>
+                        <div class="stat-line"><span style="color:var(--neon-green)">Max Vel:</span> <span>${stats.maxVel.toFixed(1)} m/s</span></div>
+                        <div class="stat-line"><span style="color:var(--neon-orange)">Peak G:</span> <span>${stats.maxG.toFixed(2)} G</span></div>
+                    `;
+                    detailMsg.innerHTML = html;
+                    detailMsg.style.display = "block";
+                } else {
+                    detailMsg.style.display = "none";
+                }
+            }
+        }
+
+        function draw() {
+            if(width === 0 || height === 0) return;
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Track
+            if (trackPath.length > 1) {
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 10;
+                for (let i = 0; i < trackPath.length - 1; i++) {
+                    const p1 = trackPath[i];
+                    const p2 = trackPath[i+1];
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.strokeStyle = p1.color;
+                    ctx.shadowColor = p1.color;
+                    ctx.stroke();
+                }
+                ctx.shadowBlur = 0;
+            }
+
+            // Draw Controls
+            if (!isRunning) {
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.strokeStyle = "rgba(0, 243, 255, 0.2)";
+                ctx.setLineDash([5,5]);
+                points.forEach((p, i) => { if(i===0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                points.forEach((p, i) => {
+                    ctx.beginPath();
+                    if (i === selectedPoint) {
+                        ctx.fillStyle = C_SELECTED;
+                        ctx.strokeStyle = "#fff";
+                        ctx.lineWidth = 2;
+                        ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                        ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.strokeStyle = C_SELECTED; ctx.arc(p.x, p.y, 14, 0, Math.PI * 2); ctx.stroke();
+                    } else {
+                        ctx.fillStyle = C_POINT;
+                        ctx.fillRect(p.x-5, p.y-5, 10, 10);
+                    }
+                });
+            }
+
+            // Draw Cart
+            if (isRunning) {
+                let idx = 0;
+                for(let i=0; i<trackPath.length-1; i++) {
+                    if(cart.dist >= trackPath[i].dist && cart.dist < trackPath[i+1].dist) { idx = i; break; }
+                }
+                const p1 = trackPath[idx];
+                const p2 = trackPath[idx+1] || p1;
+                const progress = (cart.dist - p1.dist) / (p2.dist - p1.dist || 1);
+                
+                const cx = p1.x + (p2.x - p1.x) * progress;
+                const cy = p1.y + (p2.y - p1.y) * progress;
+                const angle = p1.angle; 
+
+                // Osculating Circle Visual (Clamped)
+                const MAX_VISUAL_R = 150;
+                let visualR = liveRadius * PIXELS_PER_METER;
+                if (visualR > MAX_VISUAL_R) visualR = MAX_VISUAL_R;
+                
+                let cColor = C_OSCULATING;
+                if(liveG > 7) cColor = C_TRACK_DANGER;
+                else if(liveG > 5) cColor = C_TRACK_CRIT;
+                
+                ctx.beginPath();
+                ctx.arc(cx, cy, visualR, 0, Math.PI*2);
+                ctx.strokeStyle = cColor;
+                ctx.lineWidth = Math.max(1, 6 - (visualR / 30)); 
+                ctx.stroke();
+                ctx.fillStyle = cColor + "33"; 
+                ctx.fill();
+
+                // Tangent
+                const tLen = 60;
+                ctx.beginPath();
+                ctx.moveTo(cx - Math.cos(angle)*tLen, cy - Math.sin(angle)*tLen);
+                ctx.lineTo(cx + Math.cos(angle)*tLen, cy + Math.sin(angle)*tLen);
+                ctx.strokeStyle = C_TANGENT; ctx.lineWidth = 2; ctx.stroke();
+
+                // Normal
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + Math.sin(angle)*40, cy - Math.cos(angle)*40); 
+                ctx.strokeStyle = C_NORMAL; ctx.lineWidth = 2; ctx.stroke();
+
+                // Cart Body
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                ctx.fillStyle = C_CART;
+                ctx.fillRect(-15, -8, 30, 10);
+                ctx.restore();
+            }
+        }
+
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches ? e.touches[0].clientX : e.clientX;
+            const y = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: x - rect.left, y: y - rect.top };
+        }
+
+        function onPointerDown(e) {
+            if (isRunning) return;
+            document.getElementById('status-overlay').style.display = 'none';
+            e.preventDefault();
+            const p = getPointerPos(e);
+            
+            for (let i = 0; i < points.length; i++) {
+                if (Math.hypot(p.x - points[i].x, p.y - points[i].y) < 40) {
+                    draggingPoint = i;
+                    selectedPoint = i; 
+                    break;
+                }
+            }
+            draw();
+        }
+
+        function onPointerMove(e) {
+            if (draggingPoint !== null) {
+                e.preventDefault();
+                const p = getPointerPos(e);
+                points[draggingPoint].x = p.x;
+                points[draggingPoint].y = p.y;
+                generateTrack();
+            }
+        }
+
+        function onPointerUp() { draggingPoint = null; }
+
+        function loop() {
+            updatePhysics();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+    </script>
+</body>
+</html>
