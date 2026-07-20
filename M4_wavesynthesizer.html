@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WAVE_SYNTHESIZER // M4 [VITHINAWAT v1.0]</title>
+    
+    <!-- Import Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <!-- Import KaTeX for Mathematical Equation Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    <style>
+        :root {
+            /* VITHINAWAT DESIGN SYSTEM */
+            --void-black: #121212;
+            --graphite-grey: rgba(26, 28, 27, 0.95);
+            --inactive-grey: #444444;
+            
+            /* Wave Colors */
+            --wave1-color: #95FF77; /* Neon Green */
+            --wave2-color: #00D1FF; /* Cyan */
+            --wave3-color: #FF8800; /* Neon Orange */
+            --mixed-color: #FFD700; /* Bright Yellow */
+            
+            --font-main: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--void-black);
+            color: #fff;
+            font-family: var(--font-main);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- OVERLAY --- */
+        #start-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(18, 18, 18, 0.95);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        .pulse-btn {
+            background: rgba(149, 255, 119, 0.1);
+            border: 2px solid var(--wave1-color);
+            color: var(--wave1-color);
+            font-family: var(--font-main);
+            font-size: 1.2rem;
+            padding: 15px 30px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            transition: all 0.2s;
+            box-shadow: 0 0 15px rgba(149, 255, 119, 0.2);
+        }
+        .pulse-btn:hover {
+            background: var(--wave1-color);
+            color: var(--void-black);
+            box-shadow: 0 0 25px var(--wave1-color);
+        }
+
+        /* --- 1. HEADER --- */
+        header {
+            height: 60px;
+            background: var(--graphite-grey);
+            border-bottom: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            flex-shrink: 0;
+        }
+        .app-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+        .app-subtitle {
+            font-size: 0.7rem;
+            color: #888;
+            letter-spacing: 1px;
+        }
+        
+        .cyber-btn {
+            background: transparent;
+            border: 1px solid #aaa;
+            color: #aaa;
+            font-family: var(--font-main);
+            padding: 8px 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .cyber-btn.active {
+            border-color: #FF0055;
+            color: #FF0055;
+            background: rgba(255, 0, 85, 0.1);
+            box-shadow: 0 0 10px rgba(255, 0, 85, 0.3);
+        }
+
+        /* --- 2. OSCILLOSCOPE (CANVAS) --- */
+        #oscilloscope-container {
+            flex: 1;
+            width: 100%;
+            position: relative;
+            background: var(--void-black);
+            min-height: 250px; /* บังคับให้พื้นที่กราฟมีขนาดขั้นต่ำไม่ให้เล็กเกินไป */
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- 3. MIDDLE SECTION (EQUATION & GLOBAL) --- */
+        #middle-section {
+            height: 90px;
+            display: flex;
+            flex-direction: row; /* บังคับให้อยู่แถวเดียวกันเสมอ */
+            background: #0a0a0a;
+            border-top: 1px solid #333;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
+        }
+
+        #equation-display {
+            flex: 1; /* ครึ่งซ้าย */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 5px 20px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            border-right: 1px solid #333;
+            font-size: 0.85rem; /* ลดขนาดสมการลง */
+        }
+        .katex-display { margin: 0 !important; }
+        .katex { font-size: 0.95em !important; } /* ย่อขนาดสมการลงอีกนิด */
+
+        .global-panel {
+            flex: 1; /* ครึ่งขวา */
+            max-width: 50%; /* จัดให้อยู่ครึ่งจอเสมอ */
+            background: var(--graphite-grey);
+            padding: 10px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+        }
+
+        /* --- 4. CONTROLS SECTION --- */
+        #controls-section {
+            height: auto;
+            max-height: 38vh;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(240px, 1fr)); /* บังคับ 3 คอลัมน์ แนวนอนเสมอ */
+            gap: 15px;
+            padding: 15px 20px;
+            background: #111;
+            flex-shrink: 0;
+            overflow-x: auto; /* หากจอแคบจะสามารถเลื่อนแนวนอนได้ */
+            overflow-y: auto;
+        }
+
+        /* Oscillator Panel Theme variables applied per panel */
+        .osc1 { --accent: var(--wave1-color); }
+        .osc2 { --accent: var(--wave2-color); }
+        .osc3 { --accent: var(--wave3-color); }
+
+        .osc-panel {
+            background: var(--graphite-grey);
+            border: 1px solid var(--accent);
+            padding: 12px 15px; /* บีบ Padding ในกล่อง */
+            display: flex;
+            flex-direction: column;
+            gap: 8px; /* ลดระยะห่างระหว่างสไลด์เดอร์ */
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: var(--accent);
+            border-bottom: 1px solid #333;
+            padding-bottom: 6px;
+        }
+
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .control-row label {
+            font-size: 0.75rem; /* ลดขนาดตัวอักษรลงนิดหน่อยให้ดูกะทัดรัด */
+            color: #ccc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-transform: uppercase;
+        }
+        .val-display { 
+            color: var(--accent); 
+            font-weight: bold; 
+            cursor: pointer;
+            padding: 2px 6px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.2s;
+        }
+        .val-display:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff !important;
+            border-color: #fff;
+        }
+
+        /* Custom Inputs */
+        select {
+            background: #000;
+            border: 1px solid #444;
+            color: var(--accent);
+            font-family: var(--font-main);
+            padding: 4px;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+        }
+        select:focus { border-color: var(--accent); }
+
+        input[type=range] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px; width: 14px; /* ปรับขนาดปุ่มสไลด์ให้เล็กลงนิดหน่อย */
+            border-radius: 50%;
+            background: #000;
+            border: 2px solid var(--accent);
+            margin-top: -5px;
+            cursor: pointer;
+            box-shadow: 0 0 5px var(--accent);
+        }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 36px; height: 18px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .2s;
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 10px; width: 10px;
+            left: 3px; bottom: 3px;
+            background-color: var(--accent);
+            transition: .2s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before {
+            transform: translateX(18px);
+            background-color: #000;
+        }
+
+        /* Mobile Layout - ปรับไม่ให้ตัดบรรทัด (No Wrap) */
+        @media (max-width: 900px) {
+            #equation-display {
+                font-size: 0.75rem;
+                padding: 5px 10px;
+            }
+            .global-panel {
+                padding: 5px 10px;
+            }
+            #controls-section {
+                gap: 10px;
+                padding: 10px;
+            }
+            .control-row label {
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Start Overlay for Audio Policy Compliance -->
+    <div id="start-overlay">
+        <div style="font-size: 1.5rem; color: #fff; letter-spacing: 2px; text-align:center;">WAVE SYNTHESIZER LAB</div>
+        <div style="font-size: 0.8rem; color: #888; max-width: 400px; text-align: center; line-height: 1.5;">
+            Warning: This laboratory produces real audio frequencies. Lower your volume before initializing the engine.
+        </div>
+        <button class="pulse-btn" onclick="startApp()">INITIALIZE AUDIO ENGINE</button>
+    </div>
+
+    <!-- 1. HEADER -->
+    <header id="top-bar">
+        <div class="app-title">
+            WAVE SYNTHESIZER
+            <span class="app-subtitle">M4 // MATH IN REALITY</span>
+        </div>
+        <button class="cyber-btn" id="btn-mute" onclick="toggleMute()">MUTE: OFF</button>
+    </header>
+
+    <!-- 2. OSCILLOSCOPE -->
+    <div id="oscilloscope-container">
+        <canvas id="oscCanvas"></canvas>
+    </div>
+
+    <!-- 3. MIDDLE SECTION (EQUATION & GLOBAL CONTROLS) -->
+    <div id="middle-section">
+        <div id="equation-display">
+            <!-- KaTeX injected here -->
+        </div>
+        
+        <!-- GLOBAL PANEL -->
+        <div class="global-panel">
+            <div class="control-row">
+                <label style="color:#fff;">ANIMATION SPEED <span class="val-display" id="anim-speed-val" style="color:#fff;" onclick="manualGlobalInput('animSpeed', 'Animation Speed', 0, 5)">1.0x</span></label>
+                <input type="range" id="anim-speed" min="0" max="5" step="0.1" value="1.0" oninput="updateGlobal('animSpeed', this.value)">
+            </div>
+            <div class="control-row">
+                <label style="color:#fff;">TIME WINDOW <span class="val-display" id="time-window-val" style="color:#fff;" onclick="manualGlobalInput('windowSize', 'Time Window (sec)', 0.005, 0.1)">20 ms</span></label>
+                <input type="range" id="time-window" min="0.005" max="0.1" step="0.001" value="0.02" oninput="updateGlobal('windowSize', this.value)">
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. CONTROLS -->
+    <div id="controls-section">
+        
+        <!-- PANEL 1 -->
+        <div class="osc-panel osc1">
+            <div class="panel-header">
+                <span>OSCILLATOR 1</span>
+                <label class="switch">
+                    <input type="checkbox" id="osc1-on" checked onchange="updateOsc('osc1', 'on', this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="control-row">
+                <label>WAVEFORM</label>
+                <select id="osc1-type" onchange="updateOsc('osc1', 'type', this.value)">
+                    <option value="sine">SINE</option>
+                    <option value="square">SQUARE</option>
+                    <option value="sawtooth">SAWTOOTH</option>
+                    <option value="triangle">TRIANGLE</option>
+                </select>
+            </div>
+            
+            <div class="control-row">
+                <label>AMPLITUDE (A) <span class="val-display" id="osc1-amp-val" onclick="manualInput('osc1', 'amp', 'Amplitude', 0, 1)">0.80</span></label>
+                <input type="range" id="osc1-amp" min="0" max="1" step="0.01" value="0.8" oninput="updateOsc('osc1', 'amp', parseFloat(this.value))">
+            </div>
+            
+            <div class="control-row">
+                <label>FREQUENCY (f) <span class="val-display" id="osc1-freq-val" onclick="manualInput('osc1', 'freq', 'Frequency (Hz)', 110, 880)">220 Hz</span></label>
+                <!-- Logarithmic slider binding -->
+                <input type="range" id="osc1-freq-slider" min="0" max="100" step="0.1" value="33.3" oninput="updateOscFreq('osc1', this.value)">
+            </div>
+            
+            <div class="control-row">
+                <label>PHASE SHIFT (φ) <span class="val-display" id="osc1-phase-val" onclick="manualInput('osc1', 'phase', 'Phase Shift (°)', 0, 360)">0°</span></label>
+                <input type="range" id="osc1-phase" min="0" max="360" step="1" value="0" oninput="updateOsc('osc1', 'phase', parseInt(this.value))">
+            </div>
+        </div>
+
+        <!-- PANEL 2 -->
+        <div class="osc-panel osc2">
+            <div class="panel-header">
+                <span>OSCILLATOR 2</span>
+                <label class="switch">
+                    <input type="checkbox" id="osc2-on" onchange="updateOsc('osc2', 'on', this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="control-row">
+                <label>WAVEFORM</label>
+                <select id="osc2-type" onchange="updateOsc('osc2', 'type', this.value)">
+                    <option value="sine">SINE</option>
+                    <option value="square">SQUARE</option>
+                    <option value="sawtooth">SAWTOOTH</option>
+                    <option value="triangle">TRIANGLE</option>
+                </select>
+            </div>
+            
+            <div class="control-row">
+                <label>AMPLITUDE (A) <span class="val-display" id="osc2-amp-val" onclick="manualInput('osc2', 'amp', 'Amplitude', 0, 1)">0.50</span></label>
+                <input type="range" id="osc2-amp" min="0" max="1" step="0.01" value="0.5" oninput="updateOsc('osc2', 'amp', parseFloat(this.value))">
+            </div>
+            
+            <div class="control-row">
+                <label>FREQUENCY (f) <span class="val-display" id="osc2-freq-val" onclick="manualInput('osc2', 'freq', 'Frequency (Hz)', 110, 880)">222 Hz</span></label>
+                <input type="range" id="osc2-freq-slider" min="0" max="100" step="0.1" value="33.6" oninput="updateOscFreq('osc2', this.value)">
+            </div>
+            
+            <div class="control-row">
+                <label>PHASE SHIFT (φ) <span class="val-display" id="osc2-phase-val" onclick="manualInput('osc2', 'phase', 'Phase Shift (°)', 0, 360)">0°</span></label>
+                <input type="range" id="osc2-phase" min="0" max="360" step="1" value="0" oninput="updateOsc('osc2', 'phase', parseInt(this.value))">
+            </div>
+        </div>
+
+        <!-- PANEL 3 -->
+        <div class="osc-panel osc3">
+            <div class="panel-header">
+                <span>OSCILLATOR 3</span>
+                <label class="switch">
+                    <input type="checkbox" id="osc3-on" onchange="updateOsc('osc3', 'on', this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="control-row">
+                <label>WAVEFORM</label>
+                <select id="osc3-type" onchange="updateOsc('osc3', 'type', this.value)">
+                    <option value="sine">SINE</option>
+                    <option value="square">SQUARE</option>
+                    <option value="sawtooth">SAWTOOTH</option>
+                    <option value="triangle">TRIANGLE</option>
+                </select>
+            </div>
+            
+            <div class="control-row">
+                <label>AMPLITUDE (A) <span class="val-display" id="osc3-amp-val" onclick="manualInput('osc3', 'amp', 'Amplitude', 0, 1)">0.30</span></label>
+                <input type="range" id="osc3-amp" min="0" max="1" step="0.01" value="0.3" oninput="updateOsc('osc3', 'amp', parseFloat(this.value))">
+            </div>
+            
+            <div class="control-row">
+                <label>FREQUENCY (f) <span class="val-display" id="osc3-freq-val" onclick="manualInput('osc3', 'freq', 'Frequency (Hz)', 110, 880)">440 Hz</span></label>
+                <input type="range" id="osc3-freq-slider" min="0" max="100" step="0.1" value="66.6" oninput="updateOscFreq('osc3', this.value)">
+            </div>
+            
+            <div class="control-row">
+                <label>PHASE SHIFT (φ) <span class="val-display" id="osc3-phase-val" onclick="manualInput('osc3', 'phase', 'Phase Shift (°)', 0, 360)">0°</span></label>
+                <input type="range" id="osc3-phase" min="0" max="360" step="1" value="0" oninput="updateOsc('osc3', 'phase', parseInt(this.value))">
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * WAVE SYNTHESIZER LAB ENGINE (M4)
+         * Architecture: Web Audio API Nodes + Pure Math Canvas Rendering
+         * Features: Real-time phase shift via DelayNodes, Constructive Interference Simulation
+         */
+
+        // --- STATE & CONFIG ---
+        const MIN_FREQ = 110; // A2
+        const MAX_FREQ = 880; // A5
+
+        const state = {
+            masterMute: false,
+            windowSize: 0.02, // Time window visible on canvas (20ms)
+            animSpeed: 1.0,   // Multiplier for wave scroll speed
+            osc1: { on: true,  type: 'sine', amp: 0.8, freq: 220, phase: 0 },
+            osc2: { on: false, type: 'sine', amp: 0.5, freq: 222, phase: 0 },
+            osc3: { on: false, type: 'sine', amp: 0.3, freq: 440, phase: 0 }
+        };
+
+        // --- DOM Elements ---
+        const canvas = document.getElementById('oscCanvas');
+        const ctx = canvas.getContext('2d');
+        let width = 0, height = 0;
+
+        // --- AUDIO ENGINE ---
+        let audioCtx, masterGain;
+        let o1, g1, d1;
+        let o2, g2, d2;
+        let o3, g3, d3;
+        let isAudioInitialized = false;
+
+        function initAudio() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+            
+            // Master Output (Capped at 0.33 to prevent clipping with 3 oscillators)
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.33; 
+            masterGain.connect(audioCtx.destination);
+            
+            // OSC 1 Pipeline: Oscillator -> Gain -> Delay -> Master
+            o1 = audioCtx.createOscillator();
+            g1 = audioCtx.createGain();
+            d1 = audioCtx.createDelay(1.0); // 1.0s max delay
+            o1.connect(g1);
+            g1.connect(d1);
+            d1.connect(masterGain);
+            o1.start();
+            
+            // OSC 2 Pipeline
+            o2 = audioCtx.createOscillator();
+            g2 = audioCtx.createGain();
+            d2 = audioCtx.createDelay(1.0);
+            o2.connect(g2);
+            g2.connect(d2);
+            d2.connect(masterGain);
+            o2.start();
+            
+            // OSC 3 Pipeline
+            o3 = audioCtx.createOscillator();
+            g3 = audioCtx.createGain();
+            d3 = audioCtx.createDelay(1.0);
+            o3.connect(g3);
+            g3.connect(d3);
+            d3.connect(masterGain);
+            o3.start();
+
+            isAudioInitialized = true;
+            updateAudio();
+        }
+
+        function updateAudio() {
+            if(!isAudioInitialized) return;
+            const now = audioCtx.currentTime;
+            
+            // Master Volume
+            masterGain.gain.setTargetAtTime(state.masterMute ? 0 : 0.33, now, 0.05);
+            
+            const applyOsc = (oscObj, gainNode, delayNode, oscState) => {
+                oscObj.type = oscState.type;
+                oscObj.frequency.setTargetAtTime(oscState.freq, now, 0.05);
+                const v = oscState.on ? oscState.amp : 0;
+                gainNode.gain.setTargetAtTime(v, now, 0.05);
+                
+                const delay = ((360 - oscState.phase) % 360) / 360 / oscState.freq;
+                delayNode.delayTime.setTargetAtTime(delay, now, 0.05);
+            };
+
+            applyOsc(o1, g1, d1, state.osc1);
+            applyOsc(o2, g2, d2, state.osc2);
+            applyOsc(o3, g3, d3, state.osc3);
+        }
+
+        // --- MATH HELPERS ---
+        // Logarithmic scale for frequency slider to make tuning feel natural
+        function sliderToFreq(val) {
+            return MIN_FREQ * Math.pow(MAX_FREQ / MIN_FREQ, val / 100);
+        }
+        function freqToSlider(f) {
+            return 100 * Math.log(f / MIN_FREQ) / Math.log(MAX_FREQ / MIN_FREQ);
+        }
+
+        // --- UI BINDINGS ---
+        function startApp() {
+            document.getElementById('start-overlay').style.display = 'none';
+            initAudio();
+        }
+
+        function toggleMute() {
+            state.masterMute = !state.masterMute;
+            const btn = document.getElementById('btn-mute');
+            btn.innerText = state.masterMute ? "MUTE: ON" : "MUTE: OFF";
+            btn.classList.toggle('active', state.masterMute);
+            updateAudio();
+        }
+
+        function updateOsc(oscId, param, value) {
+            state[oscId][param] = value;
+            
+            // Update labels
+            if(param === 'amp') document.getElementById(`${oscId}-amp-val`).innerText = value.toFixed(2);
+            if(param === 'phase') document.getElementById(`${oscId}-phase-val`).innerText = value + "°";
+            
+            updateAudio();
+            updateEquation();
+        }
+
+        function updateOscFreq(oscId, sliderVal) {
+            const f = sliderToFreq(parseFloat(sliderVal));
+            state[oscId].freq = f;
+            document.getElementById(`${oscId}-freq-val`).innerText = Math.round(f) + " Hz";
+            updateAudio();
+            updateEquation();
+        }
+
+        // Global Parameters (Time & Speed)
+        function updateGlobal(param, value) {
+            state[param] = parseFloat(value);
+            if (param === 'animSpeed') {
+                document.getElementById('anim-speed-val').innerText = state.animSpeed.toFixed(1) + 'x';
+            } else if (param === 'windowSize') {
+                document.getElementById('time-window-val').innerText = Math.round(state.windowSize * 1000) + ' ms';
+            }
+        }
+
+        // --- MANUAL INPUT PROMPTS ---
+        window.manualInput = function(oscId, param, label, min, max) {
+            const currentVal = state[oscId][param];
+            let input = prompt(`Enter ${label} (${min} - ${max}):`, currentVal);
+            if (input !== null && input.trim() !== '') {
+                let val = parseFloat(input);
+                if (!isNaN(val)) {
+                    val = Math.max(min, Math.min(max, val)); // Clamp
+                    if (param === 'freq') {
+                        const sVal = freqToSlider(val);
+                        document.getElementById(`${oscId}-freq-slider`).value = sVal;
+                        updateOscFreq(oscId, sVal);
+                    } else {
+                        document.getElementById(`${oscId}-${param}`).value = val;
+                        updateOsc(oscId, param, val);
+                    }
+                }
+            }
+        };
+
+        window.manualGlobalInput = function(param, label, min, max) {
+            const currentVal = state[param];
+            let input = prompt(`Enter ${label} (${min} - ${max}):`, currentVal);
+            if (input !== null && input.trim() !== '') {
+                let val = parseFloat(input);
+                if (!isNaN(val)) {
+                    val = Math.max(min, Math.min(max, val)); // Clamp
+                    let sliderId = param === 'animSpeed' ? 'anim-speed' : 'time-window';
+                    document.getElementById(sliderId).value = val;
+                    updateGlobal(param, val);
+                }
+            }
+        };
+
+        // Sync initial HTML UI with JS State
+        function syncUI() {
+            ['osc1', 'osc2', 'osc3'].forEach(id => {
+                const osc = state[id];
+                document.getElementById(`${id}-on`).checked = osc.on;
+                document.getElementById(`${id}-type`).value = osc.type;
+                
+                document.getElementById(`${id}-amp`).value = osc.amp;
+                document.getElementById(`${id}-amp-val`).innerText = osc.amp.toFixed(2);
+                
+                const sVal = freqToSlider(osc.freq);
+                document.getElementById(`${id}-freq-slider`).value = sVal;
+                document.getElementById(`${id}-freq-val`).innerText = Math.round(osc.freq) + " Hz";
+                
+                document.getElementById(`${id}-phase`).value = osc.phase;
+                document.getElementById(`${id}-phase-val`).innerText = osc.phase + "°";
+            });
+            
+            document.getElementById('anim-speed').value = state.animSpeed;
+            document.getElementById('anim-speed-val').innerText = state.animSpeed.toFixed(1) + 'x';
+            
+            document.getElementById('time-window').value = state.windowSize;
+            document.getElementById('time-window-val').innerText = Math.round(state.windowSize * 1000) + ' ms';
+            
+            updateEquation();
+        }
+
+        // --- VISUALIZATION (CANVAS MATH) ---
+        function resize() {
+            const container = document.getElementById('oscilloscope-container');
+            width = container.clientWidth;
+            height = container.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(149, 255, 119, 0.1)';
+            ctx.lineWidth = 1;
+            
+            // Horizontal lines
+            const hDivs = 8;
+            for(let i=0; i<=hDivs; i++) {
+                const y = (i/hDivs) * height;
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            }
+            
+            // Vertical lines
+            const wDivs = 20;
+            for(let i=0; i<=wDivs; i++) {
+                const x = (i/wDivs) * width;
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+            }
+            
+            // X-Axis
+            ctx.strokeStyle = 'rgba(149, 255, 119, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, height/2); ctx.lineTo(width, height/2); ctx.stroke();
+        }
+
+        function evalWave(type, amp, freq, phaseDeg, t) {
+            const phaseRad = phaseDeg * Math.PI / 180;
+            const theta = 2 * Math.PI * freq * t + phaseRad;
+            let val = 0;
+            
+            switch(type) {
+                case 'sine':
+                    val = Math.sin(theta);
+                    break;
+                case 'square':
+                    val = Math.sin(theta) >= 0 ? 1 : -1;
+                    break;
+                case 'sawtooth':
+                    // Standard descending sawtooth to visually match WebAudio delay phasing correctly
+                    let p1 = (theta / (2*Math.PI)) % 1;
+                    if (p1 < 0) p1 += 1;
+                    val = 1 - 2 * p1; 
+                    break;
+                case 'triangle':
+                    // Elegant pure math definition of a triangle wave
+                    val = (2 / Math.PI) * Math.asin(Math.sin(theta));
+                    break;
+            }
+            return amp * val;
+        }
+
+        function drawPath(points, color, alpha=1.0, lineWidth=2) {
+            if(points.length === 0) return;
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = alpha;
+            ctx.lineWidth = lineWidth;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+            
+            ctx.moveTo(points[0].x, points[0].y);
+            for(let i=1; i<points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.stroke();
+            
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1.0;
+        }
+
+        let visualTimeOffset = 0;
+
+        function renderCanvas() {
+            // A slow constant scroll acts as the oscilloscope's trigger sweep
+            // Multiply by state.animSpeed for dynamic speed control
+            visualTimeOffset -= (0.0001 * state.animSpeed); 
+            
+            ctx.clearRect(0, 0, width, height);
+            drawGrid();
+            
+            const centerY = height / 2;
+            const ampScale = height * 0.16; // 1.0 Amplitude = 16% of height (So max Mix of 3.0 = 48% = touches edge safely)
+            
+            const p1 = [], p2 = [], p3 = [], pMix = [];
+            
+            // Sample points across the canvas
+            for(let x = 0; x <= width; x += 2) {
+                const xNorm = x / width;
+                const t = visualTimeOffset + (xNorm * state.windowSize); // Map X position to time window
+                
+                let y1 = state.osc1.on ? evalWave(state.osc1.type, state.osc1.amp, state.osc1.freq, state.osc1.phase, t) : 0;
+                let y2 = state.osc2.on ? evalWave(state.osc2.type, state.osc2.amp, state.osc2.freq, state.osc2.phase, t) : 0;
+                let y3 = state.osc3.on ? evalWave(state.osc3.type, state.osc3.amp, state.osc3.freq, state.osc3.phase, t) : 0;
+                let yMix = y1 + y2 + y3;
+                
+                if(state.osc1.on) p1.push({x, y: centerY - y1 * ampScale});
+                if(state.osc2.on) p2.push({x, y: centerY - y2 * ampScale});
+                if(state.osc3.on) p3.push({x, y: centerY - y3 * ampScale});
+                pMix.push({x, y: centerY - yMix * ampScale});
+            }
+            
+            // Draw individual waves slightly transparent
+            drawPath(p1, '#95FF77', 0.6, 2);
+            drawPath(p2, '#00D1FF', 0.6, 2);
+            drawPath(p3, '#FF8800', 0.6, 2);
+            
+            // Draw mixed resulting wave boldly
+            if(state.osc1.on || state.osc2.on || state.osc3.on) {
+                drawPath(pMix, '#FFD700', 1.0, 3);
+            }
+            
+            requestAnimationFrame(renderCanvas);
+        }
+
+        // --- EQUATION RENDERING (KaTeX) ---
+        function getEqString(id, osc) {
+            if (!osc.on) return `y_${id}(t) = 0`;
+            
+            let typeStr = "\\sin";
+            if (osc.type === 'square') typeStr = "\\text{sqr}";
+            if (osc.type === 'sawtooth') typeStr = "\\text{saw}";
+            if (osc.type === 'triangle') typeStr = "\\text{tri}";
+            
+            let phaseStr = osc.phase === 0 ? "" : `+ ${osc.phase}^\\circ`;
+            
+            return `y_${id}(t) = ${osc.amp.toFixed(2)} \\cdot ${typeStr}(2\\pi \\cdot ${Math.round(osc.freq)}t ${phaseStr})`;
+        }
+
+        function updateEquation() {
+            const eqDiv = document.getElementById('equation-display');
+            if (typeof katex === 'undefined') return; // Wait for KaTeX to load
+
+            const eq1 = getEqString(1, state.osc1);
+            const eq2 = getEqString(2, state.osc2);
+            const eq3 = getEqString(3, state.osc3);
+            
+            let activeEqs = [];
+            if (state.osc1.on) activeEqs.push("y_1(t)");
+            if (state.osc2.on) activeEqs.push("y_2(t)");
+            if (state.osc3.on) activeEqs.push("y_3(t)");
+
+            let eqMix = `y_{mix}(t) = 0`;
+            if (activeEqs.length > 0) {
+                eqMix = `y_{mix}(t) = ` + activeEqs.join(" + ");
+            }
+
+            // Format securely using KaTeX aligned environment
+            const latex = `\\begin{aligned} ${eqMix} \\\\ ${eq1} \\\\ ${eq2} \\\\ ${eq3} \\end{aligned}`;
+            
+            katex.render(latex, eqDiv, { displayMode: true, throwOnError: false });
+        }
+
+        // --- BOOT ---
+        window.addEventListener('resize', resize);
+        
+        // Ensure KaTeX is ready before initial sync
+        window.onload = () => {
+            resize();
+            syncUI();
+            renderCanvas();
+        };
+
+    </script>
+</body>
+</html>
