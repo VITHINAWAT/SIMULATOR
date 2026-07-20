@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WAVE_SYNTHESIZER // M4 [VITHINAWAT v1.3 - True DSP]</title>
+    <title>WAVE_SYNTHESIZER // M4 [VITHINAWAT v1.6 - Google Sites Ultimate Fix]</title>
     
     <!-- Import Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,11 +21,11 @@
             --graphite-grey: rgba(26, 28, 27, 0.95);
             --inactive-grey: #444444;
             
-            /* Wave Colors (Updated per Boss request) */
-            --wave1-color: #95FF77; /* Green (Was Yellow) */
+            /* Wave Colors */
+            --wave1-color: #95FF77; /* Green */
             --wave2-color: #00D1FF; /* Cyan */
             --wave3-color: #FF8800; /* Neon Orange */
-            --mixed-color: #FFFFFF; /* White (Was Green) */
+            --mixed-color: #FFFFFF; /* White */
             
             --font-main: 'Share Tech Mono', monospace;
         }
@@ -36,11 +36,12 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* FIX 1: Force viewport units for Google Sites iframe */
         body, html {
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             background-color: var(--void-black);
             color: #fff;
             font-family: var(--font-main);
@@ -51,7 +52,7 @@
 
         /* --- OVERLAY --- */
         #start-overlay {
-            position: fixed;
+            position: absolute; /* Use absolute to cover iframe bounds safely */
             top: 0; left: 0;
             width: 100%; height: 100%;
             background: rgba(18, 18, 18, 0.95);
@@ -125,16 +126,21 @@
 
         /* --- 2. OSCILLOSCOPE (CANVAS) --- */
         #oscilloscope-container {
-            flex: 1;
+            flex: 1 1 auto; /* Allow growth */
             width: 100%;
             position: relative;
             background: var(--void-black);
-            min-height: 250px;
-        }
-        canvas {
+            min-height: 200px !important; /* FIX 2: Absolute minimum height to prevent collapsing to 0 */
             display: block;
+            overflow: hidden;
+        }
+        canvas#oscCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
+            display: block;
         }
 
         /* --- 3. MIDDLE SECTION (EQUATION & GLOBAL) --- */
@@ -309,20 +315,10 @@
 
         /* Mobile Layout */
         @media (max-width: 900px) {
-            #equation-display {
-                font-size: 0.75rem;
-                padding: 5px 10px;
-            }
-            .global-panel {
-                padding: 5px 10px;
-            }
-            #controls-section {
-                gap: 10px;
-                padding: 10px;
-            }
-            .control-row label {
-                font-size: 0.7rem;
-            }
+            #equation-display { font-size: 0.75rem; padding: 5px 10px; }
+            .global-panel { padding: 5px 10px; }
+            #controls-section { gap: 10px; padding: 10px; }
+            .control-row label { font-size: 0.7rem; }
         }
     </style>
 </head>
@@ -353,7 +349,7 @@
 
     <!-- 3. MIDDLE SECTION -->
     <div id="middle-section">
-        <div id="equation-display"></div>
+        <div id="equation-display">LOADING MATH...</div>
         
         <div class="global-panel">
             <div class="control-row">
@@ -397,7 +393,6 @@
                 <label>PHASE SHIFT (φ) <span class="val-display" id="osc1-phase-val" onclick="manualInput('osc1', 'phase', 'Phase Shift (°)', 0, 360)">0°</span></label>
                 <input type="range" id="osc1-phase" min="0" max="360" step="1" value="0" oninput="updateOsc('osc1', 'phase', parseInt(this.value))">
             </div>
-            <!-- NEW: PANNING CONTROL -->
             <div class="control-row">
                 <label>PANNING</label>
                 <select id="osc1-pan" onchange="updateOsc('osc1', 'pan', this.value)">
@@ -435,7 +430,6 @@
                 <label>PHASE SHIFT (φ) <span class="val-display" id="osc2-phase-val" onclick="manualInput('osc2', 'phase', 'Phase Shift (°)', 0, 360)">0°</span></label>
                 <input type="range" id="osc2-phase" min="0" max="360" step="1" value="0" oninput="updateOsc('osc2', 'phase', parseInt(this.value))">
             </div>
-            <!-- NEW: PANNING CONTROL -->
             <div class="control-row">
                 <label>PANNING</label>
                 <select id="osc2-pan" onchange="updateOsc('osc2', 'pan', this.value)">
@@ -473,7 +467,6 @@
                 <label>PHASE SHIFT (φ) <span class="val-display" id="osc3-phase-val" onclick="manualInput('osc3', 'phase', 'Phase Shift (°)', 0, 360)">0°</span></label>
                 <input type="range" id="osc3-phase" min="0" max="360" step="1" value="0" oninput="updateOsc('osc3', 'phase', parseInt(this.value))">
             </div>
-            <!-- NEW: PANNING CONTROL -->
             <div class="control-row">
                 <label>PANNING</label>
                 <select id="osc3-pan" onchange="updateOsc('osc3', 'pan', this.value)">
@@ -487,8 +480,8 @@
 
     <script>
         /**
-         * WAVE SYNTHESIZER LAB ENGINE (M4) - v1.4 [Binaural Edition]
-         * Added: Stereo Panning (L/C/R) natively inside the DSP engine.
+         * WAVE SYNTHESIZER LAB ENGINE (M4) - v1.6 [Google Sites Ultimate Fix]
+         * Core Fix: Polling Bootloader + Robust Rendering
          */
 
         const MIN_FREQ = 110; 
@@ -507,22 +500,21 @@
         const ctx = canvas.getContext('2d');
         let width = 0, height = 0;
 
-        // --- CUSTOM DSP AUDIO ENGINE ---
+        // --- AUDIO ENGINE ---
         let audioCtx, synthNode;
         let globalAudioTime = 0;
         let isAudioInitialized = false;
 
         function initAudio() {
+            if (isAudioInitialized) return;
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AudioContext();
             
-            // ScriptProcessor allows us to synthesize sound byte-by-byte
-            // Changed from 1 channel to 2 channels (STEREO)
             synthNode = audioCtx.createScriptProcessor(4096, 0, 2);
             
             synthNode.onaudioprocess = function(e) {
-                const outL = e.outputBuffer.getChannelData(0); // Left Ear
-                const outR = e.outputBuffer.getChannelData(1); // Right Ear
+                const outL = e.outputBuffer.getChannelData(0); 
+                const outR = e.outputBuffer.getChannelData(1); 
                 const dt = 1 / audioCtx.sampleRate;
                 
                 for (let i = 0; i < outL.length; i++) {
@@ -545,7 +537,6 @@
                         if(state.osc3.pan === 'R' || state.osc3.pan === 'C') yR += y;
                     }
                     
-                    // Master output scaling to Left and Right channels
                     outL[i] = state.masterMute ? 0 : yL * 0.33;
                     outR[i] = state.masterMute ? 0 : yR * 0.33;
                     globalAudioTime += dt;
@@ -560,13 +551,12 @@
         function sliderToFreq(val) { return MIN_FREQ * Math.pow(MAX_FREQ / MIN_FREQ, val / 100); }
         function freqToSlider(f) { return 100 * Math.log(f / MIN_FREQ) / Math.log(MAX_FREQ / MIN_FREQ); }
 
-        // Perfect Math Evaluation (Used for both Visuals and Audio!)
         function evalWave(type, amp, freq, phaseDeg, t) {
             const phaseRad = phaseDeg * Math.PI / 180;
             const theta = 2 * Math.PI * freq * t + phaseRad;
             
             let p = (theta / (2 * Math.PI)) % 1;
-            if (p < 0) p += 1; // Normalize to 0.0 - 1.0
+            if (p < 0) p += 1; 
             
             let val = 0;
             switch(type) {
@@ -585,7 +575,7 @@
         // --- UI BINDINGS ---
         function startApp() {
             document.getElementById('start-overlay').style.display = 'none';
-            initAudio();
+            initAudio(); // Initialize audio ONLY upon user click
         }
 
         function toggleMute() {
@@ -603,7 +593,6 @@
         }
 
         function updateOscFreq(oscId, sliderVal) {
-            // Lock frequency to integer when sliding to prevent decimal drifting
             const f = Math.round(sliderToFreq(parseFloat(sliderVal)));
             state[oscId].freq = f;
             document.getElementById(`${oscId}-freq-val`).innerText = f + " Hz";
@@ -627,7 +616,7 @@
                 if (!isNaN(val)) {
                     val = Math.max(min, Math.min(max, val));
                     if (param === 'freq') {
-                        val = Math.round(val); // Force integer
+                        val = Math.round(val); 
                         const sVal = freqToSlider(val);
                         document.getElementById(`${oscId}-freq-slider`).value = sVal;
                         updateOscFreq(oscId, sVal);
@@ -668,7 +657,7 @@
                 document.getElementById(`${id}-freq-val`).innerText = Math.round(osc.freq) + " Hz";
                 document.getElementById(`${id}-phase`).value = osc.phase;
                 document.getElementById(`${id}-phase-val`).innerText = osc.phase + "°";
-                document.getElementById(`${id}-pan`).value = osc.pan; // Sync Pan
+                document.getElementById(`${id}-pan`).value = osc.pan; 
             });
             
             document.getElementById('anim-speed').value = state.animSpeed;
@@ -676,16 +665,10 @@
 
             document.getElementById('time-window').value = state.windowSize;
             document.getElementById('time-window-val').innerText = Math.round(state.windowSize * 1000) + ' ms';
-            updateEquation();
         }
 
-        function resize() {
-            const container = document.getElementById('oscilloscope-container');
-            width = container.clientWidth;
-            height = container.clientHeight;
-            canvas.width = width;
-            canvas.height = height;
-        }
+        // --- CANVAS RENDERING ---
+        let visualTimeOffset = 0;
 
         function drawGrid() {
             ctx.strokeStyle = 'rgba(149, 255, 119, 0.1)';
@@ -699,7 +682,6 @@
                 ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
             }
             
-            // X-Axis
             ctx.strokeStyle = 'rgba(149, 255, 119, 0.3)';
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(0, height/2); ctx.lineTo(width, height/2); ctx.stroke();
@@ -722,59 +704,72 @@
             ctx.globalAlpha = 1.0;
         }
 
-        let visualTimeOffset = 0;
-
         function renderCanvas() {
-            // Constant, gentle animation speed multiplied by slider
-            visualTimeOffset += 0.0005 * state.animSpeed; 
-            
-            ctx.clearRect(0, 0, width, height);
-            drawGrid();
-            
-            // Draw Center Anchor Line (t = 0 anchor)
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath(); ctx.moveTo(width/2, 0); ctx.lineTo(width/2, height); ctx.stroke();
-            ctx.setLineDash([]);
+            try {
+                // Ensure dimensions are correct every frame (Overrides iframe sandbox quirks)
+                const container = document.getElementById('oscilloscope-container');
+                if (!container) return requestAnimationFrame(renderCanvas);
 
-            const centerY = height / 2;
-            const ampScale = height * 0.16; 
-            
-            const p1 = [], p2 = [], p3 = [], pMix = [];
-            
-            for(let x = 0; x <= width; x += 2) {
-                // ANCHOR: The center of the screen represents visualTimeOffset.
-                const xNorm = (x - width/2) / width; // ranges from -0.5 to 0.5
-                const t = visualTimeOffset + (xNorm * state.windowSize); 
+                let cw = container.clientWidth;
+                let ch = container.clientHeight;
                 
-                // Force frequencies to integers for graphing as well to perfectly match audio
-                let y1 = state.osc1.on ? evalWave(state.osc1.type, state.osc1.amp, Math.round(state.osc1.freq), state.osc1.phase, t) : 0;
-                let y2 = state.osc2.on ? evalWave(state.osc2.type, state.osc2.amp, Math.round(state.osc2.freq), state.osc2.phase, t) : 0;
-                let y3 = state.osc3.on ? evalWave(state.osc3.type, state.osc3.amp, Math.round(state.osc3.freq), state.osc3.phase, t) : 0;
-                let yMix = y1 + y2 + y3;
+                // Fallback protection against zero-height from iframes
+                if (cw < 100) cw = window.innerWidth || 800;
+                if (ch < 100) ch = 250;
+
+                if (canvas.width !== cw || canvas.height !== ch) {
+                    canvas.width = cw;
+                    canvas.height = ch;
+                    width = cw;
+                    height = ch;
+                }
+
+                visualTimeOffset += 0.0005 * state.animSpeed; 
                 
-                if(state.osc1.on) p1.push({x, y: centerY - y1 * ampScale});
-                if(state.osc2.on) p2.push({x, y: centerY - y2 * ampScale});
-                if(state.osc3.on) p3.push({x, y: centerY - y3 * ampScale});
+                ctx.clearRect(0, 0, width, height);
+                drawGrid();
                 
-                pMix.push({x, y: centerY - yMix * ampScale});
-            }
-            
-            // Updated Colors
-            drawPath(p1, '#95FF77', 0.6, 2); // Green
-            drawPath(p2, '#00D1FF', 0.6, 2); // Cyan
-            drawPath(p3, '#FF8800', 0.6, 2); // Orange
-            
-            if(state.osc1.on || state.osc2.on || state.osc3.on) {
-                drawPath(pMix, '#FFFFFF', 1.0, 3); // White
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath(); ctx.moveTo(width/2, 0); ctx.lineTo(width/2, height); ctx.stroke();
+                ctx.setLineDash([]);
+
+                const centerY = height / 2;
+                const ampScale = height * 0.16; 
+                
+                const p1 = [], p2 = [], p3 = [], pMix = [];
+                
+                for(let x = 0; x <= width; x += 2) {
+                    const xNorm = (x - width/2) / width; 
+                    const t = visualTimeOffset + (xNorm * state.windowSize); 
+                    
+                    let y1 = state.osc1.on ? evalWave(state.osc1.type, state.osc1.amp, Math.round(state.osc1.freq), state.osc1.phase, t) : 0;
+                    let y2 = state.osc2.on ? evalWave(state.osc2.type, state.osc2.amp, Math.round(state.osc2.freq), state.osc2.phase, t) : 0;
+                    let y3 = state.osc3.on ? evalWave(state.osc3.type, state.osc3.amp, Math.round(state.osc3.freq), state.osc3.phase, t) : 0;
+                    let yMix = y1 + y2 + y3;
+                    
+                    if(state.osc1.on) p1.push({x, y: centerY - y1 * ampScale});
+                    if(state.osc2.on) p2.push({x, y: centerY - y2 * ampScale});
+                    if(state.osc3.on) p3.push({x, y: centerY - y3 * ampScale});
+                    pMix.push({x, y: centerY - yMix * ampScale});
+                }
+                
+                drawPath(p1, '#95FF77', 0.6, 2); 
+                drawPath(p2, '#00D1FF', 0.6, 2); 
+                drawPath(p3, '#FF8800', 0.6, 2); 
+                
+                if(state.osc1.on || state.osc2.on || state.osc3.on) {
+                    drawPath(pMix, '#FFFFFF', 1.0, 3); 
+                }
+            } catch (e) {
+                console.warn("Render Error (Iframe issue?):", e);
             }
             
             requestAnimationFrame(renderCanvas);
         }
 
         // --- EQUATION RENDERING (KaTeX) ---
-        // Updated Colors
         const C1 = "#95FF77";
         const C2 = "#00D1FF";
         const C3 = "#FF8800";
@@ -794,35 +789,58 @@
         }
 
         function updateEquation() {
-            const eqDiv = document.getElementById('equation-display');
-            if (typeof katex === 'undefined') return; 
+            try {
+                const eqDiv = document.getElementById('equation-display');
+                if (typeof katex === 'undefined') {
+                    // Retry silently if CDN is blocked or slow
+                    setTimeout(updateEquation, 500);
+                    return; 
+                }
 
-            const eq1 = getEqString(1, state.osc1, C1);
-            const eq2 = getEqString(2, state.osc2, C2);
-            const eq3 = getEqString(3, state.osc3, C3);
-            
-            let activeEqs = [];
-            if (state.osc1.on) activeEqs.push(`\\textcolor{${C1}}{y_1(t)}`);
-            if (state.osc2.on) activeEqs.push(`\\textcolor{${C2}}{y_2(t)}`);
-            if (state.osc3.on) activeEqs.push(`\\textcolor{${C3}}{y_3(t)}`);
+                const eq1 = getEqString(1, state.osc1, C1);
+                const eq2 = getEqString(2, state.osc2, C2);
+                const eq3 = getEqString(3, state.osc3, C3);
+                
+                let activeEqs = [];
+                if (state.osc1.on) activeEqs.push(`\\textcolor{${C1}}{y_1(t)}`);
+                if (state.osc2.on) activeEqs.push(`\\textcolor{${C2}}{y_2(t)}`);
+                if (state.osc3.on) activeEqs.push(`\\textcolor{${C3}}{y_3(t)}`);
 
-            let eqMix = `\\textcolor{${CM}}{y_{mix}(t)} = \\textcolor{${CM}}{0}`;
-            if (activeEqs.length > 0) {
-                eqMix = `\\textcolor{${CM}}{y_{mix}(t)} = ` + activeEqs.join(" + ");
+                let eqMix = `\\textcolor{${CM}}{y_{mix}(t)} = \\textcolor{${CM}}{0}`;
+                if (activeEqs.length > 0) {
+                    eqMix = `\\textcolor{${CM}}{y_{mix}(t)} = ` + activeEqs.join(" + ");
+                }
+
+                const latex = `\\begin{aligned} ${eqMix} \\\\ ${eq1} \\\\ ${eq2} \\\\ ${eq3} \\end{aligned}`;
+                katex.render(latex, eqDiv, { displayMode: true, throwOnError: false });
+            } catch (e) {
+                console.warn("KaTeX Error:", e);
+                document.getElementById('equation-display').innerText = "MATH ENGINE ERROR";
             }
-
-            const latex = `\\begin{aligned} ${eqMix} \\\\ ${eq1} \\\\ ${eq2} \\\\ ${eq3} \\end{aligned}`;
-            katex.render(latex, eqDiv, { displayMode: true, throwOnError: false });
         }
 
-        // --- BOOT ---
-        window.addEventListener('resize', resize);
-        
-        window.onload = () => {
-            resize();
-            syncUI();
-            renderCanvas();
-        };
+        // --- APP BOOTSTRAP (POLLING FIX) ---
+        let isBooted = false;
+
+        function attemptBoot() {
+            if (isBooted) return;
+            
+            const container = document.getElementById('oscilloscope-container');
+            // Wait until the iframe actually gives the container a physical width greater than 50px
+            if (container && container.clientWidth > 50) {
+                isBooted = true;
+                syncUI();
+                updateEquation();
+                renderCanvas(); // Start loop
+            } else {
+                // Poll every 100ms until Google Sites is ready
+                setTimeout(attemptBoot, 100);
+            }
+        }
+
+        // Start polling immediately
+        attemptBoot();
+
     </script>
 </body>
 </html>
