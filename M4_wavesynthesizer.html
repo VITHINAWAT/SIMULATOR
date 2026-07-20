@@ -397,6 +397,15 @@
                 <label>PHASE SHIFT (φ) <span class="val-display" id="osc1-phase-val" onclick="manualInput('osc1', 'phase', 'Phase Shift (°)', 0, 360)">0°</span></label>
                 <input type="range" id="osc1-phase" min="0" max="360" step="1" value="0" oninput="updateOsc('osc1', 'phase', parseInt(this.value))">
             </div>
+            <!-- NEW: PANNING CONTROL -->
+            <div class="control-row">
+                <label>PANNING</label>
+                <select id="osc1-pan" onchange="updateOsc('osc1', 'pan', this.value)">
+                    <option value="C">CENTER (C)</option>
+                    <option value="L">LEFT (L)</option>
+                    <option value="R">RIGHT (R)</option>
+                </select>
+            </div>
         </div>
 
         <!-- PANEL 2 -->
@@ -425,6 +434,15 @@
             <div class="control-row">
                 <label>PHASE SHIFT (φ) <span class="val-display" id="osc2-phase-val" onclick="manualInput('osc2', 'phase', 'Phase Shift (°)', 0, 360)">0°</span></label>
                 <input type="range" id="osc2-phase" min="0" max="360" step="1" value="0" oninput="updateOsc('osc2', 'phase', parseInt(this.value))">
+            </div>
+            <!-- NEW: PANNING CONTROL -->
+            <div class="control-row">
+                <label>PANNING</label>
+                <select id="osc2-pan" onchange="updateOsc('osc2', 'pan', this.value)">
+                    <option value="C">CENTER (C)</option>
+                    <option value="L">LEFT (L)</option>
+                    <option value="R">RIGHT (R)</option>
+                </select>
             </div>
         </div>
 
@@ -455,14 +473,22 @@
                 <label>PHASE SHIFT (φ) <span class="val-display" id="osc3-phase-val" onclick="manualInput('osc3', 'phase', 'Phase Shift (°)', 0, 360)">0°</span></label>
                 <input type="range" id="osc3-phase" min="0" max="360" step="1" value="0" oninput="updateOsc('osc3', 'phase', parseInt(this.value))">
             </div>
+            <!-- NEW: PANNING CONTROL -->
+            <div class="control-row">
+                <label>PANNING</label>
+                <select id="osc3-pan" onchange="updateOsc('osc3', 'pan', this.value)">
+                    <option value="C">CENTER (C)</option>
+                    <option value="L">LEFT (L)</option>
+                    <option value="R">RIGHT (R)</option>
+                </select>
+            </div>
         </div>
     </div>
 
     <script>
         /**
-         * WAVE SYNTHESIZER LAB ENGINE (M4) - v1.3 [True DSP Edition]
-         * Fixed: Floating-point mismatch on frequencies causing imperfect cancellation.
-         * Colors reverted to original state. Animation Speed removed.
+         * WAVE SYNTHESIZER LAB ENGINE (M4) - v1.4 [Binaural Edition]
+         * Added: Stereo Panning (L/C/R) natively inside the DSP engine.
          */
 
         const MIN_FREQ = 110; 
@@ -472,9 +498,9 @@
             masterMute: false,
             animSpeed: 1.0,
             windowSize: 0.02, 
-            osc1: { on: true,  type: 'sine', amp: 0.8, freq: 222, phase: 0 },
-            osc2: { on: false, type: 'sine', amp: 0.8, freq: 222, phase: 0 },
-            osc3: { on: false, type: 'sine', amp: 0.3, freq: 440, phase: 0 }
+            osc1: { on: true,  type: 'sine', amp: 0.8, freq: 222, phase: 0, pan: 'C' },
+            osc2: { on: false, type: 'sine', amp: 0.8, freq: 222, phase: 0, pan: 'C' },
+            osc3: { on: false, type: 'sine', amp: 0.3, freq: 440, phase: 0, pan: 'C' }
         };
 
         const canvas = document.getElementById('oscCanvas');
@@ -490,23 +516,38 @@
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AudioContext();
             
-            // ScriptProcessor allows us to synthesize sound byte-by-byte from the math equation
-            synthNode = audioCtx.createScriptProcessor(4096, 0, 1);
+            // ScriptProcessor allows us to synthesize sound byte-by-byte
+            // Changed from 1 channel to 2 channels (STEREO)
+            synthNode = audioCtx.createScriptProcessor(4096, 0, 2);
             
             synthNode.onaudioprocess = function(e) {
-                const output = e.outputBuffer.getChannelData(0);
+                const outL = e.outputBuffer.getChannelData(0); // Left Ear
+                const outR = e.outputBuffer.getChannelData(1); // Right Ear
                 const dt = 1 / audioCtx.sampleRate;
                 
-                for (let i = 0; i < output.length; i++) {
-                    let y = 0;
-                    // CRITICAL FIX: Math.round() forces frequencies to be exact integers!
-                    // This prevents beating/drifting from floating point slider inaccuracies.
-                    if(state.osc1.on) y += evalWave(state.osc1.type, state.osc1.amp, Math.round(state.osc1.freq), state.osc1.phase, globalAudioTime);
-                    if(state.osc2.on) y += evalWave(state.osc2.type, state.osc2.amp, Math.round(state.osc2.freq), state.osc2.phase, globalAudioTime);
-                    if(state.osc3.on) y += evalWave(state.osc3.type, state.osc3.amp, Math.round(state.osc3.freq), state.osc3.phase, globalAudioTime);
+                for (let i = 0; i < outL.length; i++) {
+                    let yL = 0;
+                    let yR = 0;
+
+                    if(state.osc1.on) {
+                        let y = evalWave(state.osc1.type, state.osc1.amp, Math.round(state.osc1.freq), state.osc1.phase, globalAudioTime);
+                        if(state.osc1.pan === 'L' || state.osc1.pan === 'C') yL += y;
+                        if(state.osc1.pan === 'R' || state.osc1.pan === 'C') yR += y;
+                    }
+                    if(state.osc2.on) {
+                        let y = evalWave(state.osc2.type, state.osc2.amp, Math.round(state.osc2.freq), state.osc2.phase, globalAudioTime);
+                        if(state.osc2.pan === 'L' || state.osc2.pan === 'C') yL += y;
+                        if(state.osc2.pan === 'R' || state.osc2.pan === 'C') yR += y;
+                    }
+                    if(state.osc3.on) {
+                        let y = evalWave(state.osc3.type, state.osc3.amp, Math.round(state.osc3.freq), state.osc3.phase, globalAudioTime);
+                        if(state.osc3.pan === 'L' || state.osc3.pan === 'C') yL += y;
+                        if(state.osc3.pan === 'R' || state.osc3.pan === 'C') yR += y;
+                    }
                     
-                    // Master output scaling (avoid clipping)
-                    output[i] = state.masterMute ? 0 : y * 0.33;
+                    // Master output scaling to Left and Right channels
+                    outL[i] = state.masterMute ? 0 : yL * 0.33;
+                    outR[i] = state.masterMute ? 0 : yR * 0.33;
                     globalAudioTime += dt;
                 }
             };
@@ -627,6 +668,7 @@
                 document.getElementById(`${id}-freq-val`).innerText = Math.round(osc.freq) + " Hz";
                 document.getElementById(`${id}-phase`).value = osc.phase;
                 document.getElementById(`${id}-phase-val`).innerText = osc.phase + "°";
+                document.getElementById(`${id}-pan`).value = osc.pan; // Sync Pan
             });
             
             document.getElementById('anim-speed').value = state.animSpeed;
