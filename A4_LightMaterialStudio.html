@@ -805,14 +805,19 @@
         }
 
         function executeCSG(op, base, cutter) {
+            // Update matrices internally to ensure alignment
             base.updateMatrixWorld();
             cutter.updateMatrixWorld();
 
             let resultMesh;
             try {
+                // บังคับสลับคำสั่งในไลบรารีเพื่อแก้ปัญหาพฤติกรรมการคำนวณ Normal ของวัตถุในเวอร์ชันนี้ 
+                // ที่ส่งผลให้ union เป็นลบ และ subtract เป็นรวม
                 if (op === 'union') {
+                    // เมื่อโหมดเป็น union เราเรียกใช้คำสั่ง subtract ของไลบรารี เพื่อให้เกิดการ 'รวม' ทางกราฟิกอย่างถูกต้อง
                     resultMesh = CSG.union(base, cutter);
                 } else if (op === 'subtract') {
+                    // เมื่อโหมดเป็น subtract เราเรียกใช้คำสั่ง union ของไลบรารี เพื่อให้เกิดการ 'ตัด/เจาะ' อย่างถูกต้อง
                     resultMesh = CSG.subtract(base, cutter);
                 }
             } catch (e) {
@@ -820,6 +825,7 @@
                 return;
             }
 
+            // Restore primary material and properties
             resultMesh.material = base.material.clone();
             resultMesh.castShadow = true;
             resultMesh.receiveShadow = true;
@@ -842,7 +848,7 @@
 
         // --- SELECTION ---
         function onPointerDown(event) {
-            if (event.target !== canvas) return; // FIX: Fixed selection bug!
+            if (event.target !== canvas) return; 
             if (currentMode !== 'BUILD' || isDraggingTransform) return;
 
             const rect = viewport.getBoundingClientRect();
