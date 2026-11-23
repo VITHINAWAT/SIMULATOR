@@ -1,0 +1,2759 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VITHINAWAT // CIRCUIT LOGIC LAB</title>
+
+    <!-- Tailwind CSS & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #111413;
+            --panel-bg: #181C1B;
+            --border-col: #2B3330;
+            --accent-green: #95FF77;
+            --accent-cyan: #00D1FF;
+            --accent-pink: #F472B6;
+            --accent-danger: #FF3366;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #E5E7EB;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .font-mono-tech { font-family: 'Share Tech Mono', monospace; }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #111413; }
+        ::-webkit-scrollbar-thumb { background: #333D39; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #95FF77; }
+
+        .tool-item { transition: all 0.15s ease; }
+        .tool-item.active {
+            border-color: #95FF77 !important;
+            background: rgba(149, 255, 119, 0.14) !important;
+            box-shadow: 0 0 12px rgba(149, 255, 119, 0.18);
+        }
+
+        .sidebar-panel {
+            transition: width 0.2s ease, opacity 0.2s ease;
+        }
+        .sidebar-panel.collapsed {
+            width: 0 !important;
+            min-width: 0 !important;
+            border: none !important;
+            overflow: hidden !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        canvas { display: block; touch-action: none; }
+    </style>
+</head>
+<body>
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="min-h-[56px] bg-[#161A19] border-b border-[#2B3330] px-3 py-2 flex flex-wrap items-center justify-between gap-2 z-30">
+        <!-- Brand -->
+        <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-[#95FF77]/15 border border-[#95FF77]/60 flex items-center justify-center font-mono-tech font-bold text-[#95FF77] text-sm">
+                ⚡
+            </div>
+            <div>
+                <h1 class="font-mono-tech text-sm md:text-base font-bold tracking-wider text-white leading-tight">
+                    CIRCUIT LOGIC LAB <span class="text-[#95FF77] text-xs ml-1">VIRTUAL ELECTRONICS</span>
+                </h1>
+                <p class="text-[11px] text-gray-400 hidden sm:block">ห้องทดลองจำลองวงจรไฟฟ้า อิเล็กทรอนิกส์ และดิจิทัลแบบเรียลไทม์</p>
+            </div>
+        </div>
+
+        <!-- Simulation Controls -->
+        <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-run" onclick="toggleSim()" class="px-3 py-1.5 rounded-lg bg-[#95FF77] text-black font-mono-tech text-xs font-bold tracking-wider hover:brightness-110 active:scale-95 transition flex items-center gap-1.5">
+                <span id="run-icon">⏸</span> <span id="run-text">PAUSE</span>
+            </button>
+            <button onclick="resetSimTime()" title="รีเซ็ตเวลาและคายประจุ C/L" class="px-2.5 py-1.5 rounded-lg bg-[#1F2523] border border-[#3A4441] text-[#00D1FF] font-mono-tech text-xs hover:border-[#00D1FF] transition">
+                ↺ t=0
+            </button>
+            <button onclick="clearCircuit()" title="ล้างวงจรทั้งหมด" class="px-2.5 py-1.5 rounded-lg bg-[#1F2523] border border-[#3A4441] text-[#FF3366] font-mono-tech text-xs hover:border-[#FF3366] transition">
+                CLEAR
+            </button>
+            <button onclick="exportCircuit()" title="บันทึกวงจรเป็นไฟล์ JSON" class="px-2.5 py-1.5 rounded-lg bg-[#1F2523] border border-[#3A4441] text-gray-200 font-mono-tech text-xs hover:border-[#95FF77] hover:text-[#95FF77] transition">
+                SAVE
+            </button>
+            <button onclick="document.getElementById('file-import').click()" title="เปิดไฟล์วงจร JSON" class="px-2.5 py-1.5 rounded-lg bg-[#1F2523] border border-[#3A4441] text-gray-200 font-mono-tech text-xs hover:border-[#00D1FF] hover:text-[#00D1FF] transition">
+                LOAD
+            </button>
+            <input id="file-import" type="file" accept=".json,application/json" onchange="importCircuit(event)" class="hidden">
+
+            <!-- Preset Dropdown -->
+            <select id="preset-select" onchange="loadPreset(this.value)" class="bg-[#111413] border border-[#3A4441] text-[#00D1FF] font-mono-tech text-xs px-2.5 py-1.5 rounded-lg outline-none focus:border-[#00D1FF] cursor-pointer">
+                <option value="cmos_inverter">PRESET: CMOS Inverter (PMOS + NMOS)</option>
+                <option value="pnp_highside">PRESET: PNP High-Side LED Switch</option>
+                <option value="digital_half_adder">PRESET: Digital Half Adder (XOR + AND)</option>
+                <option value="digital_hex_display">PRESET: 4-Bit Binary to 7-Segment</option>
+                <option value="bridge_rectifier">PRESET: Full-Wave Bridge Rectifier</option>
+                <option value="zener_regulator">PRESET: Zener Voltage Regulator</option>
+                <option value="bjt_switch">PRESET: NPN Transistor LED Driver</option>
+                <option value="opamp_inverting">PRESET: Inverting Op-Amp (Gain -2x)</option>
+                <option value="ac_rc_filter">PRESET: AC RC Low-Pass Filter</option>
+                <option value="rc_charging">PRESET: RC Charge / Discharge</option>
+                <option value="rlc_ringing">PRESET: RLC Transient Ringing</option>
+                <option value="led_basic">PRESET: Simple LED Circuit</option>
+                <option value="voltage_divider">PRESET: Voltage Divider</option>
+                <option value="series_parallel">PRESET: Series-Parallel Network</option>
+                <option value="wheatstone">PRESET: Wheatstone Bridge</option>
+                <option value="empty">PRESET: Empty Canvas</option>
+            </select>
+
+            <!-- View Toggles -->
+            <div class="flex items-center gap-1.5 pl-2 border-l border-[#2B3330]">
+                <button id="btn-vcolor" onclick="toggleVoltageColor()" class="hidden md:inline-block px-2 py-1.5 rounded-lg bg-[#95FF77]/15 border border-[#95FF77]/50 text-[#95FF77] font-mono-tech text-[11px]">
+                    V-COLOR
+                </button>
+                <button id="btn-cdots" onclick="toggleCurrentDots()" class="hidden md:inline-block px-2 py-1.5 rounded-lg bg-[#00D1FF]/15 border border-[#00D1FF]/50 text-[#00D1FF] font-mono-tech text-[11px]">
+                    I-DOTS
+                </button>
+                <button id="btn-scope" onclick="toggleScopePanel()" class="px-2 py-1.5 rounded-lg bg-[#FFE066]/15 border border-[#FFE066]/50 text-[#FFE066] font-mono-tech text-[11px]">
+                    SCOPE
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <div class="flex-1 flex relative overflow-hidden min-h-0">
+
+        <!-- LEFT SIDEBAR: TOOLS & COMPONENTS -->
+        <aside id="tools-panel" class="sidebar-panel w-56 min-w-[224px] bg-[#181C1B] border-r border-[#2B3330] flex flex-col z-20">
+            <div class="px-3 py-2 border-b border-[#2B3330] flex items-center justify-between bg-[#141716]">
+                <span class="font-mono-tech text-xs font-bold tracking-widest text-gray-300">TOOLS &amp; PARTS</span>
+                <button onclick="toggleSidebar('tools')" title="ยุบแถบเครื่องมือ" class="w-6 h-6 rounded bg-[#222826] hover:bg-[#2E3734] text-gray-300 text-xs flex items-center justify-center">◀</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-2.5 space-y-4">
+                <!-- Basic Tools -->
+                <div>
+                    <div class="text-[10px] font-mono-tech uppercase tracking-widest text-gray-400 mb-1.5">Tools</div>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button id="tool-select" onclick="setTool('select')" class="tool-item active flex flex-col items-center justify-center py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500">
+                            <span class="text-sm">↖</span>
+                            <span class="text-[10px] mt-0.5">Select</span>
+                        </button>
+                        <button id="tool-wire" onclick="setTool('wire')" class="tool-item flex flex-col items-center justify-center py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500">
+                            <span class="text-sm text-[#95FF77]">╱</span>
+                            <span class="text-[10px] mt-0.5">Wire</span>
+                        </button>
+                        <button id="tool-delete" onclick="setTool('delete')" class="tool-item flex flex-col items-center justify-center py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500">
+                            <span class="text-sm text-[#FF3366]">✕</span>
+                            <span class="text-[10px] mt-0.5">Delete</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sources -->
+                <div>
+                    <div class="text-[10px] font-mono-tech uppercase tracking-widest text-[#FFE066] mb-1.5">Sources</div>
+                    <div class="space-y-1.5">
+                        <button id="tool-dc_source" onclick="setTool('dc_source')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#FFE066] font-bold">⎓</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">DC Source</div>
+                                <div class="text-[10px] text-gray-500">แหล่งจ่ายไฟตรง</div>
+                            </div>
+                        </button>
+                        <button id="tool-ac_source" onclick="setTool('ac_source')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#00D1FF] font-bold">∿</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">AC Source</div>
+                                <div class="text-[10px] text-gray-500">แหล่งจ่ายไฟสลับ</div>
+                            </div>
+                        </button>
+                        <button id="tool-ground" onclick="setTool('ground')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-gray-300 font-bold">⏚</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Ground (GND)</div>
+                                <div class="text-[10px] text-gray-500">จุดอ้างอิง 0V</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Passive & Control -->
+                <div>
+                    <div class="text-[10px] font-mono-tech uppercase tracking-widest text-[#95FF77] mb-1.5">Passive &amp; Control</div>
+                    <div class="space-y-1.5">
+                        <button id="tool-resistor" onclick="setTool('resistor')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#F59E0B] font-bold">Ω</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Resistor</div>
+                                <div class="text-[10px] text-gray-500">ตัวต้านทาน</div>
+                            </div>
+                        </button>
+                        <button id="tool-capacitor" onclick="setTool('capacitor')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#38BDF8] font-bold">┤├</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Capacitor</div>
+                                <div class="text-[10px] text-gray-500">ตัวเก็บประจุ (µF)</div>
+                            </div>
+                        </button>
+                        <button id="tool-inductor" onclick="setTool('inductor')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#A78BFA] font-bold">⌇</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Inductor</div>
+                                <div class="text-[10px] text-gray-500">ขดลวดเหนี่ยวนำ (mH)</div>
+                            </div>
+                        </button>
+                        <button id="tool-switch" onclick="setTool('switch')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#95FF77] font-bold">⏻</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Switch (SPST)</div>
+                                <div class="text-[10px] text-gray-500">สวิตช์เปิด-ปิด</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Semiconductors -->
+                <div>
+                    <div class="text-[10px] font-mono-tech uppercase tracking-widest text-[#F472B6] mb-1.5">Semiconductors</div>
+                    <div class="space-y-1.5">
+                        <button id="tool-diode" onclick="setTool('diode')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#F472B6] font-bold">▷|</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Diode (1N4007)</div>
+                                <div class="text-[10px] text-gray-500">ไดโอดเรียงกระแส</div>
+                            </div>
+                        </button>
+                        <button id="tool-zener" onclick="setTool('zener')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#FB7185] font-bold">▷Z</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Zener Diode</div>
+                                <div class="text-[10px] text-gray-500">ซีเนอร์รักษาระดับแรงดัน</div>
+                            </div>
+                        </button>
+                        <button id="tool-npn" onclick="setTool('npn')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#34D399] font-bold">NPN</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">NPN Transistor</div>
+                                <div class="text-[10px] text-gray-500">BJT ชนิด NPN</div>
+                            </div>
+                        </button>
+                        <button id="tool-pnp" onclick="setTool('pnp')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#FBBF24] font-bold">PNP</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">PNP Transistor</div>
+                                <div class="text-[10px] text-gray-500">BJT ชนิด PNP</div>
+                            </div>
+                        </button>
+                        <button id="tool-nmos" onclick="setTool('nmos')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#2DD4BF] font-bold">NM</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">N-MOSFET</div>
+                                <div class="text-[10px] text-gray-500">N-Channel MOSFET</div>
+                            </div>
+                        </button>
+                        <button id="tool-pmos" onclick="setTool('pmos')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#C084FC] font-bold">PM</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">P-MOSFET</div>
+                                <div class="text-[10px] text-gray-500">P-Channel MOSFET</div>
+                            </div>
+                        </button>
+                        <button id="tool-opamp" onclick="setTool('opamp')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#60A5FA] font-bold">▷</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Op-Amp</div>
+                                <div class="text-[10px] text-gray-500">ออปแอมป์ขยายสัญญาณ</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Digital Logic -->
+                <div>
+                    <div class="text-[10px] font-mono-tech uppercase tracking-widest text-[#A78BFA] mb-1.5">Digital Logic</div>
+                    <div class="space-y-1.5">
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <button id="tool-logic_in" onclick="setTool('logic_in')" class="tool-item flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                                <span class="font-mono-tech text-[#95FF77] font-bold text-xs">1/0</span>
+                                <span class="text-[11px] font-medium">Input</span>
+                            </button>
+                            <button id="tool-logic_out" onclick="setTool('logic_out')" class="tool-item flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                                <span class="font-mono-tech text-[#00D1FF] font-bold text-xs">◉</span>
+                                <span class="text-[11px] font-medium">Output</span>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button id="tool-gate_and" onclick="setTool('gate_and')" class="tool-item py-1.5 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 font-mono-tech text-[11px] text-[#A78BFA]">AND</button>
+                            <button id="tool-gate_or" onclick="setTool('gate_or')" class="tool-item py-1.5 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 font-mono-tech text-[11px] text-[#A78BFA]">OR</button>
+                            <button id="tool-gate_not" onclick="setTool('gate_not')" class="tool-item py-1.5 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 font-mono-tech text-[11px] text-[#A78BFA]">NOT</button>
+                            <button id="tool-gate_nand" onclick="setTool('gate_nand')" class="tool-item py-1.5 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 font-mono-tech text-[11px] text-[#A78BFA]">NAND</button>
+                            <button id="tool-gate_xor" onclick="setTool('gate_xor')" class="tool-item py-1.5 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 font-mono-tech text-[11px] text-[#A78BFA]">XOR</button>
+                            <button id="tool-seg7" onclick="setTool('seg7')" class="tool-item py-1.5 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 font-mono-tech text-[11px] text-[#FF3366]">7-SEG</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Output & Instruments -->
+                <div>
+                    <div class="text-[10px] font-mono-tech uppercase tracking-widest text-[#00D1FF] mb-1.5">Loads &amp; Meters</div>
+                    <div class="space-y-1.5">
+                        <button id="tool-led" onclick="setTool('led')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#FF3366] font-bold">◈</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">LED</div>
+                                <div class="text-[10px] text-gray-500">ไดโอดเปล่งแสง</div>
+                            </div>
+                        </button>
+                        <button id="tool-lamp" onclick="setTool('lamp')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#FFE066] font-bold">☼</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Lamp</div>
+                                <div class="text-[10px] text-gray-500">หลอดไฟ</div>
+                            </div>
+                        </button>
+                        <button id="tool-voltmeter" onclick="setTool('voltmeter')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#00D1FF] font-bold">V</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Voltmeter</div>
+                                <div class="text-[10px] text-gray-500">มิเตอร์วัดแรงดัน</div>
+                            </div>
+                        </button>
+                        <button id="tool-ammeter" onclick="setTool('ammeter')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#FFE066] font-bold">A</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Ammeter</div>
+                                <div class="text-[10px] text-gray-500">มิเตอร์วัดกระแส</div>
+                            </div>
+                        </button>
+                        <button id="tool-probe" onclick="setTool('probe')" class="tool-item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-[#2E3533] bg-[#141716] hover:border-gray-500 text-left">
+                            <span class="w-6 text-center font-mono-tech text-[#95FF77] font-bold">⌖</span>
+                            <div class="leading-tight">
+                                <div class="text-xs font-medium">Scope Probe</div>
+                                <div class="text-[10px] text-gray-500">หัววัดออสซิลโลสโคป</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-2 border-t border-[#2B3330] text-[10px] text-gray-500 font-mono-tech bg-[#141716]">
+                [R] Rotate · [Del] Delete · [R-Click] Cancel
+            </div>
+        </aside>
+
+        <!-- FLOATING EXPAND BUTTON FOR LEFT SIDEBAR -->
+        <button id="btn-expand-tools" onclick="toggleSidebar('tools')" class="hidden absolute top-3 left-3 z-30 px-2.5 py-1.5 rounded-lg bg-[#181C1B]/95 border border-[#95FF77]/60 text-[#95FF77] font-mono-tech text-xs shadow-lg hover:bg-[#95FF77] hover:text-black transition">
+            ▶ TOOLS
+        </button>
+
+        <!-- CENTER: SCHEMATIC CANVAS + OSCILLOSCOPE -->
+        <main class="flex-1 flex flex-col relative overflow-hidden min-w-0">
+            <!-- Canvas Wrapper -->
+            <div id="canvas-container" class="flex-1 relative overflow-hidden bg-[#111413]">
+                <canvas id="circuit-canvas"></canvas>
+
+                <!-- Warning Banner -->
+                <div id="warning-banner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 rounded-lg bg-[#FF3366]/90 border border-[#FF809E] text-white text-xs font-mono-tech shadow-lg max-w-[90%] text-center">
+                </div>
+
+                <!-- Hover Tooltip -->
+                <div id="hover-tooltip" class="hidden pointer-events-none absolute z-30 px-2.5 py-1.5 rounded-lg bg-[#141716]/95 border border-[#3A4441] text-[11px] font-mono-tech text-gray-200 shadow-xl whitespace-nowrap">
+                </div>
+
+                <!-- Zoom & View Controls -->
+                <div class="absolute bottom-3 right-3 z-20 flex items-center gap-1 bg-[#181C1B]/90 border border-[#2B3330] rounded-lg p-1 backdrop-blur">
+                    <button onclick="zoomCanvas(1.15)" class="w-7 h-7 rounded hover:bg-[#2A322F] text-gray-200 font-mono-tech text-sm">+</button>
+                    <button onclick="zoomCanvas(1/1.15)" class="w-7 h-7 rounded hover:bg-[#2A322F] text-gray-200 font-mono-tech text-sm">−</button>
+                    <button onclick="resetView()" class="px-2 h-7 rounded hover:bg-[#2A322F] text-gray-300 font-mono-tech text-[11px]">FIT</button>
+                </div>
+            </div>
+
+            <!-- BOTTOM OSCILLOSCOPE PANEL -->
+            <section id="scope-panel" class="h-48 min-h-[160px] bg-[#131716] border-t border-[#2B3330] flex flex-col z-20">
+                <div class="px-3 py-1.5 bg-[#181C1B] border-b border-[#2B3330] flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono-tech text-xs font-bold text-[#FFE066] tracking-wider">OSCILLOSCOPE</span>
+                        <div id="scope-legend" class="flex flex-wrap items-center gap-3 font-mono-tech text-[11px]">
+                            <span class="text-gray-500">วาง Scope Probe เพื่อดูกราฟสัญญาณ</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 font-mono-tech text-[11px]">
+                        <label class="text-gray-400">SPEED:</label>
+                        <select id="sim-speed-select" onchange="setSimSpeed(this.value)" class="bg-[#111413] border border-[#3A4441] text-[#95FF77] px-1.5 py-0.5 rounded outline-none">
+                            <option value="1">1x (Real)</option>
+                            <option value="0.2">0.2x</option>
+                            <option value="0.05">0.05x</option>
+                            <option value="0.01">0.01x</option>
+                            <option value="0.002">0.002x</option>
+                        </select>
+                        <label class="text-gray-400 ml-1">V/DIV:</label>
+                        <select id="scope-vdiv-select" onchange="setScopeVDiv(this.value)" class="bg-[#111413] border border-[#3A4441] text-[#00D1FF] px-1.5 py-0.5 rounded outline-none">
+                            <option value="1">1V</option>
+                            <option value="2">2V</option>
+                            <option value="5" selected>5V</option>
+                            <option value="10">10V</option>
+                            <option value="20">20V</option>
+                        </select>
+                        <button onclick="toggleScopePanel()" class="ml-1 px-1.5 py-0.5 rounded bg-[#222826] hover:bg-[#333D39] text-gray-300">✕</button>
+                    </div>
+                </div>
+                <div id="scope-canvas-wrap" class="flex-1 relative overflow-hidden">
+                    <canvas id="scope-canvas"></canvas>
+                </div>
+            </section>
+        </main>
+
+        <!-- FLOATING EXPAND BUTTON FOR RIGHT SIDEBAR -->
+        <button id="btn-expand-inspector" onclick="toggleSidebar('inspector')" class="hidden absolute top-3 right-3 z-30 px-2.5 py-1.5 rounded-lg bg-[#181C1B]/95 border border-[#00D1FF]/60 text-[#00D1FF] font-mono-tech text-xs shadow-lg hover:bg-[#00D1FF] hover:text-black transition">
+            INSPECTOR ◀
+        </button>
+
+        <!-- RIGHT SIDEBAR: INSPECTOR & TELEMETRY -->
+        <aside id="inspector-panel" class="sidebar-panel w-64 min-w-[256px] bg-[#181C1B] border-l border-[#2B3330] flex flex-col z-20">
+            <div class="px-3 py-2 border-b border-[#2B3330] flex items-center justify-between bg-[#141716]">
+                <button onclick="toggleSidebar('inspector')" title="ยุบแถบข้อมูล" class="w-6 h-6 rounded bg-[#222826] hover:bg-[#2E3734] text-gray-300 text-xs flex items-center justify-center">▶</button>
+                <span class="font-mono-tech text-xs font-bold tracking-widest text-gray-300">INSPECTOR</span>
+            </div>
+
+            <div id="inspector-content" class="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
+                <div class="text-gray-500 text-center py-8 font-mono-tech">
+                    คลิกที่อุปกรณ์บนวงจร<br>เพื่อปรับค่าและดูข้อมูล
+                </div>
+            </div>
+
+            <!-- Solver Telemetry Footer -->
+            <div class="p-2.5 border-t border-[#2B3330] bg-[#141716] font-mono-tech text-[11px] space-y-1">
+                <div class="flex justify-between text-gray-400">
+                    <span>SIM TIME:</span> <span id="stat-time" class="text-[#95FF77]">0.000 s</span>
+                </div>
+                <div class="flex justify-between text-gray-400">
+                    <span>MNA MATRIX:</span> <span id="stat-matrix" class="text-[#00D1FF]">0×0</span>
+                </div>
+                <div class="flex justify-between text-gray-400">
+                    <span>ITER / SOLVE:</span> <span id="stat-solve" class="text-gray-300">0 / 0.0 ms</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // =====================================================================
+        // CIRCUIT LOGIC LAB - COMPLETE EDITION (MNA + AC + SEMICONDUCTORS + DIGITAL)
+        // =====================================================================
+
+        const GRID = 20;
+        const WIRE_RES = 1e-3; // 1 mΩ virtual wire resistance for branch current visualization
+        const PROBE_COLORS = { 1: '#FFE066', 2: '#00D1FF', 3: '#95FF77', 4: '#F472B6' };
+        const DIGITAL_GATES = new Set(['gate_and', 'gate_or', 'gate_not', 'gate_nand', 'gate_xor']);
+
+        const COMP_DEFS = {
+            dc_source: {
+                name: 'DC Voltage Source', prefix: 'V',
+                pins: [{ x: 0, y: -40, label: '+' }, { x: 0, y: 40, label: '−' }],
+                defaults: { voltage: 9 }
+            },
+            ac_source: {
+                name: 'AC Voltage Source', prefix: 'VAC',
+                pins: [{ x: 0, y: -40, label: '+' }, { x: 0, y: 40, label: '−' }],
+                defaults: { amplitude: 5, frequency: 2, waveform: 'sine', dcOffset: 0 }
+            },
+            ground: {
+                name: 'Ground (0V)', prefix: 'GND',
+                pins: [{ x: 0, y: -20, label: '0V' }],
+                defaults: {}
+            },
+            resistor: {
+                name: 'Resistor', prefix: 'R',
+                pins: [{ x: -40, y: 0, label: '1' }, { x: 40, y: 0, label: '2' }],
+                defaults: { resistance: 1000 }
+            },
+            capacitor: {
+                name: 'Capacitor', prefix: 'C',
+                pins: [{ x: -40, y: 0, label: '+' }, { x: 40, y: 0, label: '−' }],
+                defaults: { capacitanceUf: 100 }
+            },
+            inductor: {
+                name: 'Inductor', prefix: 'L',
+                pins: [{ x: -40, y: 0, label: '1' }, { x: 40, y: 0, label: '2' }],
+                defaults: { inductanceMh: 500 }
+            },
+            switch: {
+                name: 'Switch (SPST)', prefix: 'SW',
+                pins: [{ x: -40, y: 0, label: '1' }, { x: 40, y: 0, label: '2' }],
+                defaults: { closed: true }
+            },
+            diode: {
+                name: 'Rectifier Diode', prefix: 'D',
+                pins: [{ x: -40, y: 0, label: 'A' }, { x: 40, y: 0, label: 'K' }],
+                defaults: { vf: 0.7 }
+            },
+            zener: {
+                name: 'Zener Diode', prefix: 'ZD',
+                pins: [{ x: -40, y: 0, label: 'A' }, { x: 40, y: 0, label: 'K' }],
+                defaults: { vf: 0.7, vz: 5.1 }
+            },
+            npn: {
+                name: 'NPN Transistor', prefix: 'Q',
+                pins: [
+                    { x: -40, y: 0, label: 'B' },   // pin 0: Base
+                    { x: 20, y: -40, label: 'C' },  // pin 1: Collector
+                    { x: 20, y: 40, label: 'E' }    // pin 2: Emitter
+                ],
+                defaults: { beta: 100, vbeOn: 0.7 }
+            },
+            pnp: {
+                name: 'PNP Transistor', prefix: 'Q',
+                pins: [
+                    { x: -40, y: 0, label: 'B' },   // pin 0: Base
+                    { x: 20, y: -40, label: 'E' },  // pin 1: Emitter (+top)
+                    { x: 20, y: 40, label: 'C' }    // pin 2: Collector (-bottom)
+                ],
+                defaults: { beta: 100, vebOn: 0.7 }
+            },
+            nmos: {
+                name: 'N-Channel MOSFET', prefix: 'M',
+                pins: [
+                    { x: -40, y: 0, label: 'G' },   // pin 0: Gate
+                    { x: 20, y: -40, label: 'D' },  // pin 1: Drain
+                    { x: 20, y: 40, label: 'S' }    // pin 2: Source
+                ],
+                defaults: { vth: 2.0, rdsOn: 2.0 }
+            },
+            pmos: {
+                name: 'P-Channel MOSFET', prefix: 'M',
+                pins: [
+                    { x: -40, y: 0, label: 'G' },   // pin 0: Gate
+                    { x: 20, y: -40, label: 'S' },  // pin 1: Source (+top)
+                    { x: 20, y: 40, label: 'D' }    // pin 2: Drain (-bottom)
+                ],
+                defaults: { vth: 2.0, rdsOn: 2.0 }
+            },
+            opamp: {
+                name: 'Ideal Op-Amp', prefix: 'U',
+                pins: [
+                    { x: -40, y: -20, label: '+' }, // pin 0: Non-inverting (+)
+                    { x: -40, y: 20, label: '−' },  // pin 1: Inverting (-)
+                    { x: 40, y: 0, label: 'OUT' }   // pin 2: Output (referenced to GND)
+                ],
+                defaults: { gain: 10000, vSat: 15 }
+            },
+            logic_in: {
+                name: 'Logic Input (0/1)', prefix: 'IN',
+                pins: [{ x: 40, y: 0, label: 'OUT' }],
+                defaults: { high: false, vHigh: 5 }
+            },
+            logic_out: {
+                name: 'Logic Output', prefix: 'OUT',
+                pins: [{ x: -40, y: 0, label: 'IN' }],
+                defaults: { threshold: 2.5 }
+            },
+            gate_and: {
+                name: 'AND Gate', prefix: 'U',
+                pins: [{ x: -40, y: -20, label: 'A' }, { x: -40, y: 20, label: 'B' }, { x: 40, y: 0, label: 'Y' }],
+                defaults: { vHigh: 5, threshold: 2.5 }
+            },
+            gate_or: {
+                name: 'OR Gate', prefix: 'U',
+                pins: [{ x: -40, y: -20, label: 'A' }, { x: -40, y: 20, label: 'B' }, { x: 40, y: 0, label: 'Y' }],
+                defaults: { vHigh: 5, threshold: 2.5 }
+            },
+            gate_not: {
+                name: 'NOT Gate (Inverter)', prefix: 'U',
+                pins: [{ x: -40, y: 0, label: 'A' }, { x: 40, y: 0, label: 'Y' }],
+                defaults: { vHigh: 5, threshold: 2.5 }
+            },
+            gate_nand: {
+                name: 'NAND Gate', prefix: 'U',
+                pins: [{ x: -40, y: -20, label: 'A' }, { x: -40, y: 20, label: 'B' }, { x: 40, y: 0, label: 'Y' }],
+                defaults: { vHigh: 5, threshold: 2.5 }
+            },
+            gate_xor: {
+                name: 'XOR Gate', prefix: 'U',
+                pins: [{ x: -40, y: -20, label: 'A' }, { x: -40, y: 20, label: 'B' }, { x: 40, y: 0, label: 'Y' }],
+                defaults: { vHigh: 5, threshold: 2.5 }
+            },
+            seg7: {
+                name: '4-Bit Hex 7-Segment', prefix: 'HEX',
+                pins: [
+                    { x: -40, y: -40, label: '8' },
+                    { x: -40, y: -20, label: '4' },
+                    { x: -40, y: 0, label: '2' },
+                    { x: -40, y: 20, label: '1' }
+                ],
+                defaults: { threshold: 2.5 }
+            },
+            led: {
+                name: 'LED', prefix: 'D',
+                pins: [{ x: -40, y: 0, label: 'A' }, { x: 40, y: 0, label: 'K' }],
+                defaults: { color: '#FF3366', vf: 2.0, maxMa: 30 }
+            },
+            lamp: {
+                name: 'Incandescent Lamp', prefix: 'LP',
+                pins: [{ x: -40, y: 0, label: '1' }, { x: 40, y: 0, label: '2' }],
+                defaults: { resistance: 50, ratedW: 2.0 }
+            },
+            voltmeter: {
+                name: 'Voltmeter', prefix: 'VM',
+                pins: [{ x: -40, y: 0, label: '+' }, { x: 40, y: 0, label: '−' }],
+                defaults: {}
+            },
+            ammeter: {
+                name: 'Ammeter', prefix: 'AM',
+                pins: [{ x: -40, y: 0, label: '+' }, { x: 40, y: 0, label: '−' }],
+                defaults: {}
+            },
+            probe: {
+                name: 'Scope Probe', prefix: 'CH',
+                pins: [{ x: 0, y: 20, label: 'IN' }],
+                defaults: { channel: 1 }
+            }
+        };
+
+        // --- GLOBAL APPLICATION STATE ---
+        let components = [];
+        let wires = [];
+        let idCounter = 1;
+
+        const state = {
+            tool: 'select',
+            running: true,
+            showVoltageColor: true,
+            showCurrentDots: true,
+            showScope: true,
+            selectedId: null,
+            selectedType: null, // 'comp' | 'wire'
+            hoverWorld: { x: 0, y: 0 },
+            hoverComp: null,
+            hoverWire: null,
+            ghostRot: 0,
+            wireStart: null,
+            draggingComp: null,
+            dragOffset: { x: 0, y: 0 },
+            panning: false,
+            spacePressed: false,
+            panStart: { x: 0, y: 0 },
+            cam: { x: 0, y: 0, zoom: 1.0 },
+            simTime: 0,
+            simSpeed: 1.0,
+            scopeVDiv: 5,
+            scopeBuffer: [],
+            maxScopePoints: 360,
+            dotPhase: 0
+        };
+
+        const simResult = {
+            nodeVoltages: new Map(),
+            wireSegments: [],
+            matrixSize: 0,
+            iterations: 0,
+            solveMs: 0,
+            warnings: []
+        };
+
+        // Canvas references
+        const canvas = document.getElementById('circuit-canvas');
+        const ctx = canvas.getContext('2d');
+        const scopeCanvas = document.getElementById('scope-canvas');
+        const scopeCtx = scopeCanvas.getContext('2d');
+
+        // =====================================================================
+        // GEOMETRY & UTILITY HELPERS
+        // =====================================================================
+        function snap(val) { return Math.round(val / GRID) * GRID; }
+        function ptKey(x, y) { return `${Math.round(x)},${Math.round(y)}`; }
+
+        function screenToWorld(sx, sy) {
+            return {
+                x: (sx - canvas.width / 2) / state.cam.zoom - state.cam.x,
+                y: (sy - canvas.height / 2) / state.cam.zoom - state.cam.y
+            };
+        }
+
+        function worldToScreen(wx, wy) {
+            return {
+                x: (wx + state.cam.x) * state.cam.zoom + canvas.width / 2,
+                y: (wy + state.cam.y) * state.cam.zoom + canvas.height / 2
+            };
+        }
+
+        function rotatePoint(px, py, deg) {
+            const rad = (deg * Math.PI) / 180;
+            const cos = Math.round(Math.cos(rad));
+            const sin = Math.round(Math.sin(rad));
+            return { x: px * cos - py * sin, y: px * sin + py * cos };
+        }
+
+        function getComponentPins(comp) {
+            const def = COMP_DEFS[comp.type];
+            return def.pins.map(p => {
+                const rp = rotatePoint(p.x, p.y, comp.rot);
+                return { x: comp.x + rp.x, y: comp.y + rp.y, label: p.label };
+            });
+        }
+
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const lenSq = dx * dx + dy * dy;
+            if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+        }
+
+        function formatUnit(val, unit) {
+            if (!isFinite(val)) return `0 ${unit}`;
+            const abs = Math.abs(val);
+            if (abs === 0) return `0 ${unit}`;
+            if (abs >= 1e6) return `${(val / 1e6).toFixed(2)} M${unit}`;
+            if (abs >= 1e3) return `${(val / 1e3).toFixed(2)} k${unit}`;
+            if (abs >= 1) return `${val.toFixed(2)} ${unit}`;
+            if (abs >= 1e-3) return `${(val * 1e3).toFixed(2)} m${unit}`;
+            if (abs >= 1e-6) return `${(val * 1e6).toFixed(1)} µ${unit}`;
+            return `${val.toExponential(1)} ${unit}`;
+        }
+
+        function voltageToColor(v) {
+            if (!state.showVoltageColor || !isFinite(v)) return '#9CA3AF';
+            if (Math.abs(v) < 0.08) return '#6B7280';
+            const norm = Math.min(1, Math.abs(v) / 10);
+            if (v > 0) {
+                const r = Math.round(110 - norm * 30);
+                const g = Math.round(170 + norm * 85);
+                const b = Math.round(120 - norm * 10);
+                return `rgb(${r},${g},${b})`;
+            } else {
+                const r = Math.round(180 + norm * 75);
+                const g = Math.round(110 - norm * 65);
+                const b = Math.round(115 - norm * 40);
+                return `rgb(${r},${g},${b})`;
+            }
+        }
+
+        // =====================================================================
+        // COMPONENT & WIRE CREATION
+        // =====================================================================
+        function createComponent(type, x, y, rot = 0, customProps = {}) {
+            const def = COMP_DEFS[type];
+            const count = components.filter(c => c.type === type).length + 1;
+            const props = { ...def.defaults, ...customProps };
+            const label = type === 'probe' ? `CH${props.channel}` : `${def.prefix}${count}`;
+            const comp = {
+                id: 'c_' + (idCounter++),
+                type,
+                label,
+                x: snap(x),
+                y: snap(y),
+                rot: ((rot % 360) + 360) % 360,
+                props,
+                sim: {
+                    v1: 0, v2: 0, v3: 0, v4: 0, i: 0, ib: 0, ic: 0, ie: 0, power: 0,
+                    conducting: false, zenerState: 'off', bjtRegion: 'cutoff', mosState: 'cutoff',
+                    opampSat: 'linear', logicOut: false, hexVal: 0,
+                    overcurrent: false, vPrev: 0, iPrev: 0
+                }
+            };
+            components.push(comp);
+            return comp;
+        }
+
+        function createWire(x1, y1, x2, y2) {
+            const sx1 = snap(x1), sy1 = snap(y1), sx2 = snap(x2), sy2 = snap(y2);
+            if (sx1 === sx2 && sy1 === sy2) return null;
+            const dup = wires.find(w =>
+                (w.x1 === sx1 && w.y1 === sy1 && w.x2 === sx2 && w.y2 === sy2) ||
+                (w.x1 === sx2 && w.y1 === sy2 && w.x2 === sx1 && w.y2 === sy1)
+            );
+            if (dup) return dup;
+            const w = { id: 'w_' + (idCounter++), x1: sx1, y1: sy1, x2: sx2, y2: sy2 };
+            wires.push(w);
+            return w;
+        }
+
+        function evalAcVoltage(comp, t) {
+            const amp = Number(comp.props.amplitude) || 0;
+            const freq = Math.max(0.01, Number(comp.props.frequency) || 1);
+            const offset = Number(comp.props.dcOffset) || 0;
+            const wf = comp.props.waveform || 'sine';
+            const phase = (t * freq) % 1;
+            let wave = 0;
+            if (wf === 'sine') wave = Math.sin(2 * Math.PI * freq * t);
+            else if (wf === 'square') wave = phase < 0.5 ? 1 : -1;
+            else if (wf === 'triangle') wave = 1 - 4 * Math.abs(Math.round(phase - 0.25) - (phase - 0.25));
+            return offset + amp * wave;
+        }
+
+        // =====================================================================
+        // LINEAR SOLVER (GAUSSIAN ELIMINATION WITH PARTIAL PIVOTING)
+        // =====================================================================
+        function solveLinearSystem(A, b) {
+            const n = b.length;
+            const M = A.map((row, i) => [...row, b[i]]);
+
+            for (let col = 0; col < n; col++) {
+                let pivotRow = col;
+                let maxVal = Math.abs(M[col][col]);
+                for (let row = col + 1; row < n; row++) {
+                    const val = Math.abs(M[row][col]);
+                    if (val > maxVal) { maxVal = val; pivotRow = row; }
+                }
+                if (maxVal < 1e-14) continue;
+                if (pivotRow !== col) {
+                    const tmp = M[col]; M[col] = M[pivotRow]; M[pivotRow] = tmp;
+                }
+                const pivot = M[col][col];
+                for (let row = col + 1; row < n; row++) {
+                    const factor = M[row][col] / pivot;
+                    if (Math.abs(factor) < 1e-15) continue;
+                    for (let k = col; k <= n; k++) {
+                        M[row][k] -= factor * M[col][k];
+                    }
+                }
+            }
+
+            const x = new Array(n).fill(0);
+            for (let i = n - 1; i >= 0; i--) {
+                let sum = M[i][n];
+                for (let j = i + 1; j < n; j++) sum -= M[i][j] * x[j];
+                x[i] = Math.abs(M[i][i]) > 1e-14 ? sum / M[i][i] : 0;
+                if (!isFinite(x[i])) x[i] = 0;
+            }
+            return x;
+        }
+
+        // =====================================================================
+        // MODIFIED NODAL ANALYSIS (MNA) + TRANSIENT + NON-LINEAR SOLVER
+        // =====================================================================
+        function buildWireSegments() {
+            const pts = new Map();
+            const addPt = (x, y) => pts.set(ptKey(x, y), { x: Math.round(x), y: Math.round(y) });
+            wires.forEach(w => { addPt(w.x1, w.y1); addPt(w.x2, w.y2); });
+            components.forEach(c => getComponentPins(c).forEach(p => addPt(p.x, p.y)));
+
+            const allPts = Array.from(pts.values());
+            const segments = [];
+
+            wires.forEach(w => {
+                const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+                const lenSq = dx * dx + dy * dy;
+                if (lenSq === 0) return;
+
+                const onSeg = [];
+                allPts.forEach(p => {
+                    const cross = (p.x - w.x1) * dy - (p.y - w.y1) * dx;
+                    if (Math.abs(cross) > 1e-3) return;
+                    const t = ((p.x - w.x1) * dx + (p.y - w.y1) * dy) / lenSq;
+                    if (t >= -1e-4 && t <= 1 + 1e-4) {
+                        onSeg.push({ x: p.x, y: p.y, t: Math.max(0, Math.min(1, t)) });
+                    }
+                });
+
+                onSeg.sort((a, b) => a.t - b.t);
+                for (let i = 0; i < onSeg.length - 1; i++) {
+                    const a = onSeg[i], b = onSeg[i + 1];
+                    if (a.x === b.x && a.y === b.y) continue;
+                    segments.push({
+                        wireId: w.id,
+                        x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+                        k1: ptKey(a.x, a.y), k2: ptKey(b.x, b.y),
+                        v1: 0, v2: 0, current: 0
+                    });
+                }
+            });
+
+            return segments;
+        }
+
+        function solveCircuit(dt = 0.016, updateLiveUI = true) {
+            const t0 = performance.now();
+            const segments = buildWireSegments();
+
+            const nodeMap = new Map();
+            const groundKeys = new Set();
+            components.forEach(c => {
+                if (c.type === 'ground') {
+                    const p = getComponentPins(c)[0];
+                    groundKeys.add(ptKey(p.x, p.y));
+                }
+            });
+
+            let nextNodeIdx = 1;
+            const registerKey = (k) => {
+                if (nodeMap.has(k)) return;
+                if (groundKeys.has(k)) nodeMap.set(k, 0);
+                else nodeMap.set(k, nextNodeIdx++);
+            };
+
+            segments.forEach(s => { registerKey(s.k1); registerKey(s.k2); });
+            components.forEach(c => getComponentPins(c).forEach(p => registerKey(ptKey(p.x, p.y))));
+
+            const numNodes = nextNodeIdx - 1;
+            const vSources = components.filter(c =>
+                c.type === 'dc_source' || c.type === 'ac_source' || c.type === 'ammeter' ||
+                c.type === 'opamp' || c.type === 'logic_in' || DIGITAL_GATES.has(c.type)
+            );
+            const size = numNodes + vSources.length;
+
+            if (size === 0) {
+                simResult.nodeVoltages.clear();
+                simResult.wireSegments = segments;
+                simResult.matrixSize = 0;
+                simResult.iterations = 0;
+                simResult.solveMs = 0;
+                simResult.warnings = [];
+                if (updateLiveUI) updateTelemetryUI();
+                return;
+            }
+
+            const nonLinearComps = components.filter(c =>
+                c.type === 'led' || c.type === 'diode' || c.type === 'zener' ||
+                c.type === 'npn' || c.type === 'pnp' || c.type === 'nmos' || c.type === 'pmos' ||
+                c.type === 'opamp' || DIGITAL_GATES.has(c.type)
+            );
+            const maxIter = nonLinearComps.length > 0 ? 18 : 1;
+            let iterCount = 0;
+            let solution = new Array(size).fill(0);
+            const safeDt = Math.max(1e-6, dt);
+
+            const getNodeV = (idx) => (idx > 0 ? (solution[idx - 1] || 0) : 0);
+
+            for (let iter = 0; iter < maxIter; iter++) {
+                iterCount++;
+                const A = Array.from({ length: size }, () => new Array(size).fill(0));
+                const z = new Array(size).fill(0);
+
+                const stampConductance = (a, b, G) => {
+                    if (a > 0) A[a - 1][a - 1] += G;
+                    if (b > 0) A[b - 1][b - 1] += G;
+                    if (a > 0 && b > 0) {
+                        A[a - 1][b - 1] -= G;
+                        A[b - 1][a - 1] -= G;
+                    }
+                };
+
+                const stampCurrentSource = (a, b, I) => {
+                    if (a > 0) z[a - 1] -= I;
+                    if (b > 0) z[b - 1] += I;
+                };
+
+                const stampVCCS = (cOutP, cOutM, cInP, cInM, gm) => {
+                    if (cOutP > 0 && cInP > 0) A[cOutP - 1][cInP - 1] += gm;
+                    if (cOutP > 0 && cInM > 0) A[cOutP - 1][cInM - 1] -= gm;
+                    if (cOutM > 0 && cInP > 0) A[cOutM - 1][cInP - 1] -= gm;
+                    if (cOutM > 0 && cInM > 0) A[cOutM - 1][cInM - 1] += gm;
+                };
+
+                for (let i = 0; i < numNodes; i++) A[i][i] += 1e-10;
+
+                const G_wire = 1 / WIRE_RES;
+                segments.forEach(s => {
+                    stampConductance(nodeMap.get(s.k1), nodeMap.get(s.k2), G_wire);
+                });
+
+                let vIdx = 0;
+                components.forEach(c => {
+                    const pins = getComponentPins(c);
+                    if (c.type === 'ground' || c.type === 'probe') return;
+
+                    const n1 = nodeMap.get(ptKey(pins[0].x, pins[0].y));
+                    const n2 = pins[1] ? nodeMap.get(ptKey(pins[1].x, pins[1].y)) : 0;
+                    const n3 = pins[2] ? nodeMap.get(ptKey(pins[2].x, pins[2].y)) : 0;
+                    const n4 = pins[3] ? nodeMap.get(ptKey(pins[3].x, pins[3].y)) : 0;
+
+                    if (c.type === 'resistor' || c.type === 'lamp') {
+                        const R = Math.max(1e-3, Number(c.props.resistance) || 100);
+                        stampConductance(n1, n2, 1 / R);
+                    } else if (c.type === 'capacitor') {
+                        const C = Math.max(1e-12, (Number(c.props.capacitanceUf) || 100) * 1e-6);
+                        const Geq = C / safeDt;
+                        const Ieq = Geq * (c.sim.vPrev || 0);
+                        stampConductance(n1, n2, Geq);
+                        stampCurrentSource(n2, n1, Ieq);
+                    } else if (c.type === 'inductor') {
+                        const L = Math.max(1e-6, (Number(c.props.inductanceMh) || 100) * 1e-3);
+                        const Geq = safeDt / L;
+                        const Ieq = c.sim.iPrev || 0;
+                        stampConductance(n1, n2, Geq);
+                        stampCurrentSource(n1, n2, Ieq);
+                    } else if (c.type === 'switch') {
+                        stampConductance(n1, n2, c.props.closed ? 1 / 0.005 : 1e-9);
+                    } else if (c.type === 'voltmeter') {
+                        stampConductance(n1, n2, 1e-7);
+                    } else if (c.type === 'led' || c.type === 'diode') {
+                        if (c.sim.conducting) {
+                            const Ron = c.type === 'diode' ? 2.0 : 15.0;
+                            const G = 1 / Ron;
+                            const Vf = Number(c.props.vf) || 0.7;
+                            stampConductance(n1, n2, G);
+                            stampCurrentSource(n2, n1, G * Vf);
+                        } else {
+                            stampConductance(n1, n2, 1e-9);
+                        }
+                    } else if (c.type === 'zener') {
+                        if (c.sim.zenerState === 'forward') {
+                            const G = 1 / 2.0;
+                            const Vf = Number(c.props.vf) || 0.7;
+                            stampConductance(n1, n2, G);
+                            stampCurrentSource(n2, n1, G * Vf);
+                        } else if (c.sim.zenerState === 'breakdown') {
+                            const Gz = 1 / 5.0;
+                            const Vz = Number(c.props.vz) || 5.1;
+                            stampConductance(n1, n2, Gz);
+                            stampCurrentSource(n1, n2, Gz * Vz);
+                        } else {
+                            stampConductance(n1, n2, 1e-9);
+                        }
+                    } else if (c.type === 'npn') {
+                        const beta = Math.max(1, Number(c.props.beta) || 100);
+                        const vbeOn = Number(c.props.vbeOn) || 0.7;
+                        const gbe = 1 / 50;
+
+                        if (c.sim.bjtRegion === 'active') {
+                            stampConductance(n1, n3, gbe);
+                            stampCurrentSource(n3, n1, gbe * vbeOn);
+                            const gm = beta * gbe;
+                            stampVCCS(n2, n3, n1, n3, gm);
+                            stampCurrentSource(n3, n2, gm * vbeOn);
+                            stampConductance(n2, n3, 1e-6);
+                        } else if (c.sim.bjtRegion === 'saturation') {
+                            stampConductance(n1, n3, gbe);
+                            stampCurrentSource(n3, n1, gbe * vbeOn);
+                            const gceSat = 1 / 2.0;
+                            stampConductance(n2, n3, gceSat);
+                            stampCurrentSource(n3, n2, gceSat * 0.2);
+                        } else {
+                            stampConductance(n1, n3, 1e-9);
+                            stampConductance(n2, n3, 1e-9);
+                        }
+                    } else if (c.type === 'pnp') {
+                        const beta = Math.max(1, Number(c.props.beta) || 100);
+                        const vebOn = Number(c.props.vebOn) || 0.7;
+                        const gbe = 1 / 50;
+
+                        if (c.sim.bjtRegion === 'active') {
+                            stampConductance(n2, n1, gbe);
+                            stampCurrentSource(n1, n2, gbe * vebOn);
+                            const gm = beta * gbe;
+                            stampVCCS(n2, n3, n2, n1, gm);
+                            stampCurrentSource(n3, n2, gm * vebOn);
+                            stampConductance(n2, n3, 1e-6);
+                        } else if (c.sim.bjtRegion === 'saturation') {
+                            stampConductance(n2, n1, gbe);
+                            stampCurrentSource(n1, n2, gbe * vebOn);
+                            const gecSat = 1 / 2.0;
+                            stampConductance(n2, n3, gecSat);
+                            stampCurrentSource(n3, n2, gecSat * 0.2);
+                        } else {
+                            stampConductance(n2, n1, 1e-9);
+                            stampConductance(n2, n3, 1e-9);
+                        }
+                    } else if (c.type === 'nmos' || c.type === 'pmos') {
+                        stampConductance(n1, n3, 1e-10);
+                        if (c.sim.mosState === 'on') {
+                            const rOn = Math.max(0.1, Number(c.props.rdsOn) || 2.0);
+                            stampConductance(n2, n3, 1 / rOn);
+                        } else {
+                            stampConductance(n2, n3, 1e-9);
+                        }
+                    } else if (c.type === 'logic_out') {
+                        stampConductance(n1, 0, 1e-7);
+                    } else if (c.type === 'seg7') {
+                        stampConductance(n1, 0, 1e-8);
+                        stampConductance(n2, 0, 1e-8);
+                        stampConductance(n3, 0, 1e-8);
+                        stampConductance(n4, 0, 1e-8);
+                    } else if (c.type === 'logic_in') {
+                        const row = numNodes + vIdx;
+                        const V = c.props.high ? (Number(c.props.vHigh) || 5) : 0;
+                        if (n1 > 0) { A[n1 - 1][row] += 1; A[row][n1 - 1] += 1; }
+                        A[row][row] -= 1.0;
+                        z[row] = V;
+                        c._vSrcRow = row;
+                        vIdx++;
+                    } else if (DIGITAL_GATES.has(c.type)) {
+                        const row = numNodes + vIdx;
+                        const isNot = c.type === 'gate_not';
+                        const nOut = isNot ? n2 : n3;
+                        stampConductance(n1, 0, 1e-8);
+                        if (!isNot) stampConductance(n2, 0, 1e-8);
+                        if (nOut > 0) { A[nOut - 1][row] += 1; A[row][nOut - 1] += 1; }
+                        A[row][row] -= 1.0;
+                        z[row] = c.sim.logicOut ? (Number(c.props.vHigh) || 5) : 0;
+                        c._vSrcRow = row;
+                        vIdx++;
+                    } else if (c.type === 'opamp') {
+                        const row = numNodes + vIdx;
+                        const Aol = Math.max(10, Number(c.props.gain) || 10000);
+                        const vSat = Math.abs(Number(c.props.vSat) || 15);
+                        stampConductance(n1, n2, 1e-9);
+
+                        if (n3 > 0) {
+                            A[n3 - 1][row] += 1;
+                            A[row][n3 - 1] += 1;
+                        }
+                        A[row][row] -= 1.0;
+                        if (c.sim.opampSat === 'pos') {
+                            z[row] = vSat;
+                        } else if (c.sim.opampSat === 'neg') {
+                            z[row] = -vSat;
+                        } else {
+                            if (n1 > 0) A[row][n1 - 1] -= Aol;
+                            if (n2 > 0) A[row][n2 - 1] += Aol;
+                            z[row] = 0;
+                        }
+                        c._vSrcRow = row;
+                        vIdx++;
+                    } else if (c.type === 'dc_source' || c.type === 'ac_source' || c.type === 'ammeter') {
+                        const row = numNodes + vIdx;
+                        let V = 0;
+                        if (c.type === 'dc_source') V = Number(c.props.voltage) || 0;
+                        else if (c.type === 'ac_source') V = evalAcVoltage(c, state.simTime);
+
+                        if (n1 > 0) { A[n1 - 1][row] += 1; A[row][n1 - 1] += 1; }
+                        if (n2 > 0) { A[n2 - 1][row] -= 1; A[row][n2 - 1] -= 1; }
+                        A[row][row] -= 1e-4;
+                        z[row] = V;
+                        c._vSrcRow = row;
+                        vIdx++;
+                    }
+                });
+
+                solution = solveLinearSystem(A, z);
+
+                // Update non-linear device states & check convergence
+                let stateChanged = false;
+                nonLinearComps.forEach(c => {
+                    const pins = getComponentPins(c);
+                    const v1 = getNodeV(nodeMap.get(ptKey(pins[0].x, pins[0].y)));
+                    const v2 = pins[1] ? getNodeV(nodeMap.get(ptKey(pins[1].x, pins[1].y))) : 0;
+                    const v3 = pins[2] ? getNodeV(nodeMap.get(ptKey(pins[2].x, pins[2].y))) : 0;
+
+                    if (c.type === 'led' || c.type === 'diode') {
+                        const Vf = Number(c.props.vf) || 0.7;
+                        const Ron = c.type === 'diode' ? 2.0 : 15.0;
+                        const vd = v1 - v2;
+                        // Keep conducting until current reverses to prevent series-diode ping-pong oscillation
+                        const nextOn = c.sim.conducting ? (((vd - Vf) / Ron) >= -1e-6) : (vd > Vf + 0.01);
+                        if (nextOn !== c.sim.conducting) { c.sim.conducting = nextOn; stateChanged = true; }
+                    } else if (c.type === 'zener') {
+                        const Vf = Number(c.props.vf) || 0.7;
+                        const Vz = Number(c.props.vz) || 5.1;
+                        const vd = v1 - v2;
+                        let nextState = 'off';
+                        if (c.sim.zenerState === 'forward') {
+                            if (((vd - Vf) / 2.0) >= -1e-6) nextState = 'forward';
+                        } else if (c.sim.zenerState === 'breakdown') {
+                            if (((-vd - Vz) / 5.0) >= -1e-6) nextState = 'breakdown';
+                        } else {
+                            if (vd > Vf + 0.01) nextState = 'forward';
+                            else if (-vd > Vz + 0.01) nextState = 'breakdown';
+                        }
+                        if (nextState !== c.sim.zenerState) { c.sim.zenerState = nextState; stateChanged = true; }
+                    } else if (c.type === 'npn') {
+                        const beta = Math.max(1, Number(c.props.beta) || 100);
+                        const vbeOn = Number(c.props.vbeOn) || 0.7;
+                        const vbe = v1 - v3;
+                        const vce = v2 - v3;
+                        let nextRegion = 'cutoff';
+                        if (c.sim.bjtRegion === 'cutoff') {
+                            if (vbe > vbeOn + 0.01) nextRegion = 'active';
+                        } else {
+                            const ib = (vbe - vbeOn) / 50;
+                            if (ib <= 1e-6) {
+                                nextRegion = 'cutoff';
+                            } else if (c.sim.bjtRegion === 'active') {
+                                nextRegion = (vce < 0.25) ? 'saturation' : 'active';
+                            } else {
+                                const ic = (vce - 0.2) / 2.0;
+                                nextRegion = (ic > beta * ib || vce > 0.3) ? 'active' : 'saturation';
+                            }
+                        }
+                        if (nextRegion !== c.sim.bjtRegion) { c.sim.bjtRegion = nextRegion; stateChanged = true; }
+                    } else if (c.type === 'pnp') {
+                        const beta = Math.max(1, Number(c.props.beta) || 100);
+                        const vebOn = Number(c.props.vebOn) || 0.7;
+                        const veb = v2 - v1;
+                        const vec = v2 - v3;
+                        let nextRegion = 'cutoff';
+                        if (c.sim.bjtRegion === 'cutoff') {
+                            if (veb > vebOn + 0.01) nextRegion = 'active';
+                        } else {
+                            const ib = (veb - vebOn) / 50;
+                            if (ib <= 1e-6) {
+                                nextRegion = 'cutoff';
+                            } else if (c.sim.bjtRegion === 'active') {
+                                nextRegion = (vec < 0.25) ? 'saturation' : 'active';
+                            } else {
+                                const ic = (vec - 0.2) / 2.0;
+                                nextRegion = (ic > beta * ib || vec > 0.3) ? 'active' : 'saturation';
+                            }
+                        }
+                        if (nextRegion !== c.sim.bjtRegion) { c.sim.bjtRegion = nextRegion; stateChanged = true; }
+                    } else if (c.type === 'nmos') {
+                        const vth = Number(c.props.vth) || 2.0;
+                        const vgs = v1 - v3;
+                        const nextMos = vgs > vth ? 'on' : 'cutoff';
+                        if (nextMos !== c.sim.mosState) { c.sim.mosState = nextMos; stateChanged = true; }
+                    } else if (c.type === 'pmos') {
+                        const vth = Number(c.props.vth) || 2.0;
+                        const vsg = v2 - v1;
+                        const nextMos = vsg > vth ? 'on' : 'cutoff';
+                        if (nextMos !== c.sim.mosState) { c.sim.mosState = nextMos; stateChanged = true; }
+                    } else if (c.type === 'opamp') {
+                        const Aol = Math.max(10, Number(c.props.gain) || 10000);
+                        const vSat = Math.abs(Number(c.props.vSat) || 15);
+                        const vIdeal = Aol * (v1 - v2);
+                        let nextSat = 'linear';
+                        if (vIdeal > vSat) nextSat = 'pos';
+                        else if (vIdeal < -vSat) nextSat = 'neg';
+                        if (nextSat !== c.sim.opampSat) { c.sim.opampSat = nextSat; stateChanged = true; }
+                    } else if (DIGITAL_GATES.has(c.type)) {
+                        const th = Number(c.props.threshold) || 2.5;
+                        const a = v1 >= th;
+                        const b = v2 >= th;
+                        let out = false;
+                        if (c.type === 'gate_and') out = a && b;
+                        else if (c.type === 'gate_or') out = a || b;
+                        else if (c.type === 'gate_not') out = !a;
+                        else if (c.type === 'gate_nand') out = !(a && b);
+                        else if (c.type === 'gate_xor') out = (a !== b);
+                        if (out !== c.sim.logicOut) { c.sim.logicOut = out; stateChanged = true; }
+                    }
+                });
+
+                if (!stateChanged) break;
+            }
+
+            // Store node voltages
+            simResult.nodeVoltages.clear();
+            nodeMap.forEach((idx, key) => {
+                simResult.nodeVoltages.set(key, getNodeV(idx));
+            });
+
+            // Compute wire segment currents
+            segments.forEach(s => {
+                s.v1 = simResult.nodeVoltages.get(s.k1) || 0;
+                s.v2 = simResult.nodeVoltages.get(s.k2) || 0;
+                s.current = (s.v1 - s.v2) / WIRE_RES;
+            });
+
+            // Compute component telemetry
+            const warnings = [];
+            if (groundKeys.size === 0 && components.some(c => c.type === 'dc_source' || c.type === 'ac_source')) {
+                warnings.push('ไม่พบ Ground (GND) ในวงจร — กรุณาวางจุดอ้างอิง 0V เพื่อให้คำนวณแรงดันได้แม่นยำ');
+            }
+
+            components.forEach(c => {
+                const pins = getComponentPins(c);
+                const v1 = pins[0] ? (simResult.nodeVoltages.get(ptKey(pins[0].x, pins[0].y)) || 0) : 0;
+                const v2 = pins[1] ? (simResult.nodeVoltages.get(ptKey(pins[1].x, pins[1].y)) || 0) : 0;
+                const v3 = pins[2] ? (simResult.nodeVoltages.get(ptKey(pins[2].x, pins[2].y)) || 0) : 0;
+                const v4 = pins[3] ? (simResult.nodeVoltages.get(ptKey(pins[3].x, pins[3].y)) || 0) : 0;
+
+                c.sim.v1 = v1; c.sim.v2 = v2; c.sim.v3 = v3; c.sim.v4 = v4;
+                c.sim.overcurrent = false;
+
+                const dv = v1 - v2;
+                let curr = 0;
+
+                if (c.type === 'resistor' || c.type === 'lamp') {
+                    const R = Math.max(1e-3, Number(c.props.resistance) || 100);
+                    curr = dv / R;
+                } else if (c.type === 'capacitor') {
+                    const C = Math.max(1e-12, (Number(c.props.capacitanceUf) || 100) * 1e-6);
+                    curr = C * (dv - (c.sim.vPrev || 0)) / safeDt;
+                    c.sim.vPrev = dv;
+                } else if (c.type === 'inductor') {
+                    const L = Math.max(1e-6, (Number(c.props.inductanceMh) || 100) * 1e-3);
+                    curr = (c.sim.iPrev || 0) + (dv * safeDt) / L;
+                    c.sim.iPrev = curr;
+                } else if (c.type === 'switch') {
+                    curr = c.props.closed ? dv / 0.005 : dv * 1e-9;
+                } else if (c.type === 'voltmeter') {
+                    curr = dv * 1e-7;
+                } else if (c.type === 'led' || c.type === 'diode') {
+                    if (c.sim.conducting) {
+                        const Ron = c.type === 'diode' ? 2.0 : 15.0;
+                        const Vf = Number(c.props.vf) || 0.7;
+                        curr = Math.max(0, (dv - Vf) / Ron);
+                    } else {
+                        curr = dv * 1e-9;
+                    }
+                    if (c.type === 'led' && curr * 1000 > (Number(c.props.maxMa) || 30)) {
+                        c.sim.overcurrent = true;
+                        warnings.push(`${c.label}: กระแสเกินพิกัด (${(curr * 1000).toFixed(1)} mA > ${c.props.maxMa} mA) — ควรเพิ่มตัวต้านทานจำกัดกระแส`);
+                    }
+                } else if (c.type === 'zener') {
+                    if (c.sim.zenerState === 'forward') {
+                        curr = Math.max(0, (dv - (Number(c.props.vf) || 0.7)) / 2.0);
+                    } else if (c.sim.zenerState === 'breakdown') {
+                        curr = -Math.max(0, (-dv - (Number(c.props.vz) || 5.1)) / 5.0);
+                    } else {
+                        curr = dv * 1e-9;
+                    }
+                } else if (c.type === 'npn') {
+                    const beta = Math.max(1, Number(c.props.beta) || 100);
+                    const vbeOn = Number(c.props.vbeOn) || 0.7;
+                    const vbe = v1 - v3;
+                    const vce = v2 - v3;
+                    if (c.sim.bjtRegion === 'active') {
+                        c.sim.ib = Math.max(0, (vbe - vbeOn) / 50);
+                        c.sim.ic = beta * c.sim.ib;
+                        c.sim.ie = c.sim.ib + c.sim.ic;
+                    } else if (c.sim.bjtRegion === 'saturation') {
+                        c.sim.ib = Math.max(0, (vbe - vbeOn) / 50);
+                        c.sim.ic = Math.max(0, (vce - 0.2) / 2.0);
+                        c.sim.ie = c.sim.ib + c.sim.ic;
+                    } else {
+                        c.sim.ib = 0; c.sim.ic = 0; c.sim.ie = 0;
+                    }
+                    curr = c.sim.ic;
+                } else if (c.type === 'pnp') {
+                    const beta = Math.max(1, Number(c.props.beta) || 100);
+                    const vebOn = Number(c.props.vebOn) || 0.7;
+                    const veb = v2 - v1;
+                    const vec = v2 - v3;
+                    if (c.sim.bjtRegion === 'active') {
+                        c.sim.ib = Math.max(0, (veb - vebOn) / 50);
+                        c.sim.ic = beta * c.sim.ib;
+                        c.sim.ie = c.sim.ib + c.sim.ic;
+                    } else if (c.sim.bjtRegion === 'saturation') {
+                        c.sim.ib = Math.max(0, (veb - vebOn) / 50);
+                        c.sim.ic = Math.max(0, (vec - 0.2) / 2.0);
+                        c.sim.ie = c.sim.ib + c.sim.ic;
+                    } else {
+                        c.sim.ib = 0; c.sim.ic = 0; c.sim.ie = 0;
+                    }
+                    curr = c.sim.ic;
+                } else if (c.type === 'nmos' || c.type === 'pmos') {
+                    const rOn = Math.max(0.1, Number(c.props.rdsOn) || 2.0);
+                    const vds = v2 - v3;
+                    curr = c.sim.mosState === 'on' ? vds / rOn : vds * 1e-9;
+                    c.sim.ic = curr;
+                } else if (c.type === 'dc_source' || c.type === 'ac_source' || c.type === 'ammeter' || c.type === 'opamp' || c.type === 'logic_in' || DIGITAL_GATES.has(c.type)) {
+                    curr = c._vSrcRow !== undefined ? (solution[c._vSrcRow] || 0) : 0;
+                    if (c.type === 'dc_source' || c.type === 'ac_source') curr = -curr;
+                } else if (c.type === 'logic_out') {
+                    c.sim.logicOut = v1 >= (Number(c.props.threshold) || 2.5);
+                } else if (c.type === 'seg7') {
+                    const th = Number(c.props.threshold) || 2.5;
+                    const b3 = v1 >= th ? 8 : 0;
+                    const b2 = v2 >= th ? 4 : 0;
+                    const b1 = v3 >= th ? 2 : 0;
+                    const b0 = v4 >= th ? 1 : 0;
+                    c.sim.hexVal = b3 + b2 + b1 + b0;
+                }
+
+                c.sim.i = curr;
+                if (c.type === 'npn') c.sim.power = Math.abs(c.sim.ic * (v2 - v3)) + Math.abs(c.sim.ib * (v1 - v3));
+                else if (c.type === 'pnp') c.sim.power = Math.abs(c.sim.ic * (v2 - v3)) + Math.abs(c.sim.ib * (v2 - v1));
+                else if (c.type === 'nmos' || c.type === 'pmos') c.sim.power = Math.abs(curr * (v2 - v3));
+                else c.sim.power = Math.abs(dv * curr);
+            });
+
+            simResult.wireSegments = segments;
+            simResult.matrixSize = size;
+            simResult.iterations = iterCount;
+            simResult.solveMs = performance.now() - t0;
+            simResult.warnings = warnings;
+
+            if (updateLiveUI) updateTelemetryUI();
+        }
+
+        // =====================================================================
+        // OSCILLOSCOPE RECORDING & RENDERING
+        // =====================================================================
+        function recordScopeSample() {
+            const probes = components.filter(c => c.type === 'probe');
+            if (probes.length === 0) return;
+            const sample = { t: state.simTime, ch: {} };
+            probes.forEach(p => {
+                const pin = getComponentPins(p)[0];
+                const v = simResult.nodeVoltages.get(ptKey(pin.x, pin.y)) || 0;
+                sample.ch[p.props.channel] = v;
+            });
+            state.scopeBuffer.push(sample);
+            if (state.scopeBuffer.length > state.maxScopePoints) {
+                state.scopeBuffer.shift();
+            }
+        }
+
+        function renderScope() {
+            if (!state.showScope) return;
+            const w = scopeCanvas.width;
+            const h = scopeCanvas.height;
+            if (w <= 0 || h <= 0) return;
+
+            scopeCtx.fillStyle = '#0D100F';
+            scopeCtx.fillRect(0, 0, w, h);
+
+            // Grid lines (8 horizontal divisions, 10 vertical divisions)
+            const vDivs = 4;
+            const hDivs = 10;
+            scopeCtx.strokeStyle = '#1D2522';
+            scopeCtx.lineWidth = 1;
+            scopeCtx.beginPath();
+            for (let i = 1; i < hDivs; i++) {
+                const x = (i / hDivs) * w;
+                scopeCtx.moveTo(x, 0); scopeCtx.lineTo(x, h);
+            }
+            for (let j = 1; j < vDivs; j++) {
+                const y = (j / vDivs) * h;
+                scopeCtx.moveTo(0, y); scopeCtx.lineTo(w, y);
+            }
+            scopeCtx.stroke();
+
+            // Center 0V axis
+            const midY = h / 2;
+            scopeCtx.strokeStyle = '#33423D';
+            scopeCtx.lineWidth = 1.5;
+            scopeCtx.beginPath();
+            scopeCtx.moveTo(0, midY); scopeCtx.lineTo(w, midY);
+            scopeCtx.stroke();
+
+            const probes = components.filter(c => c.type === 'probe');
+            const legendEl = document.getElementById('scope-legend');
+            if (probes.length === 0) {
+                legendEl.innerHTML = '<span class="text-gray-500">วาง Scope Probe เพื่อดูกราฟสัญญาณ</span>';
+                return;
+            }
+
+            const channels = [...new Set(probes.map(p => Number(p.props.channel) || 1))].sort();
+            const pxPerVolt = (h / vDivs) / state.scopeVDiv;
+
+            const legendItems = [];
+            channels.forEach(ch => {
+                const col = PROBE_COLORS[ch] || '#FFE066';
+                let minV = Infinity, maxV = -Infinity, lastV = 0;
+
+                scopeCtx.strokeStyle = col;
+                scopeCtx.lineWidth = 2;
+                scopeCtx.beginPath();
+                let started = false;
+
+                const len = state.scopeBuffer.length;
+                for (let i = 0; i < len; i++) {
+                    const sample = state.scopeBuffer[i];
+                    if (sample.ch[ch] === undefined) continue;
+                    const v = sample.ch[ch];
+                    lastV = v;
+                    if (v < minV) minV = v;
+                    if (v > maxV) maxV = v;
+                    const x = (i / Math.max(1, state.maxScopePoints - 1)) * w;
+                    const y = midY - v * pxPerVolt;
+                    if (!started) { scopeCtx.moveTo(x, y); started = true; }
+                    else scopeCtx.lineTo(x, y);
+                }
+                scopeCtx.stroke();
+
+                const vpp = (isFinite(maxV) && isFinite(minV)) ? (maxV - minV) : 0;
+                legendItems.push(
+                    `<span style="color:${col}">● CH${ch}: ${lastV.toFixed(2)}V <span class="text-gray-500">(Vpp ${vpp.toFixed(1)}V)</span></span>`
+                );
+            });
+
+            legendEl.innerHTML = legendItems.join('');
+        }
+
+        // =====================================================================
+        // SCHEMATIC CANVAS RENDERING
+        // =====================================================================
+        function drawGrid() {
+            const tl = screenToWorld(0, 0);
+            const br = screenToWorld(canvas.width, canvas.height);
+            const startX = Math.floor(tl.x / GRID) * GRID;
+            const endX = Math.ceil(br.x / GRID) * GRID;
+            const startY = Math.floor(tl.y / GRID) * GRID;
+            const endY = Math.ceil(br.y / GRID) * GRID;
+
+            ctx.lineWidth = 1 / state.cam.zoom;
+            for (let x = startX; x <= endX; x += GRID) {
+                const major = x % (GRID * 5) === 0;
+                ctx.strokeStyle = major ? '#1E2523' : '#161B1A';
+                ctx.beginPath();
+                ctx.moveTo(x, startY);
+                ctx.lineTo(x, endY);
+                ctx.stroke();
+            }
+            for (let y = startY; y <= endY; y += GRID) {
+                const major = y % (GRID * 5) === 0;
+                ctx.strokeStyle = major ? '#1E2523' : '#161B1A';
+                ctx.beginPath();
+                ctx.moveTo(startX, y);
+                ctx.lineTo(endX, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawSevenSegmentDigit(val) {
+            // Segment map for hex 0-F: [a, b, c, d, e, f, g]
+            const map = [
+                [1,1,1,1,1,1,0], // 0
+                [0,1,1,0,0,0,0], // 1
+                [1,1,0,1,1,0,1], // 2
+                [1,1,1,1,0,0,1], // 3
+                [0,1,1,0,0,1,1], // 4
+                [1,0,1,1,0,1,1], // 5
+                [1,0,1,1,1,1,1], // 6
+                [1,1,1,0,0,0,0], // 7
+                [1,1,1,1,1,1,1], // 8
+                [1,1,1,1,0,1,1], // 9
+                [1,1,1,0,1,1,1], // A
+                [0,0,1,1,1,1,1], // b
+                [1,0,0,1,1,1,0], // C
+                [0,1,1,1,1,0,1], // d
+                [1,0,0,1,1,1,1], // E
+                [1,0,0,0,1,1,1]  // F
+            ];
+            const segs = map[val & 15] || map[0];
+            const drawSeg = (x1, y1, x2, y2, on) => {
+                ctx.strokeStyle = on ? '#FF3366' : '#2A2225';
+                ctx.lineWidth = on ? 4 : 3;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+                ctx.stroke();
+            };
+            const ox = 8, oy = -10;
+            drawSeg(ox - 10, oy - 20, ox + 10, oy - 20, segs[0]); // a
+            drawSeg(ox + 12, oy - 18, ox + 12, oy - 2,  segs[1]); // b
+            drawSeg(ox + 12, oy + 2,  ox + 12, oy + 18, segs[2]); // c
+            drawSeg(ox - 10, oy + 20, ox + 10, oy + 20, segs[3]); // d
+            drawSeg(ox - 12, oy + 2,  ox - 12, oy + 18, segs[4]); // e
+            drawSeg(ox - 12, oy - 18, ox - 12, oy - 2,  segs[5]); // f
+            drawSeg(ox - 10, oy,      ox + 10, oy,      segs[6]); // g
+        }
+
+        function drawComponent(comp, isGhost = false) {
+            ctx.save();
+            ctx.translate(comp.x, comp.y);
+            if (isGhost) ctx.globalAlpha = 0.55;
+
+            const isSelected = !isGhost && state.selectedType === 'comp' && state.selectedId === comp.id;
+            const isHovered = !isGhost && state.hoverComp === comp;
+
+            if (isSelected || isHovered) {
+                ctx.save();
+                ctx.strokeStyle = isSelected ? '#95FF77' : 'rgba(0, 209, 255, 0.5)';
+                ctx.lineWidth = isSelected ? 2 : 1.5;
+                ctx.setLineDash([4, 3]);
+                ctx.strokeRect(-44, -44, 88, 88);
+                ctx.restore();
+            }
+
+            ctx.rotate((comp.rot * Math.PI) / 180);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            const baseStroke = isSelected ? '#95FF77' : '#E5E7EB';
+
+            if (comp.type === 'dc_source') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(0, -18); ctx.moveTo(0, 18); ctx.lineTo(0, 40); ctx.stroke();
+                ctx.fillStyle = '#181C1B'; ctx.strokeStyle = '#FFE066'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.strokeStyle = '#FFE066'; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-5, -7); ctx.lineTo(5, -7); ctx.moveTo(0, -12); ctx.lineTo(0, -2);
+                ctx.moveTo(-5, 8); ctx.lineTo(5, 8);
+                ctx.stroke();
+            } else if (comp.type === 'ac_source') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(0, -18); ctx.moveTo(0, 18); ctx.lineTo(0, 40); ctx.stroke();
+                ctx.fillStyle = '#181C1B'; ctx.strokeStyle = '#00D1FF'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(-10, 0); ctx.bezierCurveTo(-5, -12, 0, -12, 0, 0);
+                ctx.bezierCurveTo(0, 12, 5, 12, 10, 0);
+                ctx.stroke();
+            } else if (comp.type === 'ground') {
+                ctx.strokeStyle = '#9CA3AF'; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, -20); ctx.lineTo(0, 0);
+                ctx.moveTo(-14, 0); ctx.lineTo(14, 0);
+                ctx.moveTo(-9, 6); ctx.lineTo(9, 6);
+                ctx.moveTo(-4, 12); ctx.lineTo(4, 12);
+                ctx.stroke();
+            } else if (comp.type === 'resistor') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(-22, 0); ctx.moveTo(22, 0); ctx.lineTo(40, 0); ctx.stroke();
+                ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.moveTo(-22, 0); ctx.lineTo(-18, -8); ctx.lineTo(-11, 8); ctx.lineTo(-4, -8);
+                ctx.lineTo(4, 8); ctx.lineTo(11, -8); ctx.lineTo(18, 8); ctx.lineTo(22, 0);
+                ctx.stroke();
+            } else if (comp.type === 'capacitor') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(-6, 0); ctx.moveTo(6, 0); ctx.lineTo(40, 0); ctx.stroke();
+                ctx.strokeStyle = '#38BDF8'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(-6, -15); ctx.lineTo(-6, 15); ctx.moveTo(6, -15); ctx.lineTo(6, 15); ctx.stroke();
+            } else if (comp.type === 'inductor') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(-24, 0); ctx.moveTo(24, 0); ctx.lineTo(40, 0); ctx.stroke();
+                ctx.strokeStyle = '#A78BFA'; ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                for (let i = 0; i < 4; i++) {
+                    ctx.arc(-18 + i * 12, 0, 6, Math.PI, 0, false);
+                }
+                ctx.stroke();
+            } else if (comp.type === 'switch') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(-16, 0); ctx.moveTo(16, 0); ctx.lineTo(40, 0); ctx.stroke();
+                ctx.fillStyle = '#95FF77';
+                ctx.beginPath(); ctx.arc(-16, 0, 3.5, 0, Math.PI * 2); ctx.arc(16, 0, 3.5, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = comp.props.closed ? '#95FF77' : '#FF3366'; ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-16, 0);
+                if (comp.props.closed) ctx.lineTo(16, 0);
+                else ctx.lineTo(13, -15);
+                ctx.stroke();
+            } else if (comp.type === 'diode' || comp.type === 'zener') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(-12, 0); ctx.moveTo(12, 0); ctx.lineTo(40, 0); ctx.stroke();
+                const col = comp.type === 'zener' ? '#FB7185' : '#F472B6';
+                const isFlowing = Math.abs(comp.sim.i) > 1e-5;
+                ctx.fillStyle = isFlowing ? col : '#181C1B';
+                ctx.strokeStyle = col; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-12, -12); ctx.lineTo(12, 0); ctx.lineTo(-12, 12); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(12, -13); ctx.lineTo(12, 13);
+                if (comp.type === 'zener') { ctx.moveTo(12, -13); ctx.lineTo(17, -17); ctx.moveTo(12, 13); ctx.lineTo(7, 17); }
+                ctx.stroke();
+            } else if (comp.type === 'led') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(-12, 0); ctx.moveTo(12, 0); ctx.lineTo(40, 0); ctx.stroke();
+                const ledCol = comp.props.color || '#FF3366';
+                const brightness = Math.min(1, Math.max(0, (comp.sim.i * 1000) / 15));
+                if (!isGhost && brightness > 0.02) {
+                    const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, 26 + brightness * 14);
+                    grad.addColorStop(0, ledCol);
+                    grad.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath(); ctx.arc(0, 0, 26 + brightness * 14, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.fillStyle = brightness > 0.05 ? ledCol : '#221C1E';
+                ctx.strokeStyle = comp.sim.overcurrent ? '#FFE066' : ledCol; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-12, -12); ctx.lineTo(12, 0); ctx.lineTo(-12, 12); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(12, -12); ctx.lineTo(12, 12); ctx.stroke();
+                if (!isGhost && comp.sim.overcurrent) {
+                    ctx.fillStyle = '#FFE066'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+                    ctx.fillText('⚠', 0, -18);
+                }
+            } else if (comp.type === 'lamp') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(-16, 0); ctx.moveTo(16, 0); ctx.lineTo(40, 0); ctx.stroke();
+                const ratio = Math.min(1.2, comp.sim.power / (Number(comp.props.ratedW) || 2));
+                if (!isGhost && ratio > 0.02) {
+                    const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, 24 + ratio * 22);
+                    grad.addColorStop(0, `rgba(255, 224, 102, ${Math.min(0.9, ratio)})`);
+                    grad.addColorStop(1, 'rgba(255, 224, 102, 0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath(); ctx.arc(0, 0, 24 + ratio * 22, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.fillStyle = ratio > 0.1 ? `rgba(255, 224, 102, ${Math.min(0.7, ratio)})` : '#181C1B';
+                ctx.strokeStyle = '#FFE066'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-9, -9); ctx.lineTo(9, 9); ctx.moveTo(9, -9); ctx.lineTo(-9, 9); ctx.stroke();
+            } else if (comp.type === 'npn' || comp.type === 'pnp') {
+                const isNpn = comp.type === 'npn';
+                const col = isNpn ? '#34D399' : '#FBBF24';
+                ctx.fillStyle = '#181C1B'; ctx.strokeStyle = col; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(6, 0, 22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-40, 0); ctx.lineTo(-4, 0); // Base lead
+                ctx.moveTo(20, -40); ctx.lineTo(20, -22); ctx.lineTo(-4, -9); // Top lead
+                ctx.moveTo(20, 40); ctx.lineTo(20, 22); ctx.lineTo(-4, 9);    // Bottom lead
+                ctx.stroke();
+                ctx.strokeStyle = col; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(-4, -14); ctx.lineTo(-4, 14); ctx.stroke();
+                // Emitter arrow
+                ctx.fillStyle = col;
+                ctx.beginPath();
+                if (isNpn) {
+                    ctx.moveTo(15, 19); ctx.lineTo(6, 18); ctx.lineTo(10, 11);
+                } else {
+                    ctx.moveTo(0, -11); ctx.lineTo(9, -12); ctx.lineTo(6, -19);
+                }
+                ctx.closePath(); ctx.fill();
+            } else if (comp.type === 'nmos' || comp.type === 'pmos') {
+                const isN = comp.type === 'nmos';
+                const col = isN ? '#2DD4BF' : '#C084FC';
+                ctx.fillStyle = '#181C1B'; ctx.strokeStyle = col; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(6, 0, 22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-40, 0); ctx.lineTo(-8, 0); // Gate lead
+                ctx.moveTo(20, -40); ctx.lineTo(20, -12); ctx.lineTo(0, -12);
+                ctx.moveTo(20, 40); ctx.lineTo(20, 12); ctx.lineTo(0, 12);
+                ctx.stroke();
+                ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(-8, -12); ctx.lineTo(-8, 12); // Gate bar
+                ctx.moveTo(0, -15); ctx.lineTo(0, -8);   // Channel segments
+                ctx.moveTo(0, -4); ctx.lineTo(0, 4);
+                ctx.moveTo(0, 8); ctx.lineTo(0, 15);
+                ctx.stroke();
+                // Arrow
+                ctx.fillStyle = col;
+                ctx.beginPath();
+                if (isN) { ctx.moveTo(2, 0); ctx.lineTo(10, -4); ctx.lineTo(10, 4); }
+                else { ctx.moveTo(11, 0); ctx.lineTo(3, -4); ctx.lineTo(3, 4); }
+                ctx.closePath(); ctx.fill();
+            } else if (comp.type === 'opamp') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-40, -20); ctx.lineTo(-22, -20);
+                ctx.moveTo(-40, 20); ctx.lineTo(-22, 20);
+                ctx.moveTo(24, 0); ctx.lineTo(40, 0);
+                ctx.stroke();
+                ctx.fillStyle = '#181C1B'; ctx.strokeStyle = '#60A5FA'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-22, -30); ctx.lineTo(26, 0); ctx.lineTo(-22, 30); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#60A5FA'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('+', -13, -15); ctx.fillText('−', -13, 15);
+            } else if (comp.type === 'voltmeter' || comp.type === 'ammeter') {
+                const isV = comp.type === 'voltmeter';
+                const col = isV ? '#00D1FF' : '#FFE066';
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(-18, 0); ctx.moveTo(18, 0); ctx.lineTo(40, 0); ctx.stroke();
+                ctx.fillStyle = '#141716'; ctx.strokeStyle = col; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = col; ctx.font = 'bold 14px "Share Tech Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(isV ? 'V' : 'A', 0, 1);
+            } else if (comp.type === 'probe') {
+                const col = PROBE_COLORS[comp.props.channel] || '#FFE066';
+                ctx.strokeStyle = col; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(0, 4); ctx.stroke();
+                ctx.fillStyle = '#141716';
+                ctx.beginPath(); ctx.arc(0, -6, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = col; ctx.font = 'bold 10px "Share Tech Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(`C${comp.props.channel}`, 0, -5);
+            } else if (comp.type === 'logic_in') {
+                const on = !!comp.props.high;
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(40, 0); ctx.stroke();
+                ctx.fillStyle = on ? '#95FF77' : '#1E2422';
+                ctx.strokeStyle = on ? '#95FF77' : '#6B7280'; ctx.lineWidth = 2;
+                ctx.fillRect(-18, -16, 36, 32); ctx.strokeRect(-18, -16, 36, 32);
+                ctx.fillStyle = on ? '#000' : '#9CA3AF';
+                ctx.font = 'bold 16px "Share Tech Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(on ? '1' : '0', 0, 1);
+            } else if (comp.type === 'logic_out') {
+                const on = !!comp.sim.logicOut;
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(-16, 0); ctx.stroke();
+                ctx.fillStyle = on ? '#00D1FF' : '#1E2422';
+                ctx.strokeStyle = on ? '#00D1FF' : '#6B7280'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = on ? '#000' : '#9CA3AF';
+                ctx.font = 'bold 14px "Share Tech Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(on ? '1' : '0', 0, 1);
+            } else if (DIGITAL_GATES.has(comp.type)) {
+                const isNot = comp.type === 'gate_not';
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath();
+                if (isNot) {
+                    ctx.moveTo(-40, 0); ctx.lineTo(-18, 0);
+                } else {
+                    ctx.moveTo(-40, -20); ctx.lineTo(-18, -20);
+                    ctx.moveTo(-40, 20); ctx.lineTo(-18, 20);
+                }
+                ctx.moveTo(22, 0); ctx.lineTo(40, 0);
+                ctx.stroke();
+
+                ctx.fillStyle = '#1A1E24'; ctx.strokeStyle = '#A78BFA'; ctx.lineWidth = 2;
+                ctx.fillRect(-20, -26, 40, 52); ctx.strokeRect(-20, -26, 40, 52);
+                if (comp.type === 'gate_not' || comp.type === 'gate_nand') {
+                    ctx.fillStyle = '#1A1E24';
+                    ctx.beginPath(); ctx.arc(24, 0, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                }
+                const txt = comp.type.replace('gate_', '').toUpperCase();
+                ctx.fillStyle = comp.sim.logicOut ? '#95FF77' : '#C4B5FD';
+                ctx.font = 'bold 11px "Share Tech Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(txt, 0, 1);
+            } else if (comp.type === 'seg7') {
+                ctx.strokeStyle = baseStroke; ctx.lineWidth = 2;
+                ctx.beginPath();
+                [-40, -20, 0, 20].forEach(py => { ctx.moveTo(-40, py); ctx.lineTo(-22, py); });
+                ctx.stroke();
+                ctx.fillStyle = '#121514'; ctx.strokeStyle = '#4B5563'; ctx.lineWidth = 2;
+                ctx.fillRect(-22, -48, 56, 76); ctx.strokeRect(-22, -48, 56, 76);
+                drawSevenSegmentDigit(comp.sim.hexVal || 0);
+            }
+
+            ctx.restore();
+
+            // Draw pin connection dots & text labels upright
+            const pins = getComponentPins(comp);
+            pins.forEach(p => {
+                const v = simResult.nodeVoltages.get(ptKey(p.x, p.y));
+                ctx.fillStyle = isGhost ? '#95FF77' : (v !== undefined ? voltageToColor(v) : '#9CA3AF');
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            if (!isGhost) {
+                ctx.font = '11px "Share Tech Mono", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#D1D5DB';
+                let sub = '';
+                if (comp.type === 'dc_source') sub = `${comp.props.voltage}V`;
+                else if (comp.type === 'ac_source') sub = `${comp.props.amplitude}V ${comp.props.frequency}Hz`;
+                else if (comp.type === 'resistor' || comp.type === 'lamp') sub = formatUnit(comp.props.resistance, 'Ω');
+                else if (comp.type === 'capacitor') sub = `${comp.props.capacitanceUf}µF`;
+                else if (comp.type === 'inductor') sub = `${comp.props.inductanceMh}mH`;
+                else if (comp.type === 'zener') sub = `${comp.props.vz}V`;
+                else if (comp.type === 'voltmeter') sub = formatUnit(comp.sim.v1 - comp.sim.v2, 'V');
+                else if (comp.type === 'ammeter') sub = formatUnit(comp.sim.i, 'A');
+                else if (comp.type === 'npn' || comp.type === 'pnp') sub = comp.sim.bjtRegion.toUpperCase();
+                else if (comp.type === 'nmos' || comp.type === 'pmos') sub = comp.sim.mosState.toUpperCase();
+
+                const labelY = comp.type === 'ground' ? comp.y + 26 : comp.y - 30;
+                ctx.fillText(comp.label, comp.x, labelY);
+                if (sub) {
+                    ctx.fillStyle = (comp.type === 'voltmeter' || comp.type === 'ammeter') ? '#00D1FF' : '#9CA3AF';
+                    ctx.fillText(sub, comp.x, comp.y + 34);
+                }
+            }
+        }
+
+        function renderCanvas() {
+            const w = canvas.width;
+            const h = canvas.height;
+            if (w <= 0 || h <= 0) return;
+
+            ctx.fillStyle = '#111413';
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.save();
+            ctx.translate(w / 2, h / 2);
+            ctx.scale(state.cam.zoom, state.cam.zoom);
+            ctx.translate(state.cam.x, state.cam.y);
+
+            drawGrid();
+
+            // Draw wire segments with voltage colors & current dots
+            const junctionCount = new Map();
+            simResult.wireSegments.forEach(s => {
+                junctionCount.set(s.k1, (junctionCount.get(s.k1) || 0) + 1);
+                junctionCount.set(s.k2, (junctionCount.get(s.k2) || 0) + 1);
+
+                const isSel = state.selectedType === 'wire' && state.selectedId === s.wireId;
+                const isHov = state.hoverWire && state.hoverWire.id === s.wireId;
+
+                ctx.strokeStyle = isSel ? '#95FF77' : (isHov ? '#00D1FF' : voltageToColor((s.v1 + s.v2) / 2));
+                ctx.lineWidth = isSel ? 4 : 2.6;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(s.x1, s.y1);
+                ctx.lineTo(s.x2, s.y2);
+                ctx.stroke();
+
+                // Current flow animation dots
+                if (state.showCurrentDots && Math.abs(s.current) > 1e-4) {
+                    const dx = s.x2 - s.x1;
+                    const dy = s.y2 - s.y1;
+                    const len = Math.hypot(dx, dy);
+                    if (len > 4) {
+                        const spacing = 20;
+                        const dir = s.current >= 0 ? 1 : -1;
+                        const speedScale = Math.min(2.8, Math.log10(1 + Math.abs(s.current) * 800));
+                        const offset = ((state.dotPhase * speedScale * dir) % spacing + spacing) % spacing;
+
+                        ctx.fillStyle = '#FFE066';
+                        for (let d = offset; d < len; d += spacing) {
+                            const t = d / len;
+                            ctx.beginPath();
+                            ctx.arc(s.x1 + dx * t, s.y1 + dy * t, 2.5, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+            });
+
+            // Draw T-junction dots where 3+ segments meet
+            junctionCount.forEach((cnt, key) => {
+                if (cnt >= 3) {
+                    const [jx, jy] = key.split(',').map(Number);
+                    ctx.fillStyle = voltageToColor(simResult.nodeVoltages.get(key) || 0);
+                    ctx.beginPath();
+                    ctx.arc(jx, jy, 4.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Draw all components
+            components.forEach(c => drawComponent(c, false));
+
+            // Wire drawing preview (orthogonal L-route)
+            if (state.tool === 'wire') {
+                const hx = snap(state.hoverWorld.x);
+                const hy = snap(state.hoverWorld.y);
+                ctx.strokeStyle = '#95FF77';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(hx, hy, 5, 0, Math.PI * 2);
+                ctx.stroke();
+
+                if (state.wireStart) {
+                    ctx.strokeStyle = '#95FF77';
+                    ctx.lineWidth = 2.2;
+                    ctx.setLineDash([5, 4]);
+                    ctx.beginPath();
+                    ctx.moveTo(state.wireStart.x, state.wireStart.y);
+                    ctx.lineTo(hx, state.wireStart.y);
+                    ctx.lineTo(hx, hy);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // Component placement ghost
+            if (COMP_DEFS[state.tool]) {
+                const def = COMP_DEFS[state.tool];
+                const ghost = {
+                    id: 'ghost',
+                    type: state.tool,
+                    label: def.prefix,
+                    x: snap(state.hoverWorld.x),
+                    y: snap(state.hoverWorld.y),
+                    rot: state.ghostRot,
+                    props: { ...def.defaults },
+                    sim: { v1: 0, v2: 0, i: 0, power: 0, conducting: false, zenerState: 'off', bjtRegion: 'cutoff', mosState: 'cutoff', logicOut: false, hexVal: 0 }
+                };
+                drawComponent(ghost, true);
+            }
+
+            ctx.restore();
+        }
+
+        // =====================================================================
+        // INSPECTOR & UI CONTROLS
+        // =====================================================================
+        function updateTelemetryUI() {
+            document.getElementById('stat-time').innerText = `${state.simTime.toFixed(3)} s`;
+            document.getElementById('stat-matrix').innerText = `${simResult.matrixSize}×${simResult.matrixSize}`;
+            document.getElementById('stat-solve').innerText = `${simResult.iterations} / ${simResult.solveMs.toFixed(1)} ms`;
+
+            const warnEl = document.getElementById('warning-banner');
+            if (simResult.warnings.length > 0) {
+                warnEl.innerText = '⚠ ' + simResult.warnings[0];
+                warnEl.classList.remove('hidden');
+            } else {
+                warnEl.classList.add('hidden');
+            }
+
+            // Refresh live readouts inside inspector without rebuilding focused inputs
+            if (state.selectedType === 'comp' && state.selectedId) {
+                const comp = components.find(c => c.id === state.selectedId);
+                const liveBox = document.getElementById('inspector-live-box');
+                if (comp && liveBox) liveBox.innerHTML = buildLiveTelemetryHtml(comp);
+            }
+        }
+
+        function buildLiveTelemetryHtml(comp) {
+            const s = comp.sim;
+            let rows = '';
+            if (comp.type === 'npn' || comp.type === 'pnp') {
+                const vbe = comp.type === 'npn' ? (s.v1 - s.v3) : (s.v2 - s.v1);
+                const vce = s.v2 - s.v3;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Region:</span><span class="text-[#95FF77] font-bold">${s.bjtRegion.toUpperCase()}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">${comp.type === 'npn' ? 'Vbe' : 'Veb'}:</span><span>${formatUnit(vbe, 'V')}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">${comp.type === 'npn' ? 'Vce' : 'Vec'}:</span><span>${formatUnit(vce, 'V')}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Ib / Ic:</span><span>${formatUnit(s.ib, 'A')} / ${formatUnit(s.ic, 'A')}</span></div>`;
+            } else if (comp.type === 'nmos' || comp.type === 'pmos') {
+                const vgs = comp.type === 'nmos' ? (s.v1 - s.v3) : (s.v2 - s.v1);
+                rows += `<div class="flex justify-between"><span class="text-gray-400">State:</span><span class="text-[#2DD4BF] font-bold">${s.mosState.toUpperCase()}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">${comp.type === 'nmos' ? 'Vgs' : 'Vsg'}:</span><span>${formatUnit(vgs, 'V')}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Id:</span><span>${formatUnit(s.i, 'A')}</span></div>`;
+            } else if (comp.type === 'opamp') {
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Mode:</span><span class="text-[#60A5FA] font-bold">${s.opampSat.toUpperCase()}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">V+ / V−:</span><span>${formatUnit(s.v1, 'V')} / ${formatUnit(s.v2, 'V')}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Vout:</span><span class="text-[#95FF77]">${formatUnit(s.v3, 'V')}</span></div>`;
+            } else if (comp.type === 'seg7') {
+                const bin = (s.hexVal || 0).toString(2).padStart(4, '0');
+                const hex = (s.hexVal || 0).toString(16).toUpperCase();
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Binary (8421):</span><span class="text-[#00D1FF]">${bin}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Hex / Dec:</span><span class="text-[#FF3366] font-bold">0x${hex} (${s.hexVal || 0})</span></div>`;
+            } else if (DIGITAL_GATES.has(comp.type) || comp.type === 'logic_out' || comp.type === 'logic_in') {
+                const high = comp.type === 'logic_in' ? !!comp.props.high : !!s.logicOut;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Logic State:</span><span class="${high ? 'text-[#95FF77]' : 'text-gray-400'} font-bold">${high ? 'HIGH (1)' : 'LOW (0)'}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Pin Voltage:</span><span>${formatUnit(s.v1, 'V')}</span></div>`;
+            } else if (comp.type === 'probe') {
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Voltage:</span><span class="text-[#FFE066] font-bold">${formatUnit(s.v1, 'V')}</span></div>`;
+            } else if (comp.type === 'ground') {
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Potential:</span><span class="text-gray-300">0.00 V (Ref)</span></div>`;
+            } else {
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Voltage (ΔV):</span><span class="text-[#00D1FF]">${formatUnit(s.v1 - s.v2, 'V')}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Current (I):</span><span class="text-[#FFE066]">${formatUnit(s.i, 'A')}</span></div>`;
+                rows += `<div class="flex justify-between"><span class="text-gray-400">Power (P):</span><span class="text-[#95FF77]">${formatUnit(s.power, 'W')}</span></div>`;
+            }
+            return rows;
+        }
+
+        function renderInspector() {
+            const box = document.getElementById('inspector-content');
+            if (!state.selectedId) {
+                box.innerHTML = `<div class="text-gray-500 text-center py-8 font-mono-tech">คลิกที่อุปกรณ์บนวงจร<br>เพื่อปรับค่าและดูข้อมูล</div>`;
+                return;
+            }
+
+            if (state.selectedType === 'wire') {
+                box.innerHTML = `
+                    <div class="p-2.5 rounded-lg bg-[#141716] border border-[#2B3330] space-y-2">
+                        <div class="font-mono-tech text-xs font-bold text-[#95FF77]">WIRE CONNECTION</div>
+                        <p class="text-[11px] text-gray-400">เส้นสายไฟเชื่อมต่อโหนดในวงจร</p>
+                        <button onclick="deleteSelected()" class="w-full py-1.5 rounded bg-[#FF3366]/15 border border-[#FF3366]/60 text-[#FF3366] font-mono-tech text-xs hover:bg-[#FF3366] hover:text-white transition">DELETE WIRE</button>
+                    </div>`;
+                return;
+            }
+
+            const comp = components.find(c => c.id === state.selectedId);
+            if (!comp) return;
+            const def = COMP_DEFS[comp.type];
+
+            const numField = (label, key, step = 'any', min = '') => `
+                <div class="flex items-center justify-between gap-2">
+                    <label class="text-gray-400 text-[11px]">${label}</label>
+                    <input type="number" step="${step}" ${min !== '' ? `min="${min}"` : ''} value="${comp.props[key]}"
+                        onchange="updateCompProp('${comp.id}', '${key}', parseFloat(this.value))"
+                        class="w-24 bg-[#111413] border border-[#3A4441] rounded px-2 py-1 text-right font-mono-tech text-[#95FF77] outline-none focus:border-[#95FF77]">
+                </div>`;
+
+            let propHtml = '';
+            if (comp.type === 'dc_source') {
+                propHtml += numField('Voltage (V)', 'voltage', 0.5);
+            } else if (comp.type === 'ac_source') {
+                propHtml += `
+                    <div class="flex items-center justify-between gap-2">
+                        <label class="text-gray-400 text-[11px]">Waveform</label>
+                        <select onchange="updateCompProp('${comp.id}', 'waveform', this.value)" class="w-24 bg-[#111413] border border-[#3A4441] rounded px-1.5 py-1 font-mono-tech text-[#00D1FF] outline-none">
+                            <option value="sine" ${comp.props.waveform === 'sine' ? 'selected' : ''}>Sine</option>
+                            <option value="square" ${comp.props.waveform === 'square' ? 'selected' : ''}>Square</option>
+                            <option value="triangle" ${comp.props.waveform === 'triangle' ? 'selected' : ''}>Triangle</option>
+                        </select>
+                    </div>`;
+                propHtml += numField('Amplitude (Vp)', 'amplitude', 0.5, 0);
+                propHtml += numField('Frequency (Hz)', 'frequency', 0.5, 0.05);
+                propHtml += numField('DC Offset (V)', 'dcOffset', 0.5);
+            } else if (comp.type === 'resistor') {
+                propHtml += numField('Resistance (Ω)', 'resistance', 10, 0.1);
+            } else if (comp.type === 'capacitor') {
+                propHtml += numField('Cap (µF)', 'capacitanceUf', 10, 0.01);
+            } else if (comp.type === 'inductor') {
+                propHtml += numField('Ind (mH)', 'inductanceMh', 10, 0.01);
+            } else if (comp.type === 'switch') {
+                propHtml += `<button onclick="updateCompProp('${comp.id}', 'closed', ${!comp.props.closed}); renderInspector();" class="w-full py-1.5 rounded font-mono-tech text-xs font-bold ${comp.props.closed ? 'bg-[#95FF77] text-black' : 'bg-[#2A2E2E] text-gray-300'}">${comp.props.closed ? 'SWITCH: CLOSED (ON)' : 'SWITCH: OPEN (OFF)'}</button>`;
+            } else if (comp.type === 'logic_in') {
+                propHtml += `<button onclick="updateCompProp('${comp.id}', 'high', ${!comp.props.high}); renderInspector();" class="w-full py-1.5 rounded font-mono-tech text-xs font-bold ${comp.props.high ? 'bg-[#95FF77] text-black' : 'bg-[#2A2E2E] text-gray-300'}">${comp.props.high ? 'LOGIC: HIGH (1)' : 'LOGIC: LOW (0)'}</button>`;
+                propHtml += numField('V High (V)', 'vHigh', 0.5, 1);
+            } else if (comp.type === 'diode') {
+                propHtml += numField('Forward Vf (V)', 'vf', 0.1, 0.1);
+            } else if (comp.type === 'zener') {
+                propHtml += numField('Zener Vz (V)', 'vz', 0.1, 1);
+                propHtml += numField('Forward Vf (V)', 'vf', 0.1, 0.1);
+            } else if (comp.type === 'npn') {
+                propHtml += numField('Gain (β)', 'beta', 10, 1);
+                propHtml += numField('Vbe On (V)', 'vbeOn', 0.1, 0.1);
+            } else if (comp.type === 'pnp') {
+                propHtml += numField('Gain (β)', 'beta', 10, 1);
+                propHtml += numField('Veb On (V)', 'vebOn', 0.1, 0.1);
+            } else if (comp.type === 'nmos' || comp.type === 'pmos') {
+                propHtml += numField('Vth (V)', 'vth', 0.2, 0.2);
+                propHtml += numField('Rds(on) (Ω)', 'rdsOn', 0.5, 0.1);
+            } else if (comp.type === 'opamp') {
+                propHtml += numField('Gain (Aol)', 'gain', 1000, 10);
+                propHtml += numField('±Vsat (V)', 'vSat', 1, 1);
+            } else if (comp.type === 'led') {
+                const colors = ['#FF3366', '#95FF77', '#00D1FF', '#FFE066', '#A78BFA'];
+                propHtml += `
+                    <div class="flex items-center justify-between gap-2">
+                        <label class="text-gray-400 text-[11px]">LED Color</label>
+                        <div class="flex gap-1.5">
+                            ${colors.map(col => `<button onclick="updateCompProp('${comp.id}', 'color', '${col}'); renderInspector();" style="background:${col}" class="w-5 h-5 rounded-full border-2 ${comp.props.color === col ? 'border-white scale-110' : 'border-transparent'}"></button>`).join('')}
+                        </div>
+                    </div>`;
+                propHtml += numField('Forward Vf (V)', 'vf', 0.1, 0.5);
+                propHtml += numField('Max mA', 'maxMa', 5, 5);
+            } else if (comp.type === 'lamp') {
+                propHtml += numField('Resistance (Ω)', 'resistance', 5, 1);
+                propHtml += numField('Rated (W)', 'ratedW', 0.5, 0.1);
+            } else if (comp.type === 'probe') {
+                propHtml += `
+                    <div class="flex items-center justify-between gap-2">
+                        <label class="text-gray-400 text-[11px]">Channel</label>
+                        <select onchange="updateCompProp('${comp.id}', 'channel', parseInt(this.value)); renderInspector();" class="w-24 bg-[#111413] border border-[#3A4441] rounded px-1.5 py-1 font-mono-tech text-[#FFE066] outline-none">
+                            ${[1, 2, 3, 4].map(ch => `<option value="${ch}" ${Number(comp.props.channel) === ch ? 'selected' : ''}>CH${ch}</option>`).join('')}
+                        </select>
+                    </div>`;
+            }
+
+            box.innerHTML = `
+                <div class="p-2.5 rounded-lg bg-[#141716] border border-[#2B3330] space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-mono-tech text-xs font-bold text-white">${comp.label}</div>
+                            <div class="text-[10px] text-gray-400">${def.name}</div>
+                        </div>
+                        <span class="font-mono-tech text-[10px] px-1.5 py-0.5 rounded bg-[#222826] text-gray-300">${comp.rot}°</span>
+                    </div>
+                    <div class="space-y-2 pt-1 border-t border-[#262D2A]">${propHtml || '<div class="text-[11px] text-gray-500">ไม่มีพารามิเตอร์ให้ปรับ</div>'}</div>
+                </div>
+
+                <div class="p-2.5 rounded-lg bg-[#141716] border border-[#2B3330] space-y-1.5 font-mono-tech text-[11px]">
+                    <div class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Live Telemetry</div>
+                    <div id="inspector-live-box" class="space-y-1">${buildLiveTelemetryHtml(comp)}</div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="rotateSelected()" class="py-1.5 rounded bg-[#1F2523] border border-[#3A4441] text-gray-200 font-mono-tech text-xs hover:border-[#00D1FF] hover:text-[#00D1FF] transition">↻ ROTATE (R)</button>
+                    <button onclick="deleteSelected()" class="py-1.5 rounded bg-[#FF3366]/15 border border-[#FF3366]/60 text-[#FF3366] font-mono-tech text-xs hover:bg-[#FF3366] hover:text-white transition">✕ DELETE</button>
+                </div>`;
+        }
+
+        function updateCompProp(id, key, val) {
+            const comp = components.find(c => c.id === id);
+            if (!comp) return;
+            if (typeof val === 'number' && !isFinite(val)) return;
+            comp.props[key] = val;
+            if (comp.type === 'probe' && key === 'channel') comp.label = `CH${val}`;
+            solveCircuit(0.005, true);
+        }
+
+        function rotateSelected() {
+            if (state.selectedType === 'comp' && state.selectedId) {
+                const comp = components.find(c => c.id === state.selectedId);
+                if (comp) {
+                    comp.rot = (comp.rot + 90) % 360;
+                    renderInspector();
+                    solveCircuit(0.005, true);
+                }
+            } else if (COMP_DEFS[state.tool]) {
+                state.ghostRot = (state.ghostRot + 90) % 360;
+            }
+        }
+
+        function deleteSelected() {
+            if (!state.selectedId) return;
+            if (state.selectedType === 'comp') {
+                components = components.filter(c => c.id !== state.selectedId);
+            } else if (state.selectedType === 'wire') {
+                wires = wires.filter(w => w.id !== state.selectedId);
+            }
+            state.selectedId = null;
+            state.selectedType = null;
+            renderInspector();
+            solveCircuit(0.005, true);
+        }
+
+        function setTool(tool) {
+            state.tool = tool;
+            state.wireStart = null;
+            document.querySelectorAll('.tool-item').forEach(el => el.classList.remove('active'));
+            const btn = document.getElementById('tool-' + tool);
+            if (btn) btn.classList.add('active');
+            canvas.style.cursor = tool === 'select' ? 'default' : 'crosshair';
+        }
+
+        function toggleSidebar(side) {
+            const panel = document.getElementById(side === 'tools' ? 'tools-panel' : 'inspector-panel');
+            const expandBtn = document.getElementById(side === 'tools' ? 'btn-expand-tools' : 'btn-expand-inspector');
+            const isCollapsed = panel.classList.toggle('collapsed');
+            expandBtn.classList.toggle('hidden', !isCollapsed);
+        }
+
+        function toggleSim() {
+            state.running = !state.running;
+            document.getElementById('run-icon').innerText = state.running ? '⏸' : '▶';
+            document.getElementById('run-text').innerText = state.running ? 'PAUSE' : 'RUN';
+            const btn = document.getElementById('btn-run');
+            btn.className = state.running
+                ? 'px-3 py-1.5 rounded-lg bg-[#95FF77] text-black font-mono-tech text-xs font-bold tracking-wider hover:brightness-110 active:scale-95 transition flex items-center gap-1.5'
+                : 'px-3 py-1.5 rounded-lg bg-[#1F2523] border border-[#95FF77] text-[#95FF77] font-mono-tech text-xs font-bold tracking-wider hover:bg-[#95FF77] hover:text-black active:scale-95 transition flex items-center gap-1.5';
+        }
+
+        function resetSimTime() {
+            state.simTime = 0;
+            state.scopeBuffer = [];
+            components.forEach(c => {
+                c.sim.vPrev = 0; c.sim.iPrev = 0;
+                c.sim.conducting = false; c.sim.zenerState = 'off';
+                c.sim.bjtRegion = 'cutoff'; c.sim.mosState = 'cutoff';
+                c.sim.opampSat = 'linear';
+            });
+            solveCircuit(0.005, true);
+        }
+
+        function clearCircuit() {
+            components = [];
+            wires = [];
+            state.selectedId = null;
+            state.selectedType = null;
+            state.wireStart = null;
+            resetSimTime();
+            renderInspector();
+        }
+
+        function toggleVoltageColor() {
+            state.showVoltageColor = !state.showVoltageColor;
+            document.getElementById('btn-vcolor').style.opacity = state.showVoltageColor ? '1' : '0.4';
+        }
+
+        function toggleCurrentDots() {
+            state.showCurrentDots = !state.showCurrentDots;
+            document.getElementById('btn-cdots').style.opacity = state.showCurrentDots ? '1' : '0.4';
+        }
+
+        function toggleScopePanel() {
+            state.showScope = !state.showScope;
+            document.getElementById('scope-panel').style.display = state.showScope ? 'flex' : 'none';
+            document.getElementById('btn-scope').style.opacity = state.showScope ? '1' : '0.4';
+            setTimeout(resizeCanvases, 30);
+        }
+
+        function setSimSpeed(v) { state.simSpeed = parseFloat(v) || 1.0; }
+        function setScopeVDiv(v) { state.scopeVDiv = parseFloat(v) || 5; }
+
+        function zoomCanvas(factor) {
+            state.cam.zoom = Math.max(0.4, Math.min(2.5, state.cam.zoom * factor));
+        }
+
+        function resetView() {
+            if (components.length === 0) {
+                state.cam = { x: 0, y: 0, zoom: 1.0 };
+                return;
+            }
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            components.forEach(c => {
+                minX = Math.min(minX, c.x - 60); maxX = Math.max(maxX, c.x + 60);
+                minY = Math.min(minY, c.y - 60); maxY = Math.max(maxY, c.y + 60);
+            });
+            const cx = (minX + maxX) / 2;
+            const cy = (minY + maxY) / 2;
+            const spanX = Math.max(240, maxX - minX + 120);
+            const spanY = Math.max(200, maxY - minY + 120);
+            const z = Math.min(canvas.width / spanX, canvas.height / spanY, 1.35);
+            state.cam.zoom = Math.max(0.5, z);
+            state.cam.x = -cx;
+            state.cam.y = -cy;
+        }
+
+        function exportCircuit() {
+            const payload = {
+                version: 1,
+                components: components.map(c => ({ type: c.type, label: c.label, x: c.x, y: c.y, rot: c.rot, props: c.props })),
+                wires: wires.map(w => ({ x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 }))
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'circuit_logic_lab.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importCircuit(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const data = JSON.parse(reader.result);
+                    clearCircuit();
+                    (data.components || []).forEach(c => {
+                        if (COMP_DEFS[c.type]) {
+                            const created = createComponent(c.type, c.x, c.y, c.rot, c.props || {});
+                            if (c.label) created.label = c.label;
+                        }
+                    });
+                    (data.wires || []).forEach(w => createWire(w.x1, w.y1, w.x2, w.y2));
+                    resetSimTime();
+                    resetView();
+                } catch (err) {
+                    const warnEl = document.getElementById('warning-banner');
+                    warnEl.innerText = '⚠ ไม่สามารถเปิดไฟล์ JSON นี้ได้';
+                    warnEl.classList.remove('hidden');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // =====================================================================
+        // LAB PRESETS (16 CIRCUITS)
+        // =====================================================================
+        function loadPreset(name) {
+            clearCircuit();
+            state.simSpeed = 1.0;
+            document.getElementById('sim-speed-select').value = '1';
+
+            if (name === 'cmos_inverter') {
+                createComponent('dc_source', -220, 0, 0, { voltage: 5 });
+                createComponent('ground', -220, 120, 0);
+                createComponent('logic_in', -100, 0, 0, { high: false, vHigh: 5 });
+                createComponent('pmos', 40, -60, 0, { vth: 2.0, rdsOn: 5 });
+                createComponent('nmos', 40, 60, 0, { vth: 2.0, rdsOn: 5 });
+                createComponent('logic_out', 180, 0, 0, { threshold: 2.5 });
+                createComponent('probe', -40, -20, 0, { channel: 1 });
+                createComponent('probe', 120, -20, 0, { channel: 2 });
+
+                createWire(-220, -40, -220, -100); createWire(-220, -100, 60, -100);
+                createWire(-220, 40, -220, 100); createWire(-220, 100, 60, 100);
+                createWire(-60, 0, 0, 0); createWire(0, -60, 0, 60);
+                createWire(60, -20, 60, 20); createWire(60, 0, 140, 0);
+            } else if (name === 'pnp_highside') {
+                createComponent('dc_source', -200, 0, 0, { voltage: 9 });
+                createComponent('ground', -200, 120, 0);
+                createComponent('pnp', 0, -60, 0, { beta: 100, vebOn: 0.7 });
+                createComponent('resistor', -80, -60, 0, { resistance: 4700 });
+                createComponent('switch', -120, 20, 90, { closed: true });
+                createComponent('resistor', 20, 20, 90, { resistance: 330 });
+                createComponent('led', 100, 80, 0, { color: '#95FF77', vf: 2.0, maxMa: 30 });
+
+                createWire(-200, -40, -200, -100); createWire(-200, -100, 20, -100);
+                createWire(-200, 40, -200, 100); createWire(-200, 100, 140, 100);
+                createWire(-120, -60, -120, -20); createWire(-120, 60, -120, 100);
+                createWire(20, 60, 20, 80); createWire(20, 80, 60, 80); createWire(140, 80, 140, 100);
+            } else if (name === 'digital_half_adder') {
+                createComponent('logic_in', -200, -60, 0, { high: true, vHigh: 5 });
+                createComponent('logic_in', -200, 60, 0, { high: false, vHigh: 5 });
+                createComponent('gate_xor', 0, -40, 0, { vHigh: 5, threshold: 2.5 });
+                createComponent('gate_and', 0, 60, 0, { vHigh: 5, threshold: 2.5 });
+                createComponent('logic_out', 140, -40, 0);
+                createComponent('logic_out', 140, 60, 0);
+
+                createWire(-160, -60, -40, -60); createWire(-100, -60, -100, 40); createWire(-100, 40, -40, 40);
+                createWire(-160, 60, -120, 60); createWire(-120, 60, -120, -20); createWire(-120, -20, -40, -20);
+                createWire(-120, 60, -120, 80); createWire(-120, 80, -40, 80);
+                createWire(40, -40, 100, -40);
+                createWire(40, 60, 100, 60);
+            } else if (name === 'digital_hex_display') {
+                createComponent('logic_in', -140, -40, 0, { high: false, vHigh: 5 });
+                createComponent('logic_in', -140, -20, 0, { high: true, vHigh: 5 });
+                createComponent('logic_in', -140, 0, 0, { high: false, vHigh: 5 });
+                createComponent('logic_in', -140, 20, 0, { high: true, vHigh: 5 });
+                createComponent('seg7', 60, 0, 0, { threshold: 2.5 });
+
+                createWire(-100, -40, 20, -40);
+                createWire(-100, -20, 20, -20);
+                createWire(-100, 0, 20, 0);
+                createWire(-100, 20, 20, 20);
+            } else if (name === 'bridge_rectifier') {
+                createComponent('ac_source', -220, 0, 0, { amplitude: 10, frequency: 2, waveform: 'sine', dcOffset: 0 });
+                createComponent('diode', -80, -60, 270, { vf: 0.7 });
+                createComponent('diode', -80, 60, 270, { vf: 0.7 });
+                createComponent('diode', 20, -60, 270, { vf: 0.7 });
+                createComponent('diode', 20, 60, 270, { vf: 0.7 });
+                createComponent('capacitor', 120, 0, 90, { capacitanceUf: 220 });
+                createComponent('resistor', 200, 0, 90, { resistance: 1000 });
+                createComponent('ground', 200, 120, 0);
+                createComponent('probe', -220, -60, 0, { channel: 1 });
+                createComponent('probe', 200, -120, 0, { channel: 2 });
+
+                // Bridge vertical midpoints (AC1 & AC2)
+                createWire(-80, -20, -80, 20);
+                createWire(20, -20, 20, 20);
+                // AC Source (+) -> Left midpoint, (-) -> Right midpoint
+                createWire(-220, -40, -140, -40); createWire(-140, -40, -140, 0); createWire(-140, 0, -80, 0);
+                createWire(-220, 40, -220, 140); createWire(-220, 140, -20, 140); createWire(-20, 140, -20, 0); createWire(-20, 0, 20, 0);
+                // DC Output (+) top rail & DC Ground (-) bottom rail
+                createWire(-80, -100, 200, -100);
+                createWire(-80, 100, 200, 100);
+                // Filter capacitor & load resistor
+                createWire(120, -100, 120, -40); createWire(120, 40, 120, 100);
+                createWire(200, -100, 200, -40); createWire(200, 40, 200, 100);
+            } else if (name === 'zener_regulator') {
+                createComponent('ac_source', -200, 0, 0, { amplitude: 3, frequency: 1.5, waveform: 'sine', dcOffset: 10 });
+                createComponent('ground', -200, 100, 0);
+                createComponent('resistor', -80, -60, 0, { resistance: 220 });
+                createComponent('zener', 40, 0, 270, { vf: 0.7, vz: 5.1 });
+                createComponent('resistor', 140, 0, 90, { resistance: 1000 });
+                createComponent('probe', -200, -80, 0, { channel: 1 });
+                createComponent('probe', 140, -80, 0, { channel: 2 });
+
+                createWire(-200, -40, -200, -60); createWire(-200, -60, -120, -60);
+                createWire(-40, -60, 140, -60); createWire(40, -60, 40, -40); createWire(140, -60, 140, -40);
+                createWire(-200, 40, -200, 80); createWire(-200, 80, 140, 80); createWire(40, 40, 40, 80); createWire(140, 40, 140, 80);
+            } else if (name === 'bjt_switch') {
+                createComponent('dc_source', -200, 0, 0, { voltage: 9 });
+                createComponent('ground', -200, 120, 0);
+                createComponent('switch', -120, -60, 0, { closed: true });
+                createComponent('resistor', -40, 0, 0, { resistance: 4700 });
+                createComponent('npn', 40, 0, 0, { beta: 100, vbeOn: 0.7 });
+                createComponent('resistor', 60, -100, 90, { resistance: 330 });
+                createComponent('led', -20, -140, 0, { color: '#FF3366', vf: 2.0, maxMa: 30 });
+
+                createWire(-200, -40, -200, -140); createWire(-200, -140, -60, -140); createWire(20, -140, 60, -140);
+                createWire(-200, -60, -160, -60); createWire(-80, -60, -80, 0);
+                createWire(60, -60, 60, -40);
+                createWire(-200, 40, -200, 100); createWire(-200, 100, 60, 100); createWire(60, 40, 60, 100);
+            } else if (name === 'opamp_inverting') {
+                createComponent('ac_source', -240, 20, 0, { amplitude: 2, frequency: 1.5, waveform: 'sine', dcOffset: 0 });
+                createComponent('resistor', -120, 20, 0, { resistance: 1000 });
+                createComponent('resistor', 20, -80, 0, { resistance: 2000 });
+                createComponent('opamp', 20, 0, 0, { gain: 10000, vSat: 15 });
+                createComponent('ground', -240, 100, 0);
+                createComponent('ground', -60, 100, 0);
+                createComponent('probe', -240, -40, 0, { channel: 1 });
+                createComponent('probe', 100, -20, 0, { channel: 2 });
+
+                createWire(-240, -20, -240, 20); createWire(-240, -20, -160, -20); createWire(-160, -20, -160, 20);
+                createWire(-240, 60, -240, 80);
+                createWire(-80, 20, -20, 20); createWire(-40, 20, -40, -80); createWire(-40, -80, -20, -80);
+                createWire(60, -80, 100, -80); createWire(100, -80, 100, 0); createWire(60, 0, 100, 0);
+                createWire(-20, -20, -60, -20); createWire(-60, -20, -60, 80);
+            } else if (name === 'ac_rc_filter') {
+                createComponent('ac_source', -180, 0, 0, { amplitude: 5, frequency: 2, waveform: 'square', dcOffset: 0 });
+                createComponent('resistor', -60, -60, 0, { resistance: 1000 });
+                createComponent('capacitor', 60, 0, 90, { capacitanceUf: 100 });
+                createComponent('ground', -180, 100, 0);
+                createComponent('probe', -180, -80, 0, { channel: 1 });
+                createComponent('probe', 60, -80, 0, { channel: 2 });
+
+                createWire(-180, -40, -180, -60); createWire(-180, -60, -100, -60);
+                createWire(-20, -60, 60, -60); createWire(60, -60, 60, -40);
+                createWire(-180, 40, -180, 80); createWire(-180, 80, 60, 80); createWire(60, 40, 60, 80);
+            } else if (name === 'rc_charging') {
+                createComponent('dc_source', -180, 0, 0, { voltage: 9 });
+                createComponent('switch', -100, -60, 0, { closed: true });
+                createComponent('resistor', 0, -60, 0, { resistance: 2200 });
+                createComponent('capacitor', 100, 0, 90, { capacitanceUf: 470 });
+                createComponent('resistor', 180, 0, 90, { resistance: 10000 });
+                createComponent('ground', -180, 100, 0);
+                createComponent('probe', 100, -80, 0, { channel: 1 });
+
+                createWire(-180, -40, -180, -60); createWire(-180, -60, -140, -60);
+                createWire(-60, -60, -40, -60); createWire(40, -60, 180, -60);
+                createWire(100, -60, 100, -40); createWire(180, -60, 180, -40);
+                createWire(-180, 40, -180, 80); createWire(-180, 80, 180, 80);
+                createWire(100, 40, 100, 80); createWire(180, 40, 180, 80);
+            } else if (name === 'rlc_ringing') {
+                createComponent('ac_source', -200, 0, 0, { amplitude: 5, frequency: 1, waveform: 'square', dcOffset: 0 });
+                createComponent('resistor', -100, -60, 0, { resistance: 20 });
+                createComponent('inductor', 0, -60, 0, { inductanceMh: 500 });
+                createComponent('capacitor', 100, 0, 90, { capacitanceUf: 470 });
+                createComponent('ground', -200, 100, 0);
+                createComponent('probe', -200, -80, 0, { channel: 1 });
+                createComponent('probe', 100, -80, 0, { channel: 2 });
+
+                createWire(-200, -40, -200, -60); createWire(-200, -60, -140, -60);
+                createWire(-60, -60, -40, -60); createWire(40, -60, 100, -60); createWire(100, -60, 100, -40);
+                createWire(-200, 40, -200, 80); createWire(-200, 80, 100, 80); createWire(100, 40, 100, 80);
+            } else if (name === 'led_basic') {
+                createComponent('dc_source', -140, 0, 0, { voltage: 9 });
+                createComponent('switch', -40, -60, 0, { closed: true });
+                createComponent('resistor', 60, -60, 0, { resistance: 330 });
+                createComponent('led', 140, 0, 90, { color: '#95FF77', vf: 2.0, maxMa: 30 });
+                createComponent('ammeter', 0, 60, 180);
+                createComponent('ground', -140, 100, 0);
+
+                createWire(-140, -40, -140, -60); createWire(-140, -60, -80, -60);
+                createWire(0, -60, 20, -60); createWire(100, -60, 140, -60); createWire(140, -60, 140, -40);
+                createWire(140, 40, 140, 60); createWire(140, 60, 40, 60);
+                createWire(-40, 60, -140, 60); createWire(-140, 40, -140, 80);
+            } else if (name === 'voltage_divider') {
+                createComponent('dc_source', -160, 0, 0, { voltage: 12 });
+                createComponent('resistor', 0, -60, 90, { resistance: 1000 });
+                createComponent('resistor', 0, 60, 90, { resistance: 1000 });
+                createComponent('voltmeter', 120, 60, 90);
+                createComponent('ground', -160, 140, 0);
+
+                createWire(-160, -40, -160, -100); createWire(-160, -100, 0, -100);
+                createWire(0, -20, 0, 20); createWire(0, 0, 120, 0); createWire(120, 0, 120, 20);
+                createWire(-160, 40, -160, 120); createWire(-160, 120, 120, 120); createWire(0, 100, 0, 120); createWire(120, 100, 120, 120);
+            } else if (name === 'series_parallel') {
+                createComponent('dc_source', -200, 0, 0, { voltage: 12 });
+                createComponent('resistor', -80, -60, 0, { resistance: 100 });
+                createComponent('resistor', 40, 0, 90, { resistance: 200 });
+                createComponent('resistor', 140, 0, 90, { resistance: 200 });
+                createComponent('ground', -200, 100, 0);
+
+                createWire(-200, -40, -200, -60); createWire(-200, -60, -120, -60);
+                createWire(-40, -60, 140, -60); createWire(40, -60, 40, -40); createWire(140, -60, 140, -40);
+                createWire(-200, 40, -200, 80); createWire(-200, 80, 140, 80);
+                createWire(40, 40, 40, 80); createWire(140, 40, 140, 80);
+            } else if (name === 'wheatstone') {
+                createComponent('dc_source', -220, 0, 0, { voltage: 10 });
+                createComponent('resistor', -60, -60, 90, { resistance: 100 });
+                createComponent('resistor', -60, 60, 90, { resistance: 100 });
+                createComponent('resistor', 100, -60, 90, { resistance: 100 });
+                createComponent('resistor', 100, 60, 90, { resistance: 200 });
+                createComponent('ammeter', 20, 0, 0);
+                createComponent('ground', -220, 140, 0);
+
+                createWire(-220, -40, -220, -120); createWire(-220, -120, 100, -120);
+                createWire(-60, -120, -60, -100); createWire(100, -120, 100, -100);
+                createWire(-60, -20, -60, 20); createWire(100, -20, 100, 20);
+                createWire(-60, 0, -20, 0); createWire(60, 0, 100, 0);
+                createWire(-220, 40, -220, 120); createWire(-220, 120, 100, 120);
+                createWire(-60, 100, -60, 120); createWire(100, 100, 100, 120);
+            }
+
+            solveCircuit(0.005, true);
+            resetView();
+        }
+
+        // =====================================================================
+        // POINTER, WHEEL & KEYBOARD INTERACTION
+        // =====================================================================
+        function findCompAt(wx, wy) {
+            for (let i = components.length - 1; i >= 0; i--) {
+                const c = components[i];
+                if (Math.hypot(wx - c.x, wy - c.y) <= 34) return c;
+            }
+            return null;
+        }
+
+        function findWireAt(wx, wy) {
+            for (let i = wires.length - 1; i >= 0; i--) {
+                const w = wires[i];
+                if (distToSegment(wx, wy, w.x1, w.y1, w.x2, w.y2) <= 8) return w;
+            }
+            return null;
+        }
+
+        canvas.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            if (state.tool !== 'select') setTool('select');
+            else state.wireStart = null;
+        });
+
+        canvas.addEventListener('pointerdown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const sx = e.clientX - rect.left;
+            const sy = e.clientY - rect.top;
+            const wPos = screenToWorld(sx, sy);
+
+            // Middle click or Space+Left click -> Pan
+            if (e.button === 1 || (e.button === 0 && state.spacePressed)) {
+                state.panning = true;
+                state.panStart = { x: sx, y: sy, camX: state.cam.x, camY: state.cam.y };
+                canvas.setPointerCapture(e.pointerId);
+                return;
+            }
+            if (e.button !== 0) return;
+
+            if (state.tool === 'delete') {
+                const hitComp = findCompAt(wPos.x, wPos.y);
+                if (hitComp) {
+                    components = components.filter(c => c.id !== hitComp.id);
+                    if (state.selectedId === hitComp.id) { state.selectedId = null; renderInspector(); }
+                    solveCircuit(0.005, true);
+                    return;
+                }
+                const hitWire = findWireAt(wPos.x, wPos.y);
+                if (hitWire) {
+                    wires = wires.filter(w => w.id !== hitWire.id);
+                    if (state.selectedId === hitWire.id) { state.selectedId = null; renderInspector(); }
+                    solveCircuit(0.005, true);
+                }
+                return;
+            }
+
+            if (state.tool === 'wire') {
+                const px = snap(wPos.x), py = snap(wPos.y);
+                if (!state.wireStart) {
+                    state.wireStart = { x: px, y: py };
+                } else {
+                    if (px !== state.wireStart.x && py !== state.wireStart.y) {
+                        createWire(state.wireStart.x, state.wireStart.y, px, state.wireStart.y);
+                        createWire(px, state.wireStart.y, px, py);
+                    } else {
+                        createWire(state.wireStart.x, state.wireStart.y, px, py);
+                    }
+                    state.wireStart = null;
+                    solveCircuit(0.005, true);
+                }
+                return;
+            }
+
+            if (COMP_DEFS[state.tool]) {
+                const created = createComponent(state.tool, wPos.x, wPos.y, state.ghostRot);
+                state.selectedId = created.id;
+                state.selectedType = 'comp';
+                renderInspector();
+                solveCircuit(0.005, true);
+                return;
+            }
+
+            // Select mode
+            const hitComp = findCompAt(wPos.x, wPos.y);
+            if (hitComp) {
+                state.selectedId = hitComp.id;
+                state.selectedType = 'comp';
+                if (hitComp.type === 'switch') {
+                    hitComp.props.closed = !hitComp.props.closed;
+                    solveCircuit(0.005, true);
+                } else if (hitComp.type === 'logic_in') {
+                    hitComp.props.high = !hitComp.props.high;
+                    solveCircuit(0.005, true);
+                }
+                state.draggingComp = hitComp;
+                state.dragOffset = { x: wPos.x - hitComp.x, y: wPos.y - hitComp.y };
+                canvas.setPointerCapture(e.pointerId);
+                renderInspector();
+                return;
+            }
+
+            const hitWire = findWireAt(wPos.x, wPos.y);
+            if (hitWire) {
+                state.selectedId = hitWire.id;
+                state.selectedType = 'wire';
+                renderInspector();
+                return;
+            }
+
+            state.selectedId = null;
+            state.selectedType = null;
+            renderInspector();
+        });
+
+        canvas.addEventListener('pointermove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const sx = e.clientX - rect.left;
+            const sy = e.clientY - rect.top;
+
+            if (state.panning) {
+                state.cam.x = state.panStart.camX + (sx - state.panStart.x) / state.cam.zoom;
+                state.cam.y = state.panStart.camY + (sy - state.panStart.y) / state.cam.zoom;
+                return;
+            }
+
+            const wPos = screenToWorld(sx, sy);
+            state.hoverWorld = wPos;
+
+            if (state.draggingComp) {
+                state.draggingComp.x = snap(wPos.x - state.dragOffset.x);
+                state.draggingComp.y = snap(wPos.y - state.dragOffset.y);
+                solveCircuit(0.005, true);
+                return;
+            }
+
+            state.hoverComp = findCompAt(wPos.x, wPos.y);
+            state.hoverWire = state.hoverComp ? null : findWireAt(wPos.x, wPos.y);
+
+            // Hover Tooltip
+            const tip = document.getElementById('hover-tooltip');
+            if (state.tool === 'select' && state.hoverComp) {
+                const c = state.hoverComp;
+                let text = `${c.label}`;
+                if (c.type === 'npn' || c.type === 'pnp') text += ` · ${c.sim.bjtRegion.toUpperCase()} · Ic=${formatUnit(c.sim.ic, 'A')}`;
+                else if (c.type === 'nmos' || c.type === 'pmos') text += ` · ${c.sim.mosState.toUpperCase()} · Id=${formatUnit(c.sim.i, 'A')}`;
+                else if (c.type === 'probe') text += ` · ${formatUnit(c.sim.v1, 'V')}`;
+                else if (c.type === 'seg7') text += ` · HEX: 0x${(c.sim.hexVal || 0).toString(16).toUpperCase()}`;
+                else text += ` · ΔV=${formatUnit(c.sim.v1 - c.sim.v2, 'V')} · I=${formatUnit(c.sim.i, 'A')}`;
+                tip.innerText = text;
+                tip.style.left = Math.min(rect.width - 180, sx + 14) + 'px';
+                tip.style.top = Math.max(10, sy - 30) + 'px';
+                tip.classList.remove('hidden');
+            } else {
+                tip.classList.add('hidden');
+            }
+        });
+
+        canvas.addEventListener('pointerup', e => {
+            state.draggingComp = null;
+            state.panning = false;
+            try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+        });
+
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+            zoomCanvas(factor);
+        }, { passive: false });
+
+        window.addEventListener('keydown', e => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+            if (e.code === 'Space') { state.spacePressed = true; canvas.style.cursor = 'grab'; }
+            else if (e.key === 'r' || e.key === 'R') rotateSelected();
+            else if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+            else if (e.key === 'Escape') setTool('select');
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.code === 'Space') {
+                state.spacePressed = false;
+                canvas.style.cursor = state.tool === 'select' ? 'default' : 'crosshair';
+            }
+        });
+
+        // =====================================================================
+        // RESIZE & MAIN ANIMATION LOOP
+        // =====================================================================
+        function resizeCanvases() {
+            const cWrap = document.getElementById('canvas-container');
+            if (cWrap) {
+                const r = cWrap.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) {
+                    canvas.width = Math.floor(r.width);
+                    canvas.height = Math.floor(r.height);
+                }
+            }
+            const sWrap = document.getElementById('scope-canvas-wrap');
+            if (sWrap && state.showScope) {
+                const r = sWrap.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) {
+                    scopeCanvas.width = Math.floor(r.width);
+                    scopeCanvas.height = Math.floor(r.height);
+                }
+            }
+        }
+
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => resizeCanvases());
+            ro.observe(document.getElementById('canvas-container'));
+            ro.observe(document.getElementById('scope-canvas-wrap'));
+        }
+        window.addEventListener('resize', resizeCanvases);
+
+        let lastFrameTime = performance.now();
+        function animate(now) {
+            requestAnimationFrame(animate);
+            const rawDt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) / 1000));
+            lastFrameTime = now;
+
+            try {
+                if (state.running) {
+                    const substeps = 4;
+                    const simDt = (rawDt * state.simSpeed) / substeps;
+                    for (let s = 0; s < substeps; s++) {
+                        state.simTime += simDt;
+                        solveCircuit(simDt, s === substeps - 1);
+                    }
+                    state.dotPhase += rawDt * 42;
+                    recordScopeSample();
+                }
+                renderCanvas();
+                renderScope();
+            } catch (err) {
+                console.error('Simulation frame error:', err);
+            }
+        }
+
+        window.onload = function () {
+            resizeCanvases();
+            loadPreset('cmos_inverter');
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
