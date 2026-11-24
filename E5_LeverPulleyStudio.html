@@ -298,7 +298,7 @@
             </div>
 
             <!-- Active Challenge HUD Card -->
-            <div id="challenge-card" class="hidden absolute top-3 left-3 z-25 w-80 max-w-[90vw] rounded-xl bg-[#141716]/95 border border-[#FFD500]/70 shadow-2xl backdrop-blur p-3 space-y-2">
+            <div id="challenge-card" class="hidden absolute top-3 left-3 z-[25] w-80 max-w-[90vw] rounded-xl bg-[#141716]/95 border border-[#FFD500]/70 shadow-2xl backdrop-blur p-3 space-y-2">
                 <div class="flex items-start justify-between gap-2">
                     <div>
                         <div id="ch-badge" class="font-mono-tech text-[10px] text-[#FFD500] font-bold tracking-wider">CHALLENGE 1</div>
@@ -1316,14 +1316,11 @@
             weights.forEach(wt => {
                 if (wt.attachType === 'beam' && wt.beamId === beam.id) I += wt.mass * wt.s * wt.s;
             });
-            I += (totalMass / (nStrands * nStrands)) * geomNow.tauUnit * geomNow.tauUnit;
-            I = Math.max(16, I);
-
-            const computeTension = (gInfo, omegaNow) => {
+            const computeTension = (gInfo, omegaNow, tqNow) => {
                 const absTau = Math.abs(gInfo.tauUnit);
                 if (absTau < 0.03 || loadW <= 0) return 0;
                 const liftSign = gInfo.tauUnit < 0 ? 1 : -1;
-                const tauDrive = liftSign * tq.netTorque;
+                const tauDrive = liftSign * tqNow.netTorque;
                 const sDot = -gInfo.tauUnit * omegaNow;
                 if (gInfo.sVal <= sMin + 1e-3 && tauDrive < T_hold * absTau) {
                     return Math.max(0, Math.min(T_hold, tauDrive / absTau));
@@ -1337,10 +1334,11 @@
                 const subSteps = 4;
                 const h = dt / subSteps;
                 for (let k = 0; k < subSteps; k++) {
+                    syncBeamAttachments(beam);
+                    const tqSub = computeBeamTorques(beam);
                     geomNow = evalAtAngle(beam.angle);
-            syncBeamAttachments(beam);
-            tension = computeTension(geomNow, beam.omega);
-                    const totalTorque = tq.netTorque + tension * geomNow.tauUnit;
+                    tension = computeTension(geomNow, beam.omega, tqSub);
+                    const totalTorque = tqSub.netTorque + tension * geomNow.tauUnit;
 
                     const alpha = (totalTorque - 16.0 * beam.omega) / I;
                     let nextOmega = clamp(beam.omega + alpha * h, -3.0, 3.0);
@@ -1382,8 +1380,10 @@
                 beam.omega = 0;
             }
 
+            syncBeamAttachments(beam);
+            const tqFinal = computeBeamTorques(beam);
             geomNow = evalAtAngle(beam.angle);
-            tension = computeTension(geomNow, beam.omega);
+            tension = computeTension(geomNow, beam.omega, tqFinal);
             const s = clamp(geomNow.sVal, sMin, sMax);
             const vs = -geomNow.tauUnit * beam.omega;
             const dy = s / nStrands;
@@ -1418,14 +1418,14 @@
             anchors.forEach(a => { a.reaction.r = Math.hypot(a.reaction.rx, a.reaction.ry); });
             fixedPulleys.forEach(p => { p.reaction.r = Math.hypot(p.reaction.rx, p.reaction.ry); });
 
-            let Rx = -(tq.sumFx + tension * geomNow.ux);
-            let Ry = -(tq.sumFy + tension * geomNow.uy);
+            let Rx = -(tqFinal.sumFx + tension * geomNow.ux);
+            let Ry = -(tqFinal.sumFy + tension * geomNow.uy);
             if (contact && contact.forceN > 0) {
                 Rx -= contact.normal.x * contact.forceN;
                 Ry -= contact.normal.y * contact.forceN;
             }
             const R = Math.hypot(Rx, Ry);
-            const netTorqueCombined = tq.netTorque + tension * geomNow.tauUnit;
+            const netTorqueCombined = tqFinal.netTorque + tension * geomNow.tauUnit;
 
             if (status === 'BALANCED') {
                 if (Math.abs(vs) > 0.015 || Math.abs(netTorqueCombined) > 1.2) {
@@ -1443,12 +1443,12 @@
             const hookArm = Math.max(0.1, Math.abs(beamCoupling.s));
             const leverMA = effortArm > 0.05 ? (effortArm / hookArm) : 1.0;
             const idealMA = nStrands * leverMA;
-            const actualMA = (tq.totalEffortF > 0.1 && loadW > 0) ? (loadW / tq.totalEffortF) : (idealMA * eff);
+            const actualMA = (tqFinal.totalEffortF > 0.1 && loadW > 0) ? (loadW / tqFinal.totalEffortF) : (idealMA * eff);
             const sIn = Math.abs(beam.angle) * effortArm;
             const sOut = dy;
 
             beam.statics = {
-                ...tq,
+                ...tqFinal,
                 netTorque: netTorqueCombined,
                 Rx, Ry, R,
                 contact,
@@ -1460,7 +1460,7 @@
 
             rope.statics = {
                 loadW,
-                effortF: tq.totalEffortF,
+                effortF: tqFinal.totalEffortF,
                 strands: nStrands,
                 leverMA,
                 pulleyMA: nStrands,
@@ -1470,7 +1470,7 @@
                 tension,
                 sIn,
                 sOut,
-                workIn: Math.abs(tq.totalEffortF * sIn),
+                workIn: Math.abs(tqFinal.totalEffortF * sIn),
                 workOut: Math.abs(loadW * sOut),
                 totalRx: Rx,
                 totalRy: Ry,
@@ -1880,15 +1880,15 @@
                     state.simulating = true;
                     updateModeButtonUI();
                     addStructure('ceiling', -1.8, 5.15, 3.8, 0.35);
-                    addStructure('block', 0.2, 1.15, 1.0, 2.3);
+                    addStructure('block', 0.05, 1.15, 1.0, 2.3);
                     const an = addAnchor(-2.48, 4.94);
                     const mp = addPulley('movable', -2.16, 2.15, 0.32, 100);
                     const fp = addPulley('fixed', -1.52, 4.45, 0.32, 100);
                     addWeight({ attachType: 'pulley', pulleyId: mp.id, mass: 120 });
 
-                    const pv = addPivot(0.2, 2.7);
+                    const pv = addPivot(0.05, 2.7);
                     const bm = addBeam(pv.id, 5.6, 1.2, 0);
-                    const beamAn = addAnchor(0, 0, { beamId: bm.id, s: -1.4 });
+                    const beamAn = addAnchor(0, 0, { beamId: bm.id, s: -1.25 });
                     const fc = addForce(bm.id, 2.2, 120, 90);
                     const rp = addRope([
                         { refType: 'anchor', refId: an.id },
@@ -3555,8 +3555,9 @@
                 anchors = anchors.filter(x => x.id !== id);
                 ropes = ropes.filter(r => !r.nodes.some(n => n.refType === 'anchor' && n.refId === id));
             } else if (type === 'pivot') {
+                const attachedBeamIds = beams.filter(b => b.pivotId === id).map(b => b.id);
+                attachedBeamIds.forEach(bid => deleteEntity('beam', bid));
                 pivots = pivots.filter(x => x.id !== id);
-                beams = beams.filter(b => b.pivotId !== id);
             } else if (type === 'beam') {
                 beams = beams.filter(x => x.id !== id);
                 const removedAnchors = new Set(anchors.filter(a => a.beamId === id).map(a => a.id));
@@ -3583,8 +3584,10 @@
                 ropes = ropes.filter(r => !r.nodes.some(n => n.refType === 'puller' && n.refId === id));
             } else if (type === 'rope') {
                 ropes = ropes.filter(x => x.id !== id);
-                scales = scales.filter(s => s.ropeId !== id);
             } else if (type === 'scale') scales = scales.filter(x => x.id !== id);
+
+            // Clean up any spring scales whose parent rope was removed
+            scales = scales.filter(s => ropes.some(r => r.id === s.ropeId));
 
             if (state.selectedId === id) {
                 state.selectedType = null;
@@ -3931,6 +3934,15 @@
                     pullers = d.pullers || [];
                     ropes = d.ropes || [];
                     scales = d.scales || [];
+                    const allLists = [structures, anchors, pivots, beams, pulleys, weights, forces, pullers, ropes, scales];
+                    let maxId = 0;
+                    allLists.forEach(list => list.forEach(item => {
+                        if (item && typeof item.id === 'string') {
+                            const m = item.id.match(/(\d+)$/);
+                            if (m) maxId = Math.max(maxId, parseInt(m[1], 10));
+                        }
+                    }));
+                    idCounter = Math.max(idCounter, maxId + 1);
                     ropes.forEach(r => lockRopeLength(r));
                     stepAllPhysics(0.016);
                     fitView();
